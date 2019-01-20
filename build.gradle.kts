@@ -9,6 +9,8 @@ application {
 
 dependencies {
     compile(kotlin("stdlib-jdk8"))
+
+    implementation("com.github.ajalt:clikt:1.6.0")
 }
 
 repositories {
