@@ -9,10 +9,19 @@ application {
 
 dependencies {
     compile(kotlin("stdlib-jdk8"))
+
+    implementation("com.github.ajalt:clikt:1.6.0")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
 }
 
 repositories {
     jcenter()
+}
+
+sourceSets {
+    getByName("main") {
+        resources.srcDirs("res")
+    }
 }
 
 val jar by tasks.getting(Jar::class) {
