@@ -3,6 +3,7 @@ package com.jonaswanke.aluminum.commands
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.output.TermUi
 import com.github.ajalt.clikt.parameters.arguments.argument
+import com.jonaswanke.aluminum.BRANCH_DEV
 import org.eclipse.jgit.api.Git
 import java.io.File
 import java.util.*
@@ -45,6 +46,10 @@ open class Create : CliktCommand() {
             .call()
         git.commit()
             .setMessage("Initial commit")
+            .call()
+        git.checkout()
+            .setCreateBranch(true)
+            .setName(BRANCH_DEV)
             .call()
     }
 }
