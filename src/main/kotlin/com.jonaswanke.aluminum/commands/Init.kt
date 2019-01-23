@@ -8,8 +8,8 @@ import org.eclipse.jgit.api.Git
 import java.io.File
 import java.util.*
 
-open class Create : CliktCommand() {
     private val name by argument("name")
+open class Create : BaseCommand() {
 
     override fun run() {
         val replacements = mapOf(
