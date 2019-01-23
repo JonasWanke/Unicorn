@@ -50,6 +50,7 @@ open class Create : BaseCommand() {
         echo("Signing in to GitHub...")
         val (github, cp) = githubAuthenticate(dir)
         val githubRepo = uploadGithub(name, git, github, cp)
+        configureGithub(githubRepo)
 
         newLine()
         echo("Done!")
@@ -114,8 +115,22 @@ open class Create : BaseCommand() {
 
         return repo
     }
+
+    private fun configureGithub(repo: GHRepository) {
+        newLine()
+        echo("Configuring GitHub...")
+
+        // Labels
+        for (label in repo.listLabels())
+            label.delete()
+
+        val labels = readConfig("github-labels.yaml", object : TypeReference<List<Label>>() {})
+        for (label in labels)
+            repo.createLabel(label.name, label.color)
+    }
     // endregion
 
+    data class Label(val name: String, val color: String)
 
     // region Resources
     private fun copyTemplate(dir: File, replacements: Replacements, resource: String, file: String = resource) {

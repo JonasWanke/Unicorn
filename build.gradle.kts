@@ -14,6 +14,10 @@ dependencies {
     implementation("com.github.ajalt:clikt:1.6.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
     implementation("org.kohsuke:github-api:1.95")
+
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.7.1-1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.7.1-2")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.7.1")
 }
 
 repositories {

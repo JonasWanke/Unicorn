@@ -1,0 +1,28 @@
+- name: duplicate
+  color: "cfd3d7"
+- name: wontfix
+  color: "cfd3d7"
+
+- name: discussion
+  color: "d876e3"
+- name: question
+  color: "d876e3"
+
+- name: "PR: wip"
+  color: "64eac4"
+
+- name: "C: <component>"
+  color: "c2e0c6"
+- name: "S: <subcomponent>"
+  color: "0ed1b7"
+
+- name: "T: ci"
+  color: "c5def5"
+- name: "T: docs"
+  color: "c5def5"
+- name: "T: feature"
+  color: "c5def5"
+- name: "T: fix"
+  color: "c5def5"
+- name: "T: perf"
+  color: "c5def5"
