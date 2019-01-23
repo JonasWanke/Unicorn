@@ -1,10 +1,19 @@
 package com.jonaswanke.aluminum.commands
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.jonaswanke.aluminum.BRANCH_DEV
+import com.jonaswanke.aluminum.BRANCH_MASTER
+import com.jonaswanke.aluminum.REMOTE_DEFAULT
+import com.jonaswanke.aluminum.utils.readConfig
+import com.jonaswanke.aluminum.utils.trackBranch
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.transport.CredentialsProvider
+import org.eclipse.jgit.transport.URIish
+import org.kohsuke.github.GHRepository
+import org.kohsuke.github.GitHub
 import java.io.File
 import java.util.*
 import kotlin.contracts.ExperimentalContracts
@@ -36,6 +45,12 @@ open class Create : BaseCommand() {
 
         val git = initGit(dir, replacements)
 
+        // Github
+        newLine()
+        echo("Signing in to GitHub...")
+        val (github, cp) = githubAuthenticate(dir)
+        val githubRepo = uploadGithub(name, git, github, cp)
+
         newLine()
         echo("Done!")
     }
@@ -52,6 +67,7 @@ open class Create : BaseCommand() {
         newLine()
         echo("Initializing git...")
 
+        copyTemplate(dir, replacements, "gitignore", ".gitignore")
         copyTemplate(dir, replacements, "gitattributes", ".gitattributes")
         val git = Git.init()
             .setDirectory(dir)
@@ -67,6 +83,36 @@ open class Create : BaseCommand() {
             .setName(BRANCH_DEV)
             .call()
         return git
+    }
+
+    private fun uploadGithub(name: String, git: Git, github: GitHub, cp: CredentialsProvider): GHRepository {
+        newLine()
+        echo("Uploading to GitHub...")
+
+        val repo = github.createRepository(name).apply {
+            description(description)
+            autoInit(false)
+
+            issues(true)
+            wiki(false)
+
+            allowMergeCommit(true)
+            allowRebaseMerge(false)
+            allowSquashMerge(false)
+        }.create()
+
+        git.remoteAdd()
+            .setName(REMOTE_DEFAULT)
+            .setUri(URIish(repo.httpTransportUrl))
+            .call()
+        git.trackBranch(BRANCH_MASTER)
+        git.trackBranch(BRANCH_DEV)
+        git.push()
+            .setCredentialsProvider(cp)
+            .setPushAll()
+            .call()
+
+        return repo
     }
     // endregion
 

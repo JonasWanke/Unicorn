@@ -3,7 +3,11 @@ package com.jonaswanke.aluminum.commands
 import com.github.ajalt.clikt.core.*
 import com.github.ajalt.clikt.output.CliktConsole
 import com.github.ajalt.clikt.output.TermUi
+import com.jonaswanke.aluminum.utils.OAuthCredentialsProvider
 import com.jonaswanke.aluminum.utils.TextIoConsoleWrapper
+import org.eclipse.jgit.transport.CredentialsProvider
+import org.kohsuke.github.GitHub
+import org.kohsuke.github.GitHubBuilder
 import java.io.File
 import java.io.IOError
 import java.util.*
@@ -25,6 +29,31 @@ abstract class BaseCommand : CliktCommand() {
             console = TextIoConsoleWrapper
         }
     }
+
+    protected fun githubAuthenticate(dir: File): GithubAuthResult {
+        val file = File(dir, ".github")
+        val properties = try {
+            Properties().apply {
+                file.inputStream().use { load(it) }
+            }
+        } catch (e: Exception) {
+            val username = prompt("GitHub username") ?: throw MissingParameter("username")
+            val token =
+                prompt("Personal access token", hideInput = true) ?: throw MissingParameter("personal access token")
+
+            file.createNewFile()
+            Properties().apply {
+                file.inputStream().use { load(it) }
+                setProperty("login", username)
+                setProperty("oauth", token)
+                file.outputStream().use { store(it, null) }
+            }
+        }
+        val github = GitHubBuilder.fromProperties(properties).build()
+        return GithubAuthResult(github, OAuthCredentialsProvider(properties.getProperty("oauth")))
+    }
+
+    data class GithubAuthResult(val github: GitHub, val credentialsProvider: CredentialsProvider)
 }
 
 fun CliktCommand.editText(
