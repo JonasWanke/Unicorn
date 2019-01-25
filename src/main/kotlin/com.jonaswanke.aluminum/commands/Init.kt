@@ -10,10 +10,8 @@ import com.jonaswanke.aluminum.REMOTE_DEFAULT
 import com.jonaswanke.aluminum.utils.readConfig
 import com.jonaswanke.aluminum.utils.trackBranch
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.transport.CredentialsProvider
 import org.eclipse.jgit.transport.URIish
 import org.kohsuke.github.GHRepository
-import org.kohsuke.github.GitHub
 import java.io.File
 import java.util.*
 import kotlin.contracts.ExperimentalContracts
@@ -23,7 +21,6 @@ open class Create : BaseCommand() {
     private val name by argument("name").optional()
     private val description by argument("description").optional()
 
-    // region Run
     override fun run() {
         val name: String = name
             ?: prompt("What's your project called?")!!
@@ -37,98 +34,99 @@ open class Create : BaseCommand() {
         ).mapKeys { "%$it%" }
             .mapValues { it.toString() }
 
-        val dir = File("./$name")
-        if (dir.exists()) throw PrintMessage("The specified directory already exists!")
-        dir.mkdirs()
+        newLine()
 
-        createFiles(dir, replacements)
 
-        val git = initGit(dir, replacements)
+        fun createFiles(): File {
+            echo("Creating directory...")
+            val dir = File("./$name")
+            if (dir.exists()) throw PrintMessage("The specified directory already exists!")
+            dir.mkdirs()
+
+            echo("Copying templates...")
+            copyTemplate(dir, replacements, "README.md")
+            copyTemplate(dir, replacements, "licenses/Apache License 2.0.txt", "LICENSE")
+            return dir
+        }
+
+        val dir = createFiles()
+
+        // Git
+        newLine()
+        fun initGit(): Git {
+            echo("Initializing git...")
+
+            copyTemplate(dir, replacements, "gitignore", ".gitignore")
+            copyTemplate(dir, replacements, "gitattributes", ".gitattributes")
+            val git = Git.init()
+                .setDirectory(dir)
+                .call()
+            git.add()
+                .addFilepattern(".")
+                .call()
+            git.commit()
+                .setMessage("Initial commit")
+                .call()
+            git.checkout()
+                .setCreateBranch(true)
+                .setName(BRANCH_DEV)
+                .call()
+            return git
+        }
+
+        val git = initGit()
 
         // Github
         newLine()
         echo("Signing in to GitHub...")
         val (github, cp) = githubAuthenticate(dir)
-        val githubRepo = uploadGithub(name, git, github, cp)
-        configureGithub(githubRepo)
+        fun uploadToGithub(): GHRepository {
+            echo("Uploading to GitHub...")
+
+            val repo = github.createRepository(name).apply {
+                description(description)
+                autoInit(false)
+
+                issues(true)
+                wiki(false)
+
+                allowMergeCommit(true)
+                allowRebaseMerge(false)
+                allowSquashMerge(false)
+            }.create()
+
+            git.remoteAdd()
+                .setName(REMOTE_DEFAULT)
+                .setUri(URIish(repo.httpTransportUrl))
+                .call()
+            git.trackBranch(BRANCH_MASTER)
+            git.trackBranch(BRANCH_DEV)
+            git.push()
+                .setCredentialsProvider(cp)
+                .setPushAll()
+                .call()
+
+            return repo
+        }
+
+        val githubRepo = uploadToGithub()
+        fun configureGithub() {
+            echo("Configuring GitHub...")
+
+            // Labels
+            echo("Creating labels")
+            for (label in githubRepo.listLabels())
+                label.delete()
+
+            val labels = readConfig("github-labels.yaml", object : TypeReference<List<Label>>() {})
+            for (label in labels)
+                githubRepo.createLabel(label.name, label.color)
+        }
+        configureGithub()
 
         newLine()
         echo("Done!")
     }
-
-    private fun createFiles(dir: File, replacements: Replacements) {
-        newLine()
-        echo("Copying templates...")
-
-        copyTemplate(dir, replacements, "README.md")
-        copyTemplate(dir, replacements, "licenses/Apache License 2.0.txt", "LICENSE")
-    }
-
-    private fun initGit(dir: File, replacements: Replacements): Git {
-        newLine()
-        echo("Initializing git...")
-
-        copyTemplate(dir, replacements, "gitignore", ".gitignore")
-        copyTemplate(dir, replacements, "gitattributes", ".gitattributes")
-        val git = Git.init()
-            .setDirectory(dir)
-            .call()
-        git.add()
-            .addFilepattern(".")
-            .call()
-        git.commit()
-            .setMessage("Initial commit")
-            .call()
-        git.checkout()
-            .setCreateBranch(true)
-            .setName(BRANCH_DEV)
-            .call()
-        return git
-    }
-
-    private fun uploadGithub(name: String, git: Git, github: GitHub, cp: CredentialsProvider): GHRepository {
-        newLine()
-        echo("Uploading to GitHub...")
-
-        val repo = github.createRepository(name).apply {
-            description(description)
-            autoInit(false)
-
-            issues(true)
-            wiki(false)
-
-            allowMergeCommit(true)
-            allowRebaseMerge(false)
-            allowSquashMerge(false)
-        }.create()
-
-        git.remoteAdd()
-            .setName(REMOTE_DEFAULT)
-            .setUri(URIish(repo.httpTransportUrl))
-            .call()
-        git.trackBranch(BRANCH_MASTER)
-        git.trackBranch(BRANCH_DEV)
-        git.push()
-            .setCredentialsProvider(cp)
-            .setPushAll()
-            .call()
-
-        return repo
-    }
-
-    private fun configureGithub(repo: GHRepository) {
-        newLine()
-        echo("Configuring GitHub...")
-
-        // Labels
-        for (label in repo.listLabels())
-            label.delete()
-
-        val labels = readConfig("github-labels.yaml", object : TypeReference<List<Label>>() {})
-        for (label in labels)
-            repo.createLabel(label.name, label.color)
-    }
-    // endregion
 
     data class Label(val name: String, val color: String)
 
