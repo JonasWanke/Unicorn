@@ -121,6 +121,16 @@ open class Create : BaseCommand() {
             val labels = readConfig("github-labels.yaml", object : TypeReference<List<Label>>() {})
             for (label in labels)
                 githubRepo.createLabel(label.name, label.color)
+
+            // Branch protection
+            echo("Setting up branch protection")
+            githubRepo.apply {
+                for (branch in listOf(getBranch(BRANCH_MASTER), getBranch(BRANCH_DEV)))
+                    branch.enableProtection()
+                        .requiredReviewers(1)
+                        .includeAdmins(false)
+                        .enable()
+            }
         }
         configureGithub()
 
