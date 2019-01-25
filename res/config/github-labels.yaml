@@ -11,10 +11,8 @@
 - name: "PR: wip"
   color: "64eac4"
 
-- name: "C: <component>"
+- name: "C: <component>/<subcomponent>"
   color: "c2e0c6"
-- name: "S: <subcomponent>"
-  color: "0ed1b7"
 
 - name: "T: ci"
   color: "c5def5"
@@ -25,4 +23,6 @@
 - name: "T: fix"
   color: "c5def5"
 - name: "T: perf"
+  color: "c5def5"
+- name: "T: refactor"
   color: "c5def5"
