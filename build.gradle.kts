@@ -11,6 +11,8 @@ dependencies {
     compile(kotlin("stdlib-jdk8"))
 
     implementation("org.beryx:text-io:3.3.0")
+    implementation("com.squareup.okhttp3:okhttp:3.12.1")
+    
     implementation("com.github.ajalt:clikt:1.6.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
     implementation("org.kohsuke:github-api:1.95")

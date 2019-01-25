@@ -1,6 +1,8 @@
 package com.jonaswanke.aluminum.commands
 
 import com.fasterxml.jackson.core.type.TypeReference
+import com.github.ajalt.clikt.core.CliktError
+import com.github.ajalt.clikt.core.NoSuchOption
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.optional
@@ -9,6 +11,8 @@ import com.jonaswanke.aluminum.BRANCH_MASTER
 import com.jonaswanke.aluminum.REMOTE_DEFAULT
 import com.jonaswanke.aluminum.utils.readConfig
 import com.jonaswanke.aluminum.utils.trackBranch
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.URIish
 import org.kohsuke.github.GHRepository
@@ -18,6 +22,12 @@ import kotlin.contracts.ExperimentalContracts
 
 @ExperimentalContracts
 open class Create : BaseCommand() {
+    companion object {
+        const val GIT_GITIGNOREIO_ERROR_PREFIX = "#!! ERROR: "
+        const val GIT_GITIGNORE_FILE = ".gitignore"
+        const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
+    }
+
     private val name by argument("name").optional()
     private val description by argument("description").optional()
 
@@ -33,6 +43,8 @@ open class Create : BaseCommand() {
             "YEAR" to Calendar.getInstance().get(Calendar.YEAR)
         ).mapKeys { "%$it%" }
             .mapValues { it.toString() }
+
+        val webClient = OkHttpClient()
 
         newLine()
 
@@ -56,8 +68,35 @@ open class Create : BaseCommand() {
         fun initGit(): Git {
             echo("Initializing git...")
 
-            copyTemplate(dir, replacements, "gitignore", ".gitignore")
-            copyTemplate(dir, replacements, "gitattributes", ".gitattributes")
+            val gitignore = prompt("Please enter the .gitignore-template names from " +
+                    "www.gitignore.io to use (separated by a comma)",
+                optional = true, convert = { input ->
+                    val templates = input.split(",")
+                        .map { it.trim().toLowerCase() }
+
+                    val request = Request.Builder()
+                        .get()
+                        .url("https://www.gitignore.io/api/${templates.joinToString(",")}")
+                        .build()
+                    val result = webClient.newCall(request).execute().use {
+                        it.body()?.string()
+                    } ?: throw CliktError("Network error: No response")
+
+                    val errorLine = result.indexOf(GIT_GITIGNOREIO_ERROR_PREFIX)
+                    if (errorLine >= 0)
+                        result.substring(errorLine + GIT_GITIGNOREIO_ERROR_PREFIX.length)
+                            .substringBefore(' ')
+                            .let { invalidOption ->
+                                throw NoSuchOption(invalidOption)
+                            }
+
+                    result
+                })!!
+            copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
+            File(dir, GIT_GITIGNORE_FILE)
+                .appendText(gitignore)
+
+            copyTemplate(dir, replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
             val git = Git.init()
                 .setDirectory(dir)
                 .call()
