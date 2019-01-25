@@ -41,8 +41,8 @@ open class Create : BaseCommand() {
             "NAME" to name,
             "DESCRIPTION" to description,
             "YEAR" to Calendar.getInstance().get(Calendar.YEAR)
-        ).mapKeys { "%$it%" }
-            .mapValues { it.toString() }
+        ).mapKeys { (k, _) -> "%$k%" }
+            .mapValues { (_, v) -> v.toString() }
 
         val webClient = OkHttpClient()
 
