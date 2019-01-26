@@ -1,6 +1,12 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     application
     kotlin("jvm") version "1.3.20"
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions.jvmTarget = "1.8"
 }
 
 application {
@@ -12,7 +18,8 @@ dependencies {
 
     implementation("org.beryx:text-io:3.3.0")
     implementation("com.squareup.okhttp3:okhttp:3.12.1")
-    
+
+    implementation("net.swiftzer.semver:semver:1.1.0")
     implementation("com.github.ajalt:clikt:1.6.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
     implementation("org.kohsuke:github-api:1.95")

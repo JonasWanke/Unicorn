@@ -1,45 +1,75 @@
 package com.jonaswanke.aluminum.commands
 
 import com.fasterxml.jackson.core.type.TypeReference
+import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.NoSuchOption
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.optional
-import com.jonaswanke.aluminum.BRANCH_DEV
-import com.jonaswanke.aluminum.BRANCH_MASTER
-import com.jonaswanke.aluminum.REMOTE_DEFAULT
+import com.github.ajalt.clikt.parameters.options.convert
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.choice
+import com.jonaswanke.aluminum.*
 import com.jonaswanke.aluminum.utils.readConfig
 import com.jonaswanke.aluminum.utils.trackBranch
+import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.URIish
+import org.kohsuke.github.GHCreateRepositoryBuilder
+import org.kohsuke.github.GHOrganization
 import org.kohsuke.github.GHRepository
+import org.kohsuke.github.HttpException
 import java.io.File
+import java.io.IOException
 import java.util.*
 import kotlin.contracts.ExperimentalContracts
 
 @ExperimentalContracts
 open class Create : BaseCommand() {
     companion object {
-        const val GIT_GITIGNOREIO_ERROR_PREFIX = "#!! ERROR: "
-        const val GIT_GITIGNORE_FILE = ".gitignore"
-        const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
+        private const val GIT_GITIGNOREIO_ERROR_PREFIX = "#!! ERROR: "
+        private const val GIT_GITIGNORE_FILE = ".gitignore"
+        private const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
     }
 
-    private val name by argument("name").optional()
-    private val description by argument("description").optional()
+    private val name by argument("name")
+    private val description by option("-d", "--desc", "--description")
+    private val type by option("-t", "--type")
+        .choice(ProjectConfig.Type.stringToValueMap)
+    private val version by option("-v", "--version")
+        .convert { SemVer.parse(it) }
 
     override fun run() {
-        val name: String = name
-            ?: prompt("What's your project called?")!!
         val description = description
             ?: prompt("Provide a short description", optional = true)
+        val type = type
+            ?: prompt<ProjectConfig.Type?>(
+                "What describes your project best? " +
+                        "[${ProjectConfig.Type.stringToValueMap.keys.joinToString(", ")}]",
+                optional = true
+            ) {
+                val key = it.trim().toLowerCase()
+                if (key.isBlank()) null
+                else ProjectConfig.Type.stringToValueMap[key]
+                    ?: throw NoSuchOption(key, ProjectConfig.Type.stringToValueMap.keys.toList())
+            }
+            ?: ProjectConfig.Type.OTHER
+        val version = version
+            ?: prompt<SemVer>("What's the initial version of your project?", default = "0.0.1") {
+                try {
+                    SemVer.parse(it)
+                } catch (e: IllegalArgumentException) {
+                    throw BadParameterValue(it)
+                }
+            }!!
 
         val replacements = mapOf(
             "NAME" to name,
             "DESCRIPTION" to description,
+            "TYPE" to type,
+            "VERSION" to version,
             "YEAR" to Calendar.getInstance().get(Calendar.YEAR)
         ).mapKeys { (k, _) -> "%$k%" }
             .mapValues { (_, v) -> v.toString() }
@@ -50,12 +80,24 @@ open class Create : BaseCommand() {
 
 
         fun createFiles(): File {
-            echo("Creating directory...")
+            echo("Creating files...")
+
+            echo("Creating directory")
             val dir = File("./$name")
             if (dir.exists()) throw PrintMessage("The specified directory already exists!")
             dir.mkdirs()
 
-            echo("Copying templates...")
+            echo("Saving project config")
+            val config = ProjectConfig(
+                aluminumVersion = ProgramConfig.VERSION,
+                name = name,
+                description = description,
+                type = type,
+                version = version
+            )
+            setProjectConfig(config, dir)
+
+            echo("Copying templates")
             copyTemplate(dir, replacements, "README.md")
             copyTemplate(dir, replacements, "licenses/Apache License 2.0.txt", "LICENSE")
             return dir
@@ -120,11 +162,13 @@ open class Create : BaseCommand() {
         echo("Signing in to GitHub...")
         val (github, cp) = githubAuthenticate(dir)
         fun uploadToGithub(): GHRepository {
-            echo("Uploading to GitHub...")
+            echo("Connecting to GitHub...")
 
-            val repo = github.createRepository(name).apply {
+            echo("Creating repository")
+            fun GHCreateRepositoryBuilder.init(private: Boolean): GHRepository {
                 description(description)
                 autoInit(false)
+                private_(private)
 
                 issues(true)
                 wiki(false)
@@ -132,8 +176,36 @@ open class Create : BaseCommand() {
                 allowMergeCommit(true)
                 allowRebaseMerge(false)
                 allowSquashMerge(false)
-            }.create()
+                return create()
+            }
 
+            val organization = prompt<GHOrganization?>(
+                "Which organization should this be uploaded to?",
+                optional = true, optionalText = " (Blank for no organization)"
+            ) {
+                if (it.isBlank()) null
+                else try {
+                    github.getOrganization(it)
+                } catch (e: IOException) {
+                    throw NoSuchOption(it)
+                }
+            }
+            val private = confirm("Should the repository be private?", default = true)
+                ?: true
+            val repoBuilder = organization?.createRepository(name)
+                ?: github.createRepository(name)
+            val repo = try {
+                repoBuilder.init(private)
+            } catch (e: HttpException) {
+                if (e.message?.contains("Visibility can't be private") == true) {
+                    if (confirm("Your plan does not allow private repositories. Make it public instead?") != true)
+                        throw CliktError("Cancelling...")
+                    repoBuilder.init(false)
+                } else throw e
+            }
+            setProjectConfig(getProjectConfig(dir).copy(githubName = repo.fullName), dir)
+
+            echo("Uploading")
             git.remoteAdd()
                 .setName(REMOTE_DEFAULT)
                 .setUri(URIish(repo.httpTransportUrl))
