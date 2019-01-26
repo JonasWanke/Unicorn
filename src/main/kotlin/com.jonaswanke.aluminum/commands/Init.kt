@@ -1,16 +1,18 @@
 package com.jonaswanke.aluminum.commands
 
 import com.fasterxml.jackson.core.type.TypeReference
+import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.NoSuchOption
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.optional
-import com.jonaswanke.aluminum.BRANCH_DEV
-import com.jonaswanke.aluminum.BRANCH_MASTER
-import com.jonaswanke.aluminum.REMOTE_DEFAULT
+import com.github.ajalt.clikt.parameters.options.convert
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.choice
+import com.jonaswanke.aluminum.*
 import com.jonaswanke.aluminum.utils.readConfig
 import com.jonaswanke.aluminum.utils.trackBranch
+import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.eclipse.jgit.api.Git
@@ -23,23 +25,47 @@ import kotlin.contracts.ExperimentalContracts
 @ExperimentalContracts
 open class Create : BaseCommand() {
     companion object {
-        const val GIT_GITIGNOREIO_ERROR_PREFIX = "#!! ERROR: "
-        const val GIT_GITIGNORE_FILE = ".gitignore"
-        const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
+        private const val GIT_GITIGNOREIO_ERROR_PREFIX = "#!! ERROR: "
+        private const val GIT_GITIGNORE_FILE = ".gitignore"
+        private const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
     }
 
-    private val name by argument("name").optional()
-    private val description by argument("description").optional()
+    private val name by argument("name")
+    private val description by option("-d", "--desc", "--description")
+    private val type by option("-t", "--type")
+        .choice(ProjectConfig.Type.stringToValueMap)
+    private val version by option("-v", "--version")
+        .convert { SemVer.parse(it) }
 
     override fun run() {
-        val name: String = name
-            ?: prompt("What's your project called?")!!
         val description = description
             ?: prompt("Provide a short description", optional = true)
+        val type = type
+            ?: prompt<ProjectConfig.Type?>(
+                "What describes your project best? " +
+                        "[${ProjectConfig.Type.stringToValueMap.keys.joinToString(", ")}]",
+                optional = true
+            ) {
+                val key = it.trim().toLowerCase()
+                if (key.isBlank()) null
+                else ProjectConfig.Type.stringToValueMap[key]
+                    ?: throw NoSuchOption(key, ProjectConfig.Type.stringToValueMap.keys.toList())
+            }
+            ?: ProjectConfig.Type.OTHER
+        val version = version
+            ?: prompt<SemVer>("What's the initial version of your project?", default = "0.0.1") {
+                try {
+                    SemVer.parse(it)
+                } catch (e: IllegalArgumentException) {
+                    throw BadParameterValue(it)
+                }
+            }!!
 
         val replacements = mapOf(
             "NAME" to name,
             "DESCRIPTION" to description,
+            "TYPE" to type,
+            "VERSION" to version,
             "YEAR" to Calendar.getInstance().get(Calendar.YEAR)
         ).mapKeys { (k, _) -> "%$k%" }
             .mapValues { (_, v) -> v.toString() }

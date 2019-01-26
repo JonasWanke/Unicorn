@@ -80,6 +80,7 @@ fun CliktCommand.prompt(
     text: String,
     default: String? = null,
     optional: Boolean = false,
+    optionalText: String = " (optional)",
     hideInput: Boolean = false,
     requireConfirmation: Boolean = false,
     confirmationPrompt: String = "Repeat for confirmation: ",
@@ -92,6 +93,7 @@ fun CliktCommand.prompt(
         text,
         default,
         optional,
+        optionalText,
         hideInput,
         requireConfirmation,
         confirmationPrompt,
@@ -107,6 +109,7 @@ fun <T> CliktCommand.prompt(
     text: String,
     default: String? = null,
     optional: Boolean = false,
+    optionalText: String = " (optional)",
     hideInput: Boolean = false,
     requireConfirmation: Boolean = false,
     confirmationPrompt: String = "Repeat for confirmation: ",
@@ -119,7 +122,7 @@ fun <T> CliktCommand.prompt(
     val prompt = buildString {
         append(text)
         if (optional)
-            append(" (optional)")
+            append(optionalText)
         if (!default.isNullOrBlank() && showDefault)
             append(" [").append(default).append("]")
         append(promptSuffix)
