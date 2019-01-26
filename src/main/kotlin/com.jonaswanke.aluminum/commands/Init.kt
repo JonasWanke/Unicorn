@@ -80,12 +80,24 @@ open class Create : BaseCommand() {
 
 
         fun createFiles(): File {
-            echo("Creating directory...")
+            echo("Creating files...")
+
+            echo("Creating directory")
             val dir = File("./$name")
             if (dir.exists()) throw PrintMessage("The specified directory already exists!")
             dir.mkdirs()
 
-            echo("Copying templates...")
+            echo("Saving project config")
+            val config = ProjectConfig(
+                aluminumVersion = ProgramConfig.VERSION,
+                name = name,
+                description = description,
+                type = type,
+                version = version
+            )
+            setProjectConfig(config, dir)
+
+            echo("Copying templates")
             copyTemplate(dir, replacements, "README.md")
             copyTemplate(dir, replacements, "licenses/Apache License 2.0.txt", "LICENSE")
             return dir
@@ -191,6 +203,7 @@ open class Create : BaseCommand() {
                     repoBuilder.init(false)
                 } else throw e
             }
+            setProjectConfig(getProjectConfig(dir).copy(githubName = repo.fullName), dir)
 
             echo("Uploading")
             git.remoteAdd()

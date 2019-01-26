@@ -3,8 +3,11 @@ package com.jonaswanke.aluminum.commands
 import com.github.ajalt.clikt.core.*
 import com.github.ajalt.clikt.output.CliktConsole
 import com.github.ajalt.clikt.output.TermUi
+import com.jonaswanke.aluminum.ProjectConfig
 import com.jonaswanke.aluminum.utils.OAuthCredentialsProvider
 import com.jonaswanke.aluminum.utils.TextIoConsoleWrapper
+import com.jonaswanke.aluminum.utils.readConfig
+import com.jonaswanke.aluminum.utils.writeConfig
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.GitHub
 import org.kohsuke.github.GitHubBuilder
@@ -24,10 +27,22 @@ object Commands : BaseCommand() {
 
 @ExperimentalContracts
 abstract class BaseCommand : CliktCommand() {
+    companion object {
+        private const val CONFIG_PROJECT_FILE = ".aluminum"
+    }
+
     init {
         context {
             console = TextIoConsoleWrapper
         }
+    }
+
+    fun getProjectConfig(dir: File = File("")): ProjectConfig {
+        return File(dir, CONFIG_PROJECT_FILE).inputStream().readConfig()
+    }
+
+    fun setProjectConfig(config: ProjectConfig, dir: File = File("")) {
+        File(dir, CONFIG_PROJECT_FILE).outputStream().writeConfig(config)
     }
 
     protected fun githubAuthenticate(dir: File): GithubAuthResult {
