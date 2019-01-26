@@ -32,6 +32,8 @@ open class Create : BaseCommand() {
         private const val GIT_GITIGNOREIO_ERROR_PREFIX = "#!! ERROR: "
         private const val GIT_GITIGNORE_FILE = ".gitignore"
         private const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
+
+        private const val CI_TRAVIS_CONFIG_FILE = ".travis-android.yml"
     }
 
     private val name by argument("name")
@@ -104,6 +106,18 @@ open class Create : BaseCommand() {
         }
 
         val dir = createFiles()
+
+        // Travis CI
+        newLine()
+        if (confirm("Setup Travis CI?", default = true) == true) {
+            when (type) {
+                ProjectConfig.Type.ANDROID -> {
+                    echo("A config file is being generated for you, but you have to manually setup travis-ci.com to connect to GitHub and your repo.")
+                    copyTemplate(dir, replacements, "ci/travis-android.yml", CI_TRAVIS_CONFIG_FILE)
+                }
+                else -> echo("Unfortunately, no template is available for your configuration yet :(")
+            }
+        }
 
         // Git
         newLine()
