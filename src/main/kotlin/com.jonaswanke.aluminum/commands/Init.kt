@@ -83,7 +83,7 @@ open class Create : BaseCommand() {
             echo("Creating files...")
 
             echo("Creating directory")
-            val dir = File("./$name")
+            val dir = File(prefix, "./$name")
             if (dir.exists()) throw PrintMessage("The specified directory already exists!")
             dir.mkdirs()
 

@@ -3,6 +3,9 @@ package com.jonaswanke.aluminum.commands
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.file
 import com.jonaswanke.aluminum.GlobalConfig
 import com.jonaswanke.aluminum.ProjectConfig
 import com.jonaswanke.aluminum.utils.*
@@ -25,6 +28,10 @@ abstract class BaseCommand : CliktCommand() {
         }
     }
 
+    val prefix by option("--prefix")
+        .file(exists = true, fileOkay = false)
+        .default(File(""))
+
     private val installDir = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile
     private val globalConfigFile: File
         get() = File(installDir, CONFIG_GLOBAL_FILE).apply {
@@ -37,11 +44,11 @@ abstract class BaseCommand : CliktCommand() {
         get() = globalConfigFile.inputStream().readConfig()
         set(value) = globalConfigFile.outputStream().writeConfig(value)
 
-    fun getProjectConfig(dir: File = File("")): ProjectConfig {
+    fun getProjectConfig(dir: File = prefix): ProjectConfig {
         return File(dir, CONFIG_PROJECT_FILE).inputStream().readConfig()
     }
 
-    fun setProjectConfig(config: ProjectConfig, dir: File = File("")) {
+    fun setProjectConfig(config: ProjectConfig, dir: File = prefix) {
         File(dir, CONFIG_PROJECT_FILE).outputStream().writeConfig(config)
     }
 
