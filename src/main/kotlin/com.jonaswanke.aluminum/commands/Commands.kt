@@ -18,7 +18,10 @@ import kotlin.contracts.ExperimentalContracts
 @ExperimentalContracts
 object Commands : BaseCommand() {
     init {
-        subcommands(Create())
+        subcommands(
+            Login(),
+            Create()
+        )
     }
 
     override fun run() = Unit
