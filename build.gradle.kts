@@ -27,6 +27,8 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.7.1-1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.7.1-2")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.7.1")
+
+    implementation("org.slf4j:slf4j-nop:1.7.25")
 }
 
 repositories {
