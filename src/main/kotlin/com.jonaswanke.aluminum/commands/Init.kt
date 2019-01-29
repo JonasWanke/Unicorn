@@ -10,8 +10,7 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.jonaswanke.aluminum.*
-import com.jonaswanke.aluminum.utils.readConfig
-import com.jonaswanke.aluminum.utils.trackBranch
+import com.jonaswanke.aluminum.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -77,9 +76,9 @@ open class Create : BaseCommand() {
 
         val webClient = OkHttpClient()
 
+
+        // Files
         newLine()
-
-
         fun createFiles(): File {
             echo("Creating files...")
 
@@ -106,6 +105,7 @@ open class Create : BaseCommand() {
 
         val dir = createFiles()
 
+
         // Travis CI
         newLine()
         if (confirm("Setup Travis CI?", default = true) == true) {
@@ -117,6 +117,7 @@ open class Create : BaseCommand() {
                 else -> echo("Unfortunately, no template is available for your configuration yet :(")
             }
         }
+
 
         // Git
         newLine()
@@ -170,6 +171,7 @@ open class Create : BaseCommand() {
         }
 
         val git = initGit()
+
 
         // Github
         newLine()
