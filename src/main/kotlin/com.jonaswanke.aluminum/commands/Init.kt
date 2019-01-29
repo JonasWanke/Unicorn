@@ -45,19 +45,18 @@ open class Create : BaseCommand() {
 
     override fun run() {
         val description = description
-            ?: prompt("Provide a short description", optional = true)
-        val type = type
-            ?: prompt<ProjectConfig.Type?>(
+            ?: promptOptional("Provide a short description")
+        val type: ProjectConfig.Type = type
+            ?: prompt<ProjectConfig.Type>(
                 "What describes your project best? " +
                         "[${ProjectConfig.Type.stringToValueMap.keys.joinToString(", ")}]",
-                optional = true
+                default = "other"
             ) {
                 val key = it.trim().toLowerCase()
                 if (key.isBlank()) null
                 else ProjectConfig.Type.stringToValueMap[key]
                     ?: throw NoSuchOption(key, ProjectConfig.Type.stringToValueMap.keys.toList())
             }
-            ?: ProjectConfig.Type.OTHER
         val version = version
             ?: prompt<SemVer>("What's the initial version of your project?", default = "0.0.1") {
                 try {
@@ -65,7 +64,7 @@ open class Create : BaseCommand() {
                 } catch (e: IllegalArgumentException) {
                     throw BadParameterValue(it)
                 }
-            }!!
+            }
 
         val replacements = mapOf(
             "NAME" to name,
@@ -124,30 +123,31 @@ open class Create : BaseCommand() {
         fun initGit(): Git {
             echo("Initializing git...")
 
-            val gitignore = prompt("Please enter the .gitignore-template names from " +
-                    "www.gitignore.io to use (separated by a comma)",
-                optional = true, convert = { input ->
-                    val templates = input.split(",")
-                        .map { it.trim().toLowerCase() }
+            val gitignore = promptOptional(
+                "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
+            ) { input ->
+                val templates = input?.split(",")
+                    ?.map { it.trim().toLowerCase() }
+                    ?: emptyList()
 
-                    val request = Request.Builder()
-                        .get()
-                        .url("https://www.gitignore.io/api/${templates.joinToString(",")}")
-                        .build()
-                    val result = webClient.newCall(request).execute().use {
-                        it.body()?.string()
-                    } ?: throw CliktError("Network error: No response")
+                val request = Request.Builder()
+                    .get()
+                    .url("https://www.gitignore.io/api/${templates.joinToString(",")}")
+                    .build()
+                val result = webClient.newCall(request).execute().use {
+                    it.body()?.string()
+                } ?: throw CliktError("Network error: No response")
 
-                    val errorLine = result.indexOf(GIT_GITIGNOREIO_ERROR_PREFIX)
-                    if (errorLine >= 0)
-                        result.substring(errorLine + GIT_GITIGNOREIO_ERROR_PREFIX.length)
-                            .substringBefore(' ')
-                            .let { invalidOption ->
-                                throw NoSuchOption(invalidOption)
-                            }
+                val errorLine = result.indexOf(GIT_GITIGNOREIO_ERROR_PREFIX)
+                if (errorLine >= 0)
+                    result.substring(errorLine + GIT_GITIGNOREIO_ERROR_PREFIX.length)
+                        .substringBefore(' ')
+                        .let { invalidOption ->
+                            throw NoSuchOption(invalidOption)
+                        }
 
-                    result
-                })!!
+                result
+            } ?: ""
             copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
             File(dir, GIT_GITIGNORE_FILE)
                 .appendText(gitignore)
@@ -174,7 +174,7 @@ open class Create : BaseCommand() {
         // Github
         newLine()
         echo("Signing in to GitHub...")
-        val (github, cp) = githubAuthenticate(dir)
+        val (github, cp) = githubAuthenticate()
         fun uploadToGithub(): GHRepository {
             echo("Connecting to GitHub...")
 
@@ -193,11 +193,11 @@ open class Create : BaseCommand() {
                 return create()
             }
 
-            val organization = prompt<GHOrganization?>(
+            val organization = promptOptional<GHOrganization>(
                 "Which organization should this be uploaded to?",
-                optional = true, optionalText = " (Blank for no organization)"
+                optionalText = " (Blank for no organization)"
             ) {
-                if (it.isBlank()) null
+                if (it.isNullOrBlank()) null
                 else try {
                     github.getOrganization(it)
                 } catch (e: IOException) {
