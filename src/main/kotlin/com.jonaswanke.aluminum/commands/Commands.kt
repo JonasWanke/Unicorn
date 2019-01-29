@@ -19,7 +19,7 @@ import kotlin.contracts.ExperimentalContracts
 object Commands : BaseCommand() {
     init {
         subcommands(
-            Login(),
+            Login(), Logout(),
             Create()
         )
     }

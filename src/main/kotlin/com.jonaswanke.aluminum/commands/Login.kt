@@ -14,3 +14,10 @@ open class Login : BaseCommand() {
         githubAuthenticate(true, username = username, endpoint = endpoint)
     }
 }
+
+@ExperimentalContracts
+open class Logout : BaseCommand() {
+    override fun run() {
+        globalConfig = globalConfig.copy(github = null)
+    }
+}
