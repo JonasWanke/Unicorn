@@ -17,7 +17,12 @@ import kotlin.contracts.ExperimentalContracts
 
 
 @ExperimentalContracts
-abstract class BaseCommand : CliktCommand() {
+abstract class BaseCommand(
+    help: String = "",
+    epilog: String = "",
+    name: String? = null,
+    invokeWithoutSubcommand: Boolean = false
+) : CliktCommand(help, epilog, name, invokeWithoutSubcommand) {
     companion object {
         private const val CONFIG_GLOBAL_FILE = ".config.yml"
         private const val CONFIG_PROJECT_FILE = ".aluminum.yml"
