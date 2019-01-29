@@ -31,7 +31,7 @@ abstract class BaseCommand : CliktCommand() {
 
     val prefix by option("--prefix")
         .file(exists = true, fileOkay = false)
-        .default(File(""))
+        .default(File(System.getProperty("user.dir")))
 
     // region Global config
     private val installDir = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile
