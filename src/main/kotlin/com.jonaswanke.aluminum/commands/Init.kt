@@ -249,6 +249,10 @@ open class Create : BaseCommand() {
             for (label in labels)
                 githubRepo.createLabel(label.name, label.color)
 
+            // Default branch
+            echo("Setting $BRANCH_DEV as default branch")
+            githubRepo.defaultBranch = BRANCH_DEV
+
             // Branch protection
             echo("Setting up branch protection")
             githubRepo.apply {
