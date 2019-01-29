@@ -157,16 +157,16 @@ open class Create : BaseCommand() {
             val git = Git.init()
                 .setDirectory(dir)
                 .call()
-            git.add()
-                .addFilepattern(".")
-                .call()
-            git.commit()
-                .setMessage("Initial commit")
-                .call()
-            git.checkout()
-                .setCreateBranch(true)
-                .setName(BRANCH_DEV)
-                .call()
+            call(git.add()) {
+                addFilepattern(".")
+            }
+            call(git.commit()) {
+                message = "Initial commit"
+            }
+            call(git.checkout()) {
+                setCreateBranch(true)
+                setName(BRANCH_DEV)
+            }
             return git
         }
 
@@ -176,7 +176,6 @@ open class Create : BaseCommand() {
         // Github
         newLine()
         echo("Signing in to GitHub...")
-        val (github, cp) = githubAuthenticate()
         fun uploadToGithub(): GHRepository {
             echo("Connecting to GitHub...")
 
@@ -222,16 +221,15 @@ open class Create : BaseCommand() {
             setProjectConfig(getProjectConfig(dir).copy(githubName = repo.fullName), dir)
 
             echo("Uploading")
-            git.remoteAdd()
-                .setName(REMOTE_DEFAULT)
-                .setUri(URIish(repo.httpTransportUrl))
-                .call()
+            call(git.remoteAdd()) {
+                setName(REMOTE_DEFAULT)
+                setUri(URIish(repo.httpTransportUrl))
+            }
             git.trackBranch(BRANCH_MASTER)
             git.trackBranch(BRANCH_DEV)
-            git.push()
-                .setCredentialsProvider(cp)
-                .setPushAll()
-                .call()
+            call(git.push()) {
+                setPushAll()
+            }
 
             return repo
         }

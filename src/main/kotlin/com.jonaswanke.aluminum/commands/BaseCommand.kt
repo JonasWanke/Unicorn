@@ -10,6 +10,7 @@ import com.jonaswanke.aluminum.GlobalConfig
 import com.jonaswanke.aluminum.ProjectConfig
 import com.jonaswanke.aluminum.utils.*
 import org.eclipse.jgit.transport.CredentialsProvider
+import org.kohsuke.github.GHRepository
 import org.kohsuke.github.GitHub
 import java.io.File
 import kotlin.contracts.ExperimentalContracts
@@ -32,6 +33,7 @@ abstract class BaseCommand : CliktCommand() {
         .file(exists = true, fileOkay = false)
         .default(File(""))
 
+    // region Global config
     private val installDir = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile
     private val globalConfigFile: File
         get() = File(installDir, CONFIG_GLOBAL_FILE).apply {
@@ -43,7 +45,9 @@ abstract class BaseCommand : CliktCommand() {
     var globalConfig: GlobalConfig
         get() = globalConfigFile.inputStream().readConfig()
         set(value) = globalConfigFile.outputStream().writeConfig(value)
+    // endregion
 
+    // region Project config
     fun getProjectConfig(dir: File = prefix): ProjectConfig {
         return File(dir, CONFIG_PROJECT_FILE).inputStream().readConfig()
     }
@@ -51,14 +55,25 @@ abstract class BaseCommand : CliktCommand() {
     fun setProjectConfig(config: ProjectConfig, dir: File = prefix) {
         File(dir, CONFIG_PROJECT_FILE).outputStream().writeConfig(config)
     }
+    // endregion
 
-    protected fun githubAuthenticate(
+
+    // region GitHub
+    private var githubAuthResult: GithubAuthResult? = null
+
+    private fun getGithubAuthResult(): GithubAuthResult {
+        if (githubAuthResult == null)
+            githubAuthenticate()
+        return githubAuthResult!!
+    }
+
+    fun githubAuthenticate(
         forceNew: Boolean = false,
         username: String? = null,
         password: String? = null,
         token: String? = null,
         endpoint: String? = null
-    ): GithubAuthResult {
+    ) {
         fun buildAuthResult(config: GlobalConfig.GithubConfig, github: GitHub): GithubAuthResult {
             return GithubAuthResult(github, OAuthCredentialsProvider(config.oauthToken ?: ""))
         }
@@ -66,8 +81,10 @@ abstract class BaseCommand : CliktCommand() {
         if (!forceNew) {
             globalConfig.github?.also { githubConfig ->
                 val github = githubConfig.buildGithub()
-                if (github.isCredentialValid)
-                    return buildAuthResult(githubConfig, github)
+                if (github.isCredentialValid) {
+                    githubAuthResult = buildAuthResult(githubConfig, github)
+                    return
+                }
                 echo("The stored GitHub credentials are invalid")
             }
         }
@@ -105,11 +122,17 @@ abstract class BaseCommand : CliktCommand() {
             val isValid = github.isCredentialValid
             if (isValid) {
                 echo("Login successful")
-                return buildAuthResult(githubConfig, github)
+                githubAuthResult = buildAuthResult(githubConfig, github)
+                return
             } else
                 echo("Your credentials are invalid. Please try again.")
         }
     }
 
     data class GithubAuthResult(val github: GitHub, val credentialsProvider: CredentialsProvider)
+
+    val github get() = getGithubAuthResult().github
+    val githubCp get() = getGithubAuthResult().credentialsProvider
+    val githubRepo: GHRepository? get() = github.getRepository(getProjectConfig().githubName)
+    // endregion
 }
