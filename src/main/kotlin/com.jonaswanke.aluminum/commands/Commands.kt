@@ -3,6 +3,7 @@ package com.jonaswanke.aluminum.commands
 import com.github.ajalt.clikt.core.*
 import com.github.ajalt.clikt.output.CliktConsole
 import com.github.ajalt.clikt.output.TermUi
+import com.jonaswanke.aluminum.GlobalConfig
 import com.jonaswanke.aluminum.ProjectConfig
 import com.jonaswanke.aluminum.utils.OAuthCredentialsProvider
 import com.jonaswanke.aluminum.utils.TextIoConsoleWrapper
@@ -10,16 +11,17 @@ import com.jonaswanke.aluminum.utils.readConfig
 import com.jonaswanke.aluminum.utils.writeConfig
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.GitHub
-import org.kohsuke.github.GitHubBuilder
 import java.io.File
 import java.io.IOError
-import java.util.*
 import kotlin.contracts.ExperimentalContracts
 
 @ExperimentalContracts
 object Commands : BaseCommand() {
     init {
-        subcommands(Create())
+        subcommands(
+            Login(), Logout(),
+            Create()
+        )
     }
 
     override fun run() = Unit
@@ -28,7 +30,8 @@ object Commands : BaseCommand() {
 @ExperimentalContracts
 abstract class BaseCommand : CliktCommand() {
     companion object {
-        private const val CONFIG_PROJECT_FILE = ".aluminum"
+        private const val CONFIG_GLOBAL_FILE = ".config.yml"
+        private const val CONFIG_PROJECT_FILE = ".aluminum.yml"
     }
 
     init {
@@ -36,6 +39,18 @@ abstract class BaseCommand : CliktCommand() {
             console = TextIoConsoleWrapper
         }
     }
+
+    private val installDir = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile
+    private val globalConfigFile: File
+        get() = File(installDir, CONFIG_GLOBAL_FILE).apply {
+            if (!exists()) {
+                createNewFile()
+                globalConfig = GlobalConfig(github = null)
+            }
+        }
+    var globalConfig: GlobalConfig
+        get() = globalConfigFile.inputStream().readConfig()
+        set(value) = globalConfigFile.outputStream().writeConfig(value)
 
     fun getProjectConfig(dir: File = File("")): ProjectConfig {
         return File(dir, CONFIG_PROJECT_FILE).inputStream().readConfig()
@@ -45,27 +60,63 @@ abstract class BaseCommand : CliktCommand() {
         File(dir, CONFIG_PROJECT_FILE).outputStream().writeConfig(config)
     }
 
-    protected fun githubAuthenticate(dir: File): GithubAuthResult {
-        val file = File(dir, ".github")
-        val properties = try {
-            Properties().apply {
-                file.inputStream().use { load(it) }
-            }
-        } catch (e: Exception) {
-            val username = prompt("GitHub username") ?: throw MissingParameter("username")
-            val token =
-                prompt("Personal access token", hideInput = true) ?: throw MissingParameter("personal access token")
+    protected fun githubAuthenticate(
+        forceNew: Boolean = false,
+        username: String? = null,
+        password: String? = null,
+        token: String? = null,
+        endpoint: String? = null
+    ): GithubAuthResult {
+        fun buildAuthResult(config: GlobalConfig.GithubConfig, github: GitHub): GithubAuthResult {
+            return GithubAuthResult(github, OAuthCredentialsProvider(config.oauthToken ?: ""))
+        }
 
-            file.createNewFile()
-            Properties().apply {
-                file.inputStream().use { load(it) }
-                setProperty("login", username)
-                setProperty("oauth", token)
-                file.outputStream().use { store(it, null) }
+        if (!forceNew) {
+            globalConfig.github?.also { githubConfig ->
+                val github = githubConfig.buildGithub()
+                if (github.isCredentialValid)
+                    return buildAuthResult(githubConfig, github)
+                echo("The stored GitHub credentials are invalid")
             }
         }
-        val github = GitHubBuilder.fromProperties(properties).build()
-        return GithubAuthResult(github, OAuthCredentialsProvider(properties.getProperty("oauth")))
+
+        while (true) {
+            echo("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
+            val usernameAct = username
+                ?: prompt("GitHub username")
+                ?: throw MissingParameter("username")
+            val (passwordAct, tokenAct) =
+                if (confirm(
+                        "Use password (alternative: OAuth-token) (When 2FA is enabled, only OAuth will work)",
+                        default = true
+                    ) != false
+                ) {
+                    val passwordAct = password
+                        ?: prompt("Password", hideInput = true)
+                        ?: throw MissingParameter("password")
+                    passwordAct to null
+                } else {
+                    val tokenAct = token
+                        ?: prompt("Personal access token", hideInput = true)
+                        ?: throw MissingParameter("personal access token")
+                    null to tokenAct
+                }
+            val endpointAct = endpoint
+                ?: promptOptional("Custom GitHub endpoint?")
+
+            val githubConfig = GlobalConfig.GithubConfig(
+                username = usernameAct, password = passwordAct, oauthToken = tokenAct, endpoint = endpointAct
+            )
+            globalConfig = globalConfig.copy(github = githubConfig)
+            val github = githubConfig.buildGithub()
+
+            val isValid = github.isCredentialValid
+            if (isValid) {
+                echo("Login successful")
+                return buildAuthResult(githubConfig, github)
+            } else
+                echo("Your credentials are invalid. Please try again.")
+        }
     }
 
     data class GithubAuthResult(val github: GitHub, val credentialsProvider: CredentialsProvider)
@@ -94,8 +145,6 @@ fun CliktCommand.newLine() {
 fun CliktCommand.prompt(
     text: String,
     default: String? = null,
-    optional: Boolean = false,
-    optionalText: String = " (optional)",
     hideInput: Boolean = false,
     requireConfirmation: Boolean = false,
     confirmationPrompt: String = "Repeat for confirmation: ",
@@ -103,12 +152,10 @@ fun CliktCommand.prompt(
     showDefault: Boolean = true,
     console: CliktConsole = context.console,
     convert: ((String) -> String) = { it }
-): String? {
+): String {
     return prompt<String>(
         text,
         default,
-        optional,
-        optionalText,
         hideInput,
         requireConfirmation,
         confirmationPrompt,
@@ -123,7 +170,59 @@ fun CliktCommand.prompt(
 fun <T> CliktCommand.prompt(
     text: String,
     default: String? = null,
-    optional: Boolean = false,
+    hideInput: Boolean = false,
+    requireConfirmation: Boolean = false,
+    confirmationPrompt: String = "Repeat for confirmation: ",
+    promptSuffix: String = ": ",
+    showDefault: Boolean = true,
+    console: CliktConsole = context.console,
+    convert: ((String) -> T?)
+): T {
+    // Original source: TermUi.prompt
+    val prompt = buildString {
+        append(text)
+        if (!default.isNullOrBlank() && showDefault)
+            append(" [").append(default).append("]")
+        append(promptSuffix)
+    }
+
+    while (true) {
+        var value: String
+        while (true) {
+            val currentValue = console.promptForLine(prompt, hideInput)
+
+            if (!currentValue.isNullOrBlank()) {
+                value = currentValue
+                break
+                // Skip confirmation prompt if default is used
+            } else if (default != null)
+                convert.invoke(default)?.let { return it }
+        }
+        val result = try {
+            convert.invoke(value)
+        } catch (err: UsageError) {
+            TermUi.echo(err.helpMessage(null), console = console)
+            continue
+        } ?: continue
+
+        if (!requireConfirmation) return result
+
+        var value2: String?
+        while (true) {
+            value2 = console.promptForLine(confirmationPrompt, hideInput)
+            // No need to convert the confirmation, since it is valid if it matches the
+            // first value.
+            if (!value2.isNullOrBlank()) break
+        }
+        if (value == value2) return result
+        TermUi.echo("Error: the two entered values do not match", console = console)
+    }
+}
+
+@ExperimentalContracts
+fun CliktCommand.promptOptional(
+    text: String,
+    default: String? = null,
     optionalText: String = " (optional)",
     hideInput: Boolean = false,
     requireConfirmation: Boolean = false,
@@ -131,13 +230,39 @@ fun <T> CliktCommand.prompt(
     promptSuffix: String = ": ",
     showDefault: Boolean = true,
     console: CliktConsole = context.console,
-    convert: ((String) -> T)
+    convert: ((String?) -> String?) = { it }
+): String? {
+    return promptOptional<String?>(
+        text,
+        default,
+        optionalText,
+        hideInput,
+        requireConfirmation,
+        confirmationPrompt,
+        promptSuffix,
+        showDefault,
+        console,
+        convert
+    )
+}
+
+@ExperimentalContracts
+fun <T> CliktCommand.promptOptional(
+    text: String,
+    default: String? = null,
+    optionalText: String = " (optional)",
+    hideInput: Boolean = false,
+    requireConfirmation: Boolean = false,
+    confirmationPrompt: String = "Repeat for confirmation: ",
+    promptSuffix: String = ": ",
+    showDefault: Boolean = true,
+    console: CliktConsole = context.console,
+    convert: ((String?) -> T?)
 ): T? {
     // Original source: TermUi.prompt
     val prompt = buildString {
         append(text)
-        if (optional)
-            append(optionalText)
+        append(optionalText)
         if (!default.isNullOrBlank() && showDefault)
             append(" [").append(default).append("]")
         append(promptSuffix)
@@ -145,13 +270,8 @@ fun <T> CliktCommand.prompt(
 
     try {
         while (true) {
-            var value: String
-            while (true) {
-                value = console.promptForLine(prompt, hideInput) ?: return null
-
-                if (optional || value.isNotBlank()) break
-                // Skip confirmation prompt if default is used
-                else if (default != null) return convert.invoke(default)
+            val value = console.promptForLine(prompt, hideInput)?.let {
+                if (it.isBlank()) null else it
             }
             val result = try {
                 convert.invoke(value)
@@ -162,12 +282,12 @@ fun <T> CliktCommand.prompt(
 
             if (!requireConfirmation) return result
 
-            var value2: String
+            var value2: String?
             while (true) {
-                value2 = console.promptForLine(confirmationPrompt, hideInput) ?: return null
+                value2 = console.promptForLine(confirmationPrompt, hideInput)
                 // No need to convert the confirmation, since it is valid if it matches the
                 // first value.
-                if (value2.isNotEmpty()) break
+                if (!value2.isNullOrBlank()) break
             }
             if (value == value2) return result
             TermUi.echo("Error: the two entered values do not match", console = console)
