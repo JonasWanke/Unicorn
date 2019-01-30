@@ -1,10 +1,11 @@
-package com.jonaswanke.aluminum.commands.feature
+package com.jonaswanke.aluminum.commands.issue
 
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.jonaswanke.aluminum.BRANCH_DEV
+import com.jonaswanke.aluminum.BRANCH_PREFIX_ISSUE
 import com.jonaswanke.aluminum.commands.BaseCommand
 import com.jonaswanke.aluminum.utils.call
 import com.jonaswanke.aluminum.utils.trackBranch
@@ -13,7 +14,7 @@ import org.kohsuke.github.GHFileNotFoundException
 import kotlin.contracts.ExperimentalContracts
 
 @ExperimentalContracts
-class AssignFeature : BaseCommand(name = "assign") {
+class AssignIssue : BaseCommand(name = "assign") {
     val id by argument("id").convert { rawId ->
         rawId.toIntOrNull()?.takeIf { it > 0 }
             ?: throw BadParameterValue("$rawId is not a valid issue ID")
