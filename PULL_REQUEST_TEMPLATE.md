@@ -12,7 +12,7 @@
 <!-- Please check if your PR fulfills the following requirements: -->
 
 - [ ] Commit messages follow conventionalcommits.org
-- [ ] Tested on actual devices
+- [ ] Tested in production
 - [ ] Tests for the changes have been added (for bug fixes / features)
 - [ ] Docs have been added / updated (for bug fixes / features)
 
