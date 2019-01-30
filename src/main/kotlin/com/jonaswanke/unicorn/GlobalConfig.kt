@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum
+package com.jonaswanke.unicorn
 
 import org.kohsuke.github.GitHub
 import org.kohsuke.github.GitHubBuilder

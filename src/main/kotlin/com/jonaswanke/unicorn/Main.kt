@@ -1,6 +1,7 @@
-package com.jonaswanke.aluminum
+package com.jonaswanke.unicorn
 
-import com.jonaswanke.aluminum.commands.Commands
+import com.jonaswanke.unicorn.commands.Commands
+import java.security.Permission
 import kotlin.contracts.ExperimentalContracts
 
 @ExperimentalContracts

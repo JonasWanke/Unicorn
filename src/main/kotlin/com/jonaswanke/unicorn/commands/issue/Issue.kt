@@ -1,7 +1,7 @@
-package com.jonaswanke.aluminum.commands.issue
+package com.jonaswanke.unicorn.commands.issue
 
 import com.github.ajalt.clikt.core.subcommands
-import com.jonaswanke.aluminum.commands.BaseCommand
+import com.jonaswanke.unicorn.commands.BaseCommand
 import kotlin.contracts.ExperimentalContracts
 
 @ExperimentalContracts

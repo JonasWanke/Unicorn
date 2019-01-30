@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum.commands
+package com.jonaswanke.unicorn.commands
 
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.optional

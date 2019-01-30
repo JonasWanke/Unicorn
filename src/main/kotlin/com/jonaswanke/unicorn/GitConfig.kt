@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum
+package com.jonaswanke.unicorn
 
 const val REMOTE_DEFAULT = "origin"
 

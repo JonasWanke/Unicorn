@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum.utils
+package com.jonaswanke.unicorn.utils
 
 import com.github.ajalt.clikt.output.CliktConsole
 import org.beryx.textio.InputReader

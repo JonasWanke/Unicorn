@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum.utils
+package com.jonaswanke.unicorn.utils
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser

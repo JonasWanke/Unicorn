@@ -1,6 +1,6 @@
-package com.jonaswanke.aluminum.utils
+package com.jonaswanke.unicorn.utils
 
-import com.jonaswanke.aluminum.REMOTE_DEFAULT
+import com.jonaswanke.unicorn.REMOTE_DEFAULT
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.ConfigConstants
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider

@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum.commands
+package com.jonaswanke.unicorn.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.MissingParameter
@@ -7,9 +7,9 @@ import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
-import com.jonaswanke.aluminum.GlobalConfig
-import com.jonaswanke.aluminum.ProjectConfig
-import com.jonaswanke.aluminum.utils.*
+import com.jonaswanke.unicorn.GlobalConfig
+import com.jonaswanke.unicorn.ProjectConfig
+import com.jonaswanke.unicorn.utils.*
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.GHRepository
@@ -27,7 +27,7 @@ abstract class BaseCommand(
 ) : CliktCommand(help, epilog, name, invokeWithoutSubcommand) {
     companion object {
         private const val CONFIG_GLOBAL_FILE = ".config.yml"
-        private const val CONFIG_PROJECT_FILE = ".aluminum.yml"
+        private const val CONFIG_PROJECT_FILE = ".unicornfig.yml"
     }
 
     init {

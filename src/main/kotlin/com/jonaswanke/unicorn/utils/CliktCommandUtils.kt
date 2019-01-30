@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum.utils
+package com.jonaswanke.unicorn.utils
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.UsageError
