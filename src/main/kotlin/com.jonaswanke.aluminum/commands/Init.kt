@@ -100,6 +100,11 @@ open class Create : BaseCommand() {
             echo("Copying templates")
             copyTemplate(dir, replacements, "README.md")
             copyTemplate(dir, replacements, "licenses/Apache License 2.0.txt", "LICENSE")
+            File(dir, ".github").mkdir()
+            copyTemplate(dir, replacements, "github/PULL_REQUEST_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md")
+            File(dir, ".github/ISSUE_TEMPLATE").mkdir()
+            copyTemplate(dir, replacements, "github/ISSUE_TEMPLATE/1-bug-report.md", ".github/ISSUE_TEMPLATE/1-bug-report.md")
+            copyTemplate(dir, replacements, "github/ISSUE_TEMPLATE/2-feature-request.md", ".github/ISSUE_TEMPLATE/2-feature-request.md")
             return dir
         }
 
