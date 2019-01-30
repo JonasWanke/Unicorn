@@ -10,8 +10,7 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.jonaswanke.aluminum.*
-import com.jonaswanke.aluminum.utils.readConfig
-import com.jonaswanke.aluminum.utils.trackBranch
+import com.jonaswanke.aluminum.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -77,14 +76,14 @@ open class Create : BaseCommand() {
 
         val webClient = OkHttpClient()
 
+
+        // Files
         newLine()
-
-
         fun createFiles(): File {
             echo("Creating files...")
 
             echo("Creating directory")
-            val dir = File("./$name")
+            val dir = File(prefix, "./$name")
             if (dir.exists()) throw PrintMessage("The specified directory already exists!")
             dir.mkdirs()
 
@@ -106,6 +105,7 @@ open class Create : BaseCommand() {
 
         val dir = createFiles()
 
+
         // Travis CI
         newLine()
         if (confirm("Setup Travis CI?", default = true) == true) {
@@ -117,6 +117,7 @@ open class Create : BaseCommand() {
                 else -> echo("Unfortunately, no template is available for your configuration yet :(")
             }
         }
+
 
         // Git
         newLine()
@@ -156,25 +157,25 @@ open class Create : BaseCommand() {
             val git = Git.init()
                 .setDirectory(dir)
                 .call()
-            git.add()
-                .addFilepattern(".")
-                .call()
-            git.commit()
-                .setMessage("Initial commit")
-                .call()
-            git.checkout()
-                .setCreateBranch(true)
-                .setName(BRANCH_DEV)
-                .call()
+            call(git.add()) {
+                addFilepattern(".")
+            }
+            call(git.commit()) {
+                message = "Initial commit"
+            }
+            call(git.checkout()) {
+                setCreateBranch(true)
+                setName(BRANCH_DEV)
+            }
             return git
         }
 
         val git = initGit()
 
+
         // Github
         newLine()
         echo("Signing in to GitHub...")
-        val (github, cp) = githubAuthenticate()
         fun uploadToGithub(): GHRepository {
             echo("Connecting to GitHub...")
 
@@ -220,16 +221,15 @@ open class Create : BaseCommand() {
             setProjectConfig(getProjectConfig(dir).copy(githubName = repo.fullName), dir)
 
             echo("Uploading")
-            git.remoteAdd()
-                .setName(REMOTE_DEFAULT)
-                .setUri(URIish(repo.httpTransportUrl))
-                .call()
+            call(git.remoteAdd()) {
+                setName(REMOTE_DEFAULT)
+                setUri(URIish(repo.httpTransportUrl))
+            }
             git.trackBranch(BRANCH_MASTER)
             git.trackBranch(BRANCH_DEV)
-            git.push()
-                .setCredentialsProvider(cp)
-                .setPushAll()
-                .call()
+            call(git.push()) {
+                setPushAll()
+            }
 
             return repo
         }
@@ -246,6 +246,10 @@ open class Create : BaseCommand() {
             val labels = readConfig("github-labels.yaml", object : TypeReference<List<Label>>() {})
             for (label in labels)
                 githubRepo.createLabel(label.name, label.color)
+
+            // Default branch
+            echo("Setting $BRANCH_DEV as default branch")
+            githubRepo.defaultBranch = BRANCH_DEV
 
             // Branch protection
             echo("Setting up branch protection")
