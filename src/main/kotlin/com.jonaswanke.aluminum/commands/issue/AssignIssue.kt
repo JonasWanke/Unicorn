@@ -3,7 +3,7 @@ package com.jonaswanke.aluminum.commands.issue
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.jonaswanke.aluminum.BRANCH_DEV
-import com.jonaswanke.aluminum.BRANCH_PREFIX_ISSUE
+import com.jonaswanke.aluminum.BRANCH_ISSUE_PREFIX
 import com.jonaswanke.aluminum.commands.BaseCommand
 import com.jonaswanke.aluminum.utils.GithubIssueUtils
 import com.jonaswanke.aluminum.utils.call
@@ -36,6 +36,6 @@ class AssignIssue : BaseCommand(name = "assign") {
         val safeTitle = issue.title
             .replace(Regex("[^a-z0-9]", RegexOption.IGNORE_CASE), "-")
             .toLowerCase()
-        createBranch(git, "$BRANCH_PREFIX_ISSUE$id-$safeTitle")
+        createBranch(git, "$BRANCH_ISSUE_PREFIX$id-$safeTitle")
     }
 }
