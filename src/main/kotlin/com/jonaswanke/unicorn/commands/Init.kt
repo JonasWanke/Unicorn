@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum.commands
+package com.jonaswanke.unicorn.commands
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.github.ajalt.clikt.core.BadParameterValue
@@ -9,8 +9,8 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
-import com.jonaswanke.aluminum.*
-import com.jonaswanke.aluminum.utils.*
+import com.jonaswanke.unicorn.*
+import com.jonaswanke.unicorn.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -89,7 +89,7 @@ open class Create : BaseCommand() {
 
             echo("Saving project config")
             val config = ProjectConfig(
-                aluminumVersion = ProgramConfig.VERSION,
+                unicornVersion = ProgramConfig.VERSION,
                 name = name,
                 description = description,
                 type = type,

@@ -1,6 +1,6 @@
-package com.jonaswanke.aluminum.utils
+package com.jonaswanke.unicorn.utils
 
-import com.jonaswanke.aluminum.commands.BaseCommand
+import com.jonaswanke.unicorn.commands.BaseCommand
 import org.eclipse.jgit.api.CheckoutCommand
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.GitCommand

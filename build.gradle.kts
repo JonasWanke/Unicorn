@@ -10,7 +10,7 @@ tasks.withType<KotlinCompile> {
 }
 
 application {
-    mainClassName = "com.jonaswanke.aluminum.MainKt"
+    mainClassName = "com.jonaswanke.unicorn.MainKt"
 }
 
 dependencies {

@@ -1,13 +1,13 @@
-package com.jonaswanke.aluminum.commands.issue
+package com.jonaswanke.unicorn.commands.issue
 
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
-import com.jonaswanke.aluminum.BRANCH_DEV
-import com.jonaswanke.aluminum.BRANCH_ISSUE_PREFIX
-import com.jonaswanke.aluminum.commands.BaseCommand
-import com.jonaswanke.aluminum.utils.GithubIssueUtils
-import com.jonaswanke.aluminum.utils.call
-import com.jonaswanke.aluminum.utils.createBranch
+import com.jonaswanke.unicorn.BRANCH_DEV
+import com.jonaswanke.unicorn.BRANCH_ISSUE_PREFIX
+import com.jonaswanke.unicorn.commands.BaseCommand
+import com.jonaswanke.unicorn.utils.GithubIssueUtils
+import com.jonaswanke.unicorn.utils.call
+import com.jonaswanke.unicorn.utils.createBranch
 import kotlin.contracts.ExperimentalContracts
 
 @ExperimentalContracts

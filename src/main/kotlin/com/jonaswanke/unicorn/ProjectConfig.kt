@@ -1,9 +1,9 @@
-package com.jonaswanke.aluminum
+package com.jonaswanke.unicorn
 
 import net.swiftzer.semver.SemVer
 
 data class ProjectConfig(
-    val aluminumVersion: SemVer,
+    val unicornVersion: SemVer,
     val type: Type,
     val name: String,
     val description: String?,

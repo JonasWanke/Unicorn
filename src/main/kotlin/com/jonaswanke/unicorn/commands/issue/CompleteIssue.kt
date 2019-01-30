@@ -1,14 +1,14 @@
-package com.jonaswanke.aluminum.commands.issue
+package com.jonaswanke.unicorn.commands.issue
 
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
-import com.jonaswanke.aluminum.BRANCH_ISSUE_PREFIX
-import com.jonaswanke.aluminum.LABEL_COMPONENT_PREFIX
-import com.jonaswanke.aluminum.LABEL_TYPE_PREFIX
-import com.jonaswanke.aluminum.commands.BaseCommand
-import com.jonaswanke.aluminum.utils.GithubIssueUtils
+import com.jonaswanke.unicorn.BRANCH_ISSUE_PREFIX
+import com.jonaswanke.unicorn.LABEL_COMPONENT_PREFIX
+import com.jonaswanke.unicorn.LABEL_TYPE_PREFIX
+import com.jonaswanke.unicorn.commands.BaseCommand
+import com.jonaswanke.unicorn.utils.GithubIssueUtils
 import java.awt.Desktop
 import java.net.URI
 import java.net.URLEncoder

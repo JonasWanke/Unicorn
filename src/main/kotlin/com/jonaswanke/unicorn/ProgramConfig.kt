@@ -1,4 +1,4 @@
-package com.jonaswanke.aluminum
+package com.jonaswanke.unicorn
 
 import net.swiftzer.semver.SemVer
 

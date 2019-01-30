@@ -1,11 +1,11 @@
-# Project Aluminum
+# Unicorn
 
 A tool to create, work on, test and deploy projects.
 
 
 ## License
 
-Copyright 2019 Project-Aluminum
+Copyright 2019 Unicorn
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.

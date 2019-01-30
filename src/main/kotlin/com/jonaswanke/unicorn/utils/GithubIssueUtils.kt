@@ -1,9 +1,9 @@
-package com.jonaswanke.aluminum.utils
+package com.jonaswanke.unicorn.utils
 
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.UsageError
-import com.jonaswanke.aluminum.LABEL_COMPONENT_PREFIX
-import com.jonaswanke.aluminum.LABEL_TYPE_PREFIX
+import com.jonaswanke.unicorn.LABEL_COMPONENT_PREFIX
+import com.jonaswanke.unicorn.LABEL_TYPE_PREFIX
 import org.kohsuke.github.GHFileNotFoundException
 import org.kohsuke.github.GHIssue
 import org.kohsuke.github.GHLabel
