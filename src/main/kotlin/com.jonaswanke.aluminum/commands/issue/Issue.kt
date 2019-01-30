@@ -8,7 +8,7 @@ import kotlin.contracts.ExperimentalContracts
 class Issue : BaseCommand(name = "issue") {
     init {
         subcommands(
-            AssignIssue()
+            AssignIssue(), CompleteIssue()
         )
     }
 
