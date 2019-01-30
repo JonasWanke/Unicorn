@@ -2,6 +2,7 @@ package com.jonaswanke.aluminum.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.MissingParameter
+import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
@@ -9,6 +10,7 @@ import com.github.ajalt.clikt.parameters.types.file
 import com.jonaswanke.aluminum.GlobalConfig
 import com.jonaswanke.aluminum.ProjectConfig
 import com.jonaswanke.aluminum.utils.*
+import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.GHRepository
 import org.kohsuke.github.GitHub
@@ -62,6 +64,10 @@ abstract class BaseCommand(
     }
     // endregion
 
+
+    // region Git
+    val git get() = Git.open(prefix)
+    // endregion
 
     // region GitHub
     private var githubAuthResult: GithubAuthResult? = null
@@ -139,5 +145,9 @@ abstract class BaseCommand(
     val github get() = getGithubAuthResult().github
     val githubCp get() = getGithubAuthResult().credentialsProvider
     val githubRepo: GHRepository? get() = github.getRepository(getProjectConfig().githubName)
+    fun requireGithubRepo(): GHRepository {
+        return githubRepo
+            ?: throw UsageError("No repository is configured for the current project")
+    }
     // endregion
 }
