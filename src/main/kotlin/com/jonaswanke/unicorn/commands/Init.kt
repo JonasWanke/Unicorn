@@ -64,8 +64,8 @@ open class Create : BaseCommand() {
         }
 
         val description = description
-            ?: githubRepo?.description
-            ?: promptOptional("Provide a short description")
+            ?: if (initInExisting) githubRepo?.description else null
+                ?: promptOptional("Provide a short description")
         val type: ProjectConfig.Type = type
             ?: prompt<ProjectConfig.Type>(
                 "What describes your project best? " +
@@ -81,7 +81,7 @@ open class Create : BaseCommand() {
             ?: prompt<SemVer>(
                 if (initInExisting) "What's the current version of your project?"
                 else "What's the initial version of your project?",
-                default = githubRepo?.latestRelease?.tagName?.removePrefix("v")
+                default = (if (initInExisting) githubRepo?.latestRelease?.tagName?.removePrefix("v") else null)
                     ?: "0.0.1"
             ) {
                 try {
@@ -177,7 +177,7 @@ open class Create : BaseCommand() {
                 ) { input ->
                     val templates = input?.split(",")
                         ?.map { it.trim().toLowerCase() }
-                        ?: emptyList()
+                    if (templates.isNullOrEmpty()) return@promptOptional null
 
                     val request = Request.Builder()
                         .get()
@@ -196,10 +196,12 @@ open class Create : BaseCommand() {
                             }
 
                     result
-                } ?: ""
-                copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
-                File(dir, GIT_GITIGNORE_FILE)
-                    .appendText(gitignore)
+                }
+                if (gitignore != null) {
+                    copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
+                    File(dir, GIT_GITIGNORE_FILE)
+                        .appendText(gitignore)
+                }
             }
 
             copyTemplate(dir, replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
