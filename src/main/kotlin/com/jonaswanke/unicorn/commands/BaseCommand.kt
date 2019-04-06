@@ -144,7 +144,20 @@ abstract class BaseCommand(
 
     val github get() = getGithubAuthResult().github
     val githubCp get() = getGithubAuthResult().credentialsProvider
-    val githubRepo: GHRepository? get() = github.getRepository(getProjectConfig().githubName)
+
+    val githubRepoName: String?
+        get() {
+            return call(git.remoteList()).mapNotNull { remoteConfig ->
+                remoteConfig.urIs.firstOrNull { it.host == "github.com" }
+            }
+                .firstOrNull()
+                ?.path
+                ?.trimStart('/')
+                ?.substringBeforeLast('.')
+        }
+    val githubRepo: GHRepository?
+        get() = githubRepoName?.let { github.getRepository(it) }
+
     fun requireGithubRepo(): GHRepository {
         return githubRepo
             ?: throw UsageError("No repository is configured for the current project")

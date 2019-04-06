@@ -42,7 +42,7 @@ class CompleteIssue : BaseCommand(name = "complete") {
         // Open prefilled compare-webpage to create a PR
         fun String.encode() = URLEncoder.encode(this, "UTF-8")
 
-        var link = "https://github.com/${getProjectConfig().githubName}/compare/${branch.encode()}" +
+        var link = "${repo.htmlUrl}/compare/${branch.encode()}" +
                 "?expand=1" +
                 "&title=${(if (component != null) "$type($component): $title" else "$type: $title").encode()}" +
                 "&${labels.joinToString("&") { "labels=${it.name.encode()}" }}" +
