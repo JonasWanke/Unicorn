@@ -177,7 +177,7 @@ open class Create : BaseCommand() {
                 ) { input ->
                     val templates = input?.split(",")
                         ?.map { it.trim().toLowerCase() }
-                        ?: emptyList()
+                    if (templates.isNullOrEmpty()) return@promptOptional null
 
                     val request = Request.Builder()
                         .get()
@@ -196,10 +196,12 @@ open class Create : BaseCommand() {
                             }
 
                     result
-                } ?: ""
-                copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
-                File(dir, GIT_GITIGNORE_FILE)
-                    .appendText(gitignore)
+                }
+                if (gitignore != null) {
+                    copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
+                    File(dir, GIT_GITIGNORE_FILE)
+                        .appendText(gitignore)
+                }
             }
 
             copyTemplate(dir, replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
