@@ -26,7 +26,7 @@ abstract class BaseCommand(
     invokeWithoutSubcommand: Boolean = false
 ) : CliktCommand(help, epilog, name, invokeWithoutSubcommand) {
     companion object {
-        private const val CONFIG_GLOBAL_FILE = ".config.yml"
+        private const val CONFIG_GLOBAL_FILE = "config.yml"
         private const val CONFIG_PROJECT_FILE = ".unicorn.yml"
     }
 
@@ -41,7 +41,7 @@ abstract class BaseCommand(
         .default(File(System.getProperty("user.dir")))
 
     // region Global config
-    private val installDir = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile
+    private val installDir = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile.parentFile
     private val globalConfigFile: File
         get() = File(installDir, CONFIG_GLOBAL_FILE).apply {
             if (!exists()) {
