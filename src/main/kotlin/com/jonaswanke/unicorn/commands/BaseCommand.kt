@@ -81,7 +81,6 @@ abstract class BaseCommand(
     fun githubAuthenticate(
         forceNew: Boolean = false,
         username: String? = null,
-        password: String? = null,
         token: String? = null,
         endpoint: String? = null
     ) {
@@ -100,32 +99,19 @@ abstract class BaseCommand(
             }
         }
 
+        echo("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
         while (true) {
-            echo("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
             val usernameAct = username
                 ?: prompt("GitHub username")
                 ?: throw MissingParameter("username")
-            val (passwordAct, tokenAct) =
-                if (confirm(
-                        "Use password (alternative: OAuth-token) (When 2FA is enabled, only OAuth will work)",
-                        default = true
-                    ) != false
-                ) {
-                    val passwordAct = password
-                        ?: prompt("Password", hideInput = true)
-                        ?: throw MissingParameter("password")
-                    passwordAct to null
-                } else {
-                    val tokenAct = token
-                        ?: prompt("Personal access token", hideInput = true)
-                        ?: throw MissingParameter("personal access token")
-                    null to tokenAct
-                }
+            val tokenAct = token
+                ?: prompt("Personal access token (with repo scope)", hideInput = true)
+                ?: throw MissingParameter("personal access token")
             val endpointAct = endpoint
                 ?: promptOptional("Custom GitHub endpoint?")
 
             val githubConfig = GlobalConfig.GithubConfig(
-                username = usernameAct, password = passwordAct, oauthToken = tokenAct, endpoint = endpointAct
+                username = usernameAct, oauthToken = tokenAct, endpoint = endpointAct
             )
             globalConfig = globalConfig.copy(github = githubConfig)
             val github = githubConfig.buildGithub()
