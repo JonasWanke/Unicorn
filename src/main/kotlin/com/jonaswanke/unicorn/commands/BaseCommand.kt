@@ -27,7 +27,7 @@ abstract class BaseCommand(
 ) : CliktCommand(help, epilog, name, invokeWithoutSubcommand) {
     companion object {
         private const val CONFIG_GLOBAL_FILE = ".config.yml"
-        private const val CONFIG_PROJECT_FILE = ".unicornfig.yml"
+        private const val CONFIG_PROJECT_FILE = ".unicorn.yml"
     }
 
     init {
