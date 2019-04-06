@@ -1,0 +1,6 @@
+---
+unicornVersion: "0.0.1"
+type: "OTHER"
+name: "Unicorn"
+description: "\U0001f984 A tool to create, work on, test and deploy projects."
+version: "0.0.1"
