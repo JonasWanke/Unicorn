@@ -64,8 +64,8 @@ open class Create : BaseCommand() {
         }
 
         val description = description
-            ?: githubRepo?.description
-            ?: promptOptional("Provide a short description")
+            ?: if (initInExisting) githubRepo?.description else null
+                ?: promptOptional("Provide a short description")
         val type: ProjectConfig.Type = type
             ?: prompt<ProjectConfig.Type>(
                 "What describes your project best? " +
@@ -81,7 +81,7 @@ open class Create : BaseCommand() {
             ?: prompt<SemVer>(
                 if (initInExisting) "What's the current version of your project?"
                 else "What's the initial version of your project?",
-                default = githubRepo?.latestRelease?.tagName?.removePrefix("v")
+                default = (if (initInExisting) githubRepo?.latestRelease?.tagName?.removePrefix("v") else null)
                     ?: "0.0.1"
             ) {
                 try {
