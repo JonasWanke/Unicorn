@@ -2,24 +2,21 @@
 name: "\U0001F680 Feature request"
 about: Suggest an idea for this project
 title: ''
-labels: 'T: feature'
+labels: 'T: feat'
 assignees: ''
 
 ---
 
 <!--
 Thanks for taking the time to file an issue!
-Please select the component label (C: abc) this feature is related to from the right.
+Please select the component label (C: abc) this feature is related to from the right (if applicable).
 -->
 
 **Description**
-<!-- A clear and concise description of the problem or missing capability -->
+<!-- A clear and concise description of the problem or missing capability and possibly its solution -->
 
 
-**Solution**
-<!-- If you have a solution in mind, please describe it -->
-
-
+<!-- Add any other context about the problem here
 **Additional context**
-<!-- Add any other context about the problem here -->
+-->
 
