@@ -27,20 +27,21 @@ Please select the component label (C: abc) this bug is related to from the right
 <!-- A clear and concise description of what you expected to happen -->
 
 
+<!-- If applicable, add screenshots to help explain your problem
 **Screenshots**
-<!-- If applicable, add screenshots to help explain your problem -->
 
-| Description 1  | Description 2  | Description 3  |
-| :------------: | :------------: | :------------: |
-| <screenshot 1> | <screenshot 2> | <screenshot 3> |
-
+| Description 1  | Description 2  |
+| :------------: | :------------: |
+| <screenshot 1> | <screenshot 2> |
+-->
 
 **Environment:**
 <!-- Please complete the following information -->
- - Device:  <!-- e.g. Samsung Galaxy S8+ -->
- - Android version:  <!-- e.g. Android 8.0.0 -->
+ - OS:  <!-- e.g. Windows 10 Home 1809 -->
+ - Unicorn version:  <!-- e.g. 1.0.0 -->
 
 
+<!-- Add any other context about the problem here
 **Additional context**
-<!-- Add any other context about the problem here -->
+-->
 
