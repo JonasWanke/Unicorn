@@ -7,8 +7,7 @@ data class ProjectConfig(
     val type: Type,
     val name: String,
     val description: String?,
-    val version: SemVer,
-    val githubName: String? = null
+    val version: SemVer
 ) {
     enum class Type {
         ANDROID,

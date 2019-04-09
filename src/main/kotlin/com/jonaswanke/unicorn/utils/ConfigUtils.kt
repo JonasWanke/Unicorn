@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
@@ -15,6 +16,7 @@ import java.io.InputStream
 import java.io.OutputStream
 
 val mapper: ObjectMapper = ObjectMapper(YAMLFactory())
+    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     .registerModule(KotlinModule()
         .addSerializer(SemVer::class.java, object : StdSerializer<SemVer>(SemVer::class.java) {
             override fun serialize(value: SemVer?, gen: JsonGenerator?, provider: SerializerProvider?) {

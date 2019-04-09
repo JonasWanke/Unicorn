@@ -1,11 +1,9 @@
 package com.jonaswanke.unicorn.commands
 
 import com.fasterxml.jackson.core.type.TypeReference
-import com.github.ajalt.clikt.core.BadParameterValue
-import com.github.ajalt.clikt.core.CliktError
-import com.github.ajalt.clikt.core.NoSuchOption
-import com.github.ajalt.clikt.core.PrintMessage
+import com.github.ajalt.clikt.core.*
 import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
@@ -15,6 +13,7 @@ import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.RepositoryBuilder
 import org.eclipse.jgit.transport.URIish
 import org.kohsuke.github.GHCreateRepositoryBuilder
 import org.kohsuke.github.GHOrganization
@@ -36,6 +35,7 @@ open class Create : BaseCommand() {
     }
 
     private val name by argument("name")
+        .optional()
     private val description by option("-d", "--desc", "--description")
     private val type by option("-t", "--type")
         .choice(ProjectConfig.Type.stringToValueMap)
@@ -43,8 +43,29 @@ open class Create : BaseCommand() {
         .convert { SemVer.parse(it) }
 
     override fun run() {
+        val initInExisting = name == null
+        if (initInExisting)
+            confirm("Using create in an existing project is experimental. Continue?", abort = true)
+
+        val name = name
+            ?: prefix.name
+
+        if (initInExisting) {
+            if (!prefix.exists())
+                throw UsageError("The specified directory does not exist. If you want to create a new repository, please specify a name")
+            if (!prefix.isDirectory)
+                throw UsageError("The specified path is not a directory. If you want to create a new repository, please specify a name")
+            try {
+                getProjectConfig()
+                throw UsageError("Unicorn is already initialized in the specified directory")
+            } catch (e: IOException) {
+                // Means no project config file was found - expected
+            }
+        }
+
         val description = description
-            ?: promptOptional("Provide a short description")
+            ?: if (initInExisting) githubRepo?.description else null
+                ?: promptOptional("Provide a short description")
         val type: ProjectConfig.Type = type
             ?: prompt<ProjectConfig.Type>(
                 "What describes your project best? " +
@@ -57,7 +78,12 @@ open class Create : BaseCommand() {
                     ?: throw NoSuchOption(key, ProjectConfig.Type.stringToValueMap.keys.toList())
             }
         val version = version
-            ?: prompt<SemVer>("What's the initial version of your project?", default = "0.0.1") {
+            ?: prompt<SemVer>(
+                if (initInExisting) "What's the current version of your project?"
+                else "What's the initial version of your project?",
+                default = (if (initInExisting) githubRepo?.latestRelease?.tagName?.removePrefix("v") else null)
+                    ?: "0.0.1"
+            ) {
                 try {
                     SemVer.parse(it)
                 } catch (e: IllegalArgumentException) {
@@ -82,10 +108,14 @@ open class Create : BaseCommand() {
         fun createFiles(): File {
             echo("Creating files...")
 
-            echo("Creating directory")
-            val dir = File(prefix, "./$name")
-            if (dir.exists()) throw PrintMessage("The specified directory already exists!")
-            dir.mkdirs()
+            val dir = if (initInExisting) prefix
+            else {
+                echo("Creating directory")
+                File(prefix, "./$name").also {
+                    if (it.exists()) throw PrintMessage("The specified directory already exists!")
+                    it.mkdirs()
+                }
+            }
 
             echo("Saving project config")
             val config = ProjectConfig(
@@ -103,8 +133,18 @@ open class Create : BaseCommand() {
             File(dir, ".github").mkdir()
             copyTemplate(dir, replacements, "github/PULL_REQUEST_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md")
             File(dir, ".github/ISSUE_TEMPLATE").mkdir()
-            copyTemplate(dir, replacements, "github/ISSUE_TEMPLATE/1-bug-report.md", ".github/ISSUE_TEMPLATE/1-bug-report.md")
-            copyTemplate(dir, replacements, "github/ISSUE_TEMPLATE/2-feature-request.md", ".github/ISSUE_TEMPLATE/2-feature-request.md")
+            copyTemplate(
+                dir,
+                replacements,
+                "github/ISSUE_TEMPLATE/1-bug-report.md",
+                ".github/ISSUE_TEMPLATE/1-bug-report.md"
+            )
+            copyTemplate(
+                dir,
+                replacements,
+                "github/ISSUE_TEMPLATE/2-feature-request.md",
+                ".github/ISSUE_TEMPLATE/2-feature-request.md"
+            )
             return dir
         }
 
@@ -113,7 +153,9 @@ open class Create : BaseCommand() {
 
         // Travis CI
         newLine()
-        if (confirm("Setup Travis CI?", default = true) == true) {
+        if (!fileExists(dir, CI_TRAVIS_CONFIG_FILE)
+            && confirm("Setup Travis CI?", default = true) == true
+        ) {
             when (type) {
                 ProjectConfig.Type.ANDROID -> {
                     echo("A config file is being generated for you, but you have to manually setup travis-ci.com to connect to GitHub and your repo.")
@@ -129,50 +171,60 @@ open class Create : BaseCommand() {
         fun initGit(): Git {
             echo("Initializing git...")
 
-            val gitignore = promptOptional(
-                "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
-            ) { input ->
-                val templates = input?.split(",")
-                    ?.map { it.trim().toLowerCase() }
-                    ?: emptyList()
+            if (!fileExists(dir, GIT_GITIGNORE_FILE)) {
+                val gitignore = promptOptional(
+                    "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
+                ) { input ->
+                    val templates = input?.split(",")
+                        ?.map { it.trim().toLowerCase() }
+                    if (templates.isNullOrEmpty()) return@promptOptional null
 
-                val request = Request.Builder()
-                    .get()
-                    .url("https://www.gitignore.io/api/${templates.joinToString(",")}")
-                    .build()
-                val result = webClient.newCall(request).execute().use {
-                    it.body()?.string()
-                } ?: throw CliktError("Network error: No response")
+                    val request = Request.Builder()
+                        .get()
+                        .url("https://www.gitignore.io/api/${templates.joinToString(",")}")
+                        .build()
+                    val result = webClient.newCall(request).execute().use {
+                        it.body()?.string()
+                    } ?: throw CliktError("Network error: No response")
 
-                val errorLine = result.indexOf(GIT_GITIGNOREIO_ERROR_PREFIX)
-                if (errorLine >= 0)
-                    result.substring(errorLine + GIT_GITIGNOREIO_ERROR_PREFIX.length)
-                        .substringBefore(' ')
-                        .let { invalidOption ->
-                            throw NoSuchOption(invalidOption)
-                        }
+                    val errorLine = result.indexOf(GIT_GITIGNOREIO_ERROR_PREFIX)
+                    if (errorLine >= 0)
+                        result.substring(errorLine + GIT_GITIGNOREIO_ERROR_PREFIX.length)
+                            .substringBefore(' ')
+                            .let { invalidOption ->
+                                throw NoSuchOption(invalidOption)
+                            }
 
-                result
-            } ?: ""
-            copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
-            File(dir, GIT_GITIGNORE_FILE)
-                .appendText(gitignore)
+                    result
+                }
+                if (gitignore != null) {
+                    copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
+                    File(dir, GIT_GITIGNORE_FILE)
+                        .appendText(gitignore)
+                }
+            }
 
             copyTemplate(dir, replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
-            val git = Git.init()
-                .setDirectory(dir)
-                .call()
-            call(git.add()) {
-                addFilepattern(".")
+
+
+            return if (isGitRepo(dir)) git
+            else {
+                Git.init()
+                    .setDirectory(dir)
+                    .call()
+                    .also { git ->
+                        call(git.add()) {
+                            addFilepattern(".")
+                        }
+                        call(git.commit()) {
+                            message = "Initial commit"
+                        }
+                        call(git.checkout()) {
+                            setCreateBranch(true)
+                            setName(BRANCH_DEV)
+                        }
+                    }
             }
-            call(git.commit()) {
-                message = "Initial commit"
-            }
-            call(git.checkout()) {
-                setCreateBranch(true)
-                setName(BRANCH_DEV)
-            }
-            return git
         }
 
         val git = initGit()
@@ -210,6 +262,7 @@ open class Create : BaseCommand() {
                     throw NoSuchOption(it)
                 }
             }
+
             val private = confirm("Should the repository be private?", default = true)
                 ?: true
             val repoBuilder = organization?.createRepository(name)
@@ -223,7 +276,6 @@ open class Create : BaseCommand() {
                     repoBuilder.init(false)
                 } else throw e
             }
-            setProjectConfig(getProjectConfig(dir).copy(githubName = repo.fullName), dir)
 
             echo("Uploading")
             call(git.remoteAdd()) {
@@ -234,39 +286,43 @@ open class Create : BaseCommand() {
             git.trackBranch(BRANCH_DEV)
             call(git.push()) {
                 setPushAll()
+                isForce = true
             }
 
             return repo
         }
 
-        val githubRepo = uploadToGithub()
-        fun configureGithub() {
-            echo("Configuring GitHub...")
+        if (githubRepo == null) {
+            val githubRepo = uploadToGithub()
 
-            // Labels
-            echo("Creating labels")
-            for (label in githubRepo.listLabels())
-                label.delete()
+            fun configureGithub() {
+                echo("Configuring GitHub...")
 
-            val labels = readConfig("github-labels.yaml", object : TypeReference<List<Label>>() {})
-            for (label in labels)
-                githubRepo.createLabel(label.name, label.color)
+                // Labels
+                echo("Creating labels")
+                for (label in githubRepo.listLabels())
+                    label.delete()
 
-            // Default branch
-            echo("Setting $BRANCH_DEV as default branch")
-            githubRepo.defaultBranch = BRANCH_DEV
+                val labels = readConfig("github-labels.yaml", object : TypeReference<List<Label>>() {})
+                for (label in labels)
+                    githubRepo.createLabel(label.name, label.color)
 
-            // Branch protection
-            echo("Setting up branch protection")
-            githubRepo.apply {
-                for (branch in listOf(getBranch(BRANCH_MASTER), getBranch(BRANCH_DEV)))
-                    branch.enableProtection()
-                        .requiredReviewers(1)
-                        .includeAdmins(false)
-                        .enable()
+                // Default branch
+                echo("Setting $BRANCH_DEV as default branch")
+                githubRepo.defaultBranch = BRANCH_DEV
+
+                // Branch protection
+                echo("Setting up branch protection")
+                githubRepo.apply {
+                    for (branch in listOf(getBranch(BRANCH_MASTER), getBranch(BRANCH_DEV)))
+                        branch.enableProtection()
+                            .requiredReviewers(1)
+                            .includeAdmins(false)
+                            .enable()
+                }
             }
+            configureGithub()
         }
-        configureGithub()
 
         newLine()
         echo("Done!")
@@ -274,9 +330,26 @@ open class Create : BaseCommand() {
 
     data class Label(val name: String, val color: String)
 
+
+    private fun fileExists(dir: File, fileName: String): Boolean {
+        return File(dir, fileName).exists()
+    }
+
+    private fun isGitRepo(dir: File): Boolean {
+        if (!dir.isDirectory) return false
+
+        return RepositoryBuilder().apply {
+            addCeilingDirectory(dir)
+            findGitDir(dir)
+        }.gitDir != null
+    }
+
     // region Resources
     private fun copyTemplate(dir: File, replacements: Replacements, resource: String, file: String = resource) {
-        File(dir, file).outputStream().bufferedWriter().use { writer ->
+        val dest = File(dir, file)
+        if (dest.exists()) return
+
+        dest.outputStream().bufferedWriter().use { writer ->
             javaClass.getResourceAsStream("/templates/$resource")
                 .reader()
                 .forEachLine {

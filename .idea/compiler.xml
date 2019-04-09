@@ -2,8 +2,6 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel>
-      <module name="unicorn.main" target="1.8" />
-      <module name="unicorn.test" target="1.8" />
       <module name="com.jonaswanke.unicorn.unicorn.main" target="1.8" />
       <module name="com.jonaswanke.unicorn.unicorn.test" target="1.8" />
     </bytecodeTargetLevel>
