@@ -8,9 +8,7 @@ import com.jonaswanke.unicorn.commands.BaseCommand
 import com.jonaswanke.unicorn.utils.GithubIssueUtils
 import com.jonaswanke.unicorn.utils.call
 import com.jonaswanke.unicorn.utils.createBranch
-import kotlin.contracts.ExperimentalContracts
 
-@ExperimentalContracts
 class AssignIssue : BaseCommand(name = "assign") {
     val id by argument("id")
         .convert { GithubIssueUtils.idFromString(it) }

@@ -12,9 +12,7 @@ import com.jonaswanke.unicorn.utils.GithubIssueUtils
 import java.awt.Desktop
 import java.net.URI
 import java.net.URLEncoder
-import kotlin.contracts.ExperimentalContracts
 
-@ExperimentalContracts
 class CompleteIssue : BaseCommand(name = "complete") {
     private val title by argument("title")
         .convert {

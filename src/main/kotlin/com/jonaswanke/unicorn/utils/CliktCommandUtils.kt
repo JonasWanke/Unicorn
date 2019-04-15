@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.output.CliktConsole
 import com.github.ajalt.clikt.output.TermUi
 import java.io.IOError
-import kotlin.contracts.ExperimentalContracts
 
 fun CliktCommand.editText(
     text: String, editor: String? = null, env: Map<String, String> = emptyMap(),
@@ -26,7 +25,6 @@ fun CliktCommand.newLine() {
     TermUi.echo("", trailingNewline = true, console = context.console)
 }
 
-@ExperimentalContracts
 fun CliktCommand.prompt(
     text: String,
     default: String? = null,
@@ -51,7 +49,6 @@ fun CliktCommand.prompt(
     )
 }
 
-@ExperimentalContracts
 fun <T> CliktCommand.prompt(
     text: String,
     default: String? = null,
@@ -104,7 +101,6 @@ fun <T> CliktCommand.prompt(
     }
 }
 
-@ExperimentalContracts
 fun CliktCommand.promptOptional(
     text: String,
     default: String? = null,
@@ -131,7 +127,6 @@ fun CliktCommand.promptOptional(
     )
 }
 
-@ExperimentalContracts
 fun <T> CliktCommand.promptOptional(
     text: String,
     default: String? = null,

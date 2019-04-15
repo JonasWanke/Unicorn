@@ -22,9 +22,7 @@ import org.kohsuke.github.HttpException
 import java.io.File
 import java.io.IOException
 import java.util.*
-import kotlin.contracts.ExperimentalContracts
 
-@ExperimentalContracts
 open class Create : BaseCommand() {
     companion object {
         private const val GIT_GITIGNOREIO_ERROR_PREFIX = "#!! ERROR: "

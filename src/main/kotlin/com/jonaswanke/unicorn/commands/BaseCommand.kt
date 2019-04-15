@@ -18,7 +18,6 @@ import java.io.File
 import kotlin.contracts.ExperimentalContracts
 
 
-@ExperimentalContracts
 abstract class BaseCommand(
     help: String = "",
     epilog: String = "",
