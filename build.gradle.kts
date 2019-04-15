@@ -16,6 +16,10 @@ application {
 dependencies {
     compile(kotlin("stdlib-jdk8"))
 
+    implementation(kotlin("compiler-embeddable"))
+    implementation(kotlin("script-util"))
+    implementation(kotlin("script-runtime"))
+
     implementation("org.beryx:text-io:3.3.0")
     implementation("com.squareup.okhttp3:okhttp:3.12.1")
 
