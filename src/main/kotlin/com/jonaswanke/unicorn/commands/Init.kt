@@ -8,6 +8,10 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.jonaswanke.unicorn.*
+import com.jonaswanke.unicorn.script.ConventionalCommits
+import com.jonaswanke.unicorn.script.Unicorn
+import com.jonaswanke.unicorn.script.Unicorn.getProjectConfig
+import com.jonaswanke.unicorn.script.Unicorn.setProjectConfig
 import com.jonaswanke.unicorn.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
@@ -54,7 +58,7 @@ open class Create : BaseCommand() {
             if (!prefix.isDirectory)
                 throw UsageError("The specified path is not a directory. If you want to create a new repository, please specify a name")
             try {
-                getProjectConfig()
+                Unicorn.projectConfig
                 throw UsageError("Unicorn is already initialized in the specified directory")
             } catch (e: IOException) {
                 // Means no project config file was found - expected
@@ -214,6 +218,7 @@ open class Create : BaseCommand() {
                         call(git.add()) {
                             addFilepattern(".")
                         }
+                        Git.commit(ConventionalCommits.format())
                         call(git.commit()) {
                             message = "Initial commit"
                         }

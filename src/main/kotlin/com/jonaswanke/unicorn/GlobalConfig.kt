@@ -11,7 +11,7 @@ data class GlobalConfig(
         val oauthToken: String,
         val endpoint: String?
     ) {
-        fun buildGithub(): GitHub {
+        fun buildGitHubApi(): GitHub {
             return GitHubBuilder().apply {
                 withOAuthToken(oauthToken, username)
                 if (endpoint != null) withEndpoint(endpoint)

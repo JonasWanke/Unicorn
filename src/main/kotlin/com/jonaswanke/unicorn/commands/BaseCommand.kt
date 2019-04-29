@@ -8,14 +8,13 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.jonaswanke.unicorn.GlobalConfig
-import com.jonaswanke.unicorn.ProjectConfig
+import com.jonaswanke.unicorn.script.Unicorn.globalConfig
 import com.jonaswanke.unicorn.utils.*
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.GHRepository
 import org.kohsuke.github.GitHub
 import java.io.File
-import kotlin.contracts.ExperimentalContracts
 
 
 abstract class BaseCommand(
@@ -24,11 +23,6 @@ abstract class BaseCommand(
     name: String? = null,
     invokeWithoutSubcommand: Boolean = false
 ) : CliktCommand(help, epilog, name, invokeWithoutSubcommand) {
-    companion object {
-        private const val CONFIG_GLOBAL_FILE = "config.yml"
-        private const val CONFIG_PROJECT_FILE = ".unicorn.yml"
-    }
-
     init {
         context {
             console = TextIoConsoleWrapper
@@ -39,29 +33,6 @@ abstract class BaseCommand(
         .file(exists = true, fileOkay = false)
         .default(File(System.getProperty("user.dir")))
 
-    // region Global config
-    private val installDir = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile.parentFile
-    private val globalConfigFile: File
-        get() = File(installDir, CONFIG_GLOBAL_FILE).apply {
-            if (!exists()) {
-                createNewFile()
-                globalConfig = GlobalConfig(github = null)
-            }
-        }
-    var globalConfig: GlobalConfig
-        get() = globalConfigFile.inputStream().readConfig()
-        set(value) = globalConfigFile.outputStream().writeConfig(value)
-    // endregion
-
-    // region Project config
-    fun getProjectConfig(dir: File = prefix): ProjectConfig {
-        return File(dir, CONFIG_PROJECT_FILE).inputStream().readConfig()
-    }
-
-    fun setProjectConfig(config: ProjectConfig, dir: File = prefix) {
-        File(dir, CONFIG_PROJECT_FILE).outputStream().writeConfig(config)
-    }
-    // endregion
 
 
     // region Git
@@ -84,12 +55,12 @@ abstract class BaseCommand(
         endpoint: String? = null
     ) {
         fun buildAuthResult(config: GlobalConfig.GithubConfig, github: GitHub): GithubAuthResult {
-            return GithubAuthResult(github, OAuthCredentialsProvider(config.oauthToken ?: ""))
+            return GithubAuthResult(github, OAuthCredentialsProvider(config.oauthToken))
         }
 
         if (!forceNew) {
             globalConfig.github?.also { githubConfig ->
-                val github = githubConfig.buildGithub()
+                val github = githubConfig.buildGitHubApi()
                 if (github.isCredentialValid) {
                     githubAuthResult = buildAuthResult(githubConfig, github)
                     return
@@ -113,7 +84,7 @@ abstract class BaseCommand(
                 username = usernameAct, oauthToken = tokenAct, endpoint = endpointAct
             )
             globalConfig = globalConfig.copy(github = githubConfig)
-            val github = githubConfig.buildGithub()
+            val github = githubConfig.buildGitHubApi()
 
             val isValid = github.isCredentialValid
             if (isValid) {
