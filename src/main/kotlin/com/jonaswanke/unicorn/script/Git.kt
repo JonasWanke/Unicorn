@@ -7,12 +7,26 @@ import org.eclipse.jgit.lib.ConfigConstants
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.transport.RemoteConfig
+import org.eclipse.jgit.transport.URIish
 import org.jetbrains.kotlin.serialization.js.DynamicTypeDeserializer.id
 import org.kohsuke.github.GHIssue
+import java.io.File
 import org.eclipse.jgit.api.Git as ApiGit
 
-object Git {
-    private val api = ApiGit.open(Unicorn.prefix)
+class Git(val directory: File = Unicorn.prefix) {
+    companion object {
+        fun init(directory: File): Git {
+            ApiGit.init()
+                .setDirectory(directory)
+                .call()
+            return Git(directory)
+        }
+    }
+
+    val api by lazy { ApiGit.open(directory) }
+
+    val flow = Flow(this)
+
 
     fun remoteList(): List<RemoteConfig> {
         return call(api.remoteList())
@@ -27,14 +41,17 @@ object Git {
 
 
     // region Commits
-    fun add(message: String) {
+    fun add(vararg filePattern: String) {
         call(api.add()) {
-
+            filePattern.forEach {
+                addFilepattern(it)
+            }
         }
     }
+
     fun commit(message: String) {
         call(api.commit()) {
-
+            setMessage(message)
         }
     }
     // endregion
@@ -59,6 +76,15 @@ object Git {
         call(api.push())
         return ref
     }
+    // endregion
+
+    // region Remote
+    fun addRemote(name: String, uri: URIish) {
+        call(api.remoteAdd()) {
+            setName(name)
+            setUri(uri)
+        }
+    }
 
     fun trackBranch(
         name: String,
@@ -69,6 +95,13 @@ object Git {
             setString(ConfigConstants.CONFIG_BRANCH_SECTION, name, ConfigConstants.CONFIG_KEY_REMOTE, remote)
             setString(ConfigConstants.CONFIG_BRANCH_SECTION, name, ConfigConstants.CONFIG_KEY_MERGE, remoteName)
         }.save()
+    }
+
+    fun push(pushAllBranches: Boolean = false, force: Boolean = false) {
+        call(api.push()) {
+            if (pushAllBranches) setPushAll()
+            isForce = force
+        }
     }
     // endregion
 
@@ -83,45 +116,50 @@ object Git {
     // endregion
 
 
-    open class Branch(val name: String) {
-        val ref: Ref
-            get() = api.repository.findRef(name)
-    }
-
-    object Flow {
-        const val BRANCH_MASTER_NAME = "master"
-        const val BRANCH_DEV_NAME = "dev"
-        const val BRANCH_ISSUE_PREFIX = "issue/"
-        const val BRANCH_RELEASE_PREFIX = "release/"
-        const val BRANCH_HOTFIX_PREFIX = "hotfix/"
-        const val BRANCH_NAME_SEPARATOR = "-"
+    class Flow(val git: Git) {
+        companion object {
+            private const val BRANCH_MASTER_NAME = "master"
+            private const val BRANCH_DEV_NAME = "dev"
+            const val BRANCH_ISSUE_PREFIX = "issue/"
+            const val BRANCH_RELEASE_PREFIX = "release/"
+            const val BRANCH_HOTFIX_PREFIX = "hotfix/"
+            const val BRANCH_NAME_SEPARATOR = "-"
+        }
 
 
-        object MasterBranch : Branch(BRANCH_MASTER_NAME)
+        class MasterBranch(git: Git) : Branch(git, BRANCH_MASTER_NAME)
 
-        object DevBranch : Branch(BRANCH_DEV_NAME)
+        val masterBranch = MasterBranch(git)
+
+        class DevBranch(git: Git) : Branch(git, BRANCH_DEV_NAME)
+
+        val devBranch = Branch(git, BRANCH_DEV_NAME)
 
         fun currentBranch(gitHub: GitHub): Branch {
-            val name = currentBranchName
+            val name = git.currentBranchName
             return when {
-                name == BRANCH_MASTER_NAME -> MasterBranch
-                name == BRANCH_DEV_NAME -> DevBranch
+                name == BRANCH_MASTER_NAME -> masterBranch
+                name == BRANCH_DEV_NAME -> devBranch
                 name.startsWith(BRANCH_ISSUE_PREFIX) -> issueIdFromBranchName(name)
-                    .let { gitHub.requireCurrentRepo.getIssue(it) }
-                    .let { IssueBranch(it) }
-                name.startsWith(BRANCH_RELEASE_PREFIX) -> ReleaseBranch(releaseVersionFromBranchName(name))
-                name.startsWith(BRANCH_ISSUE_PREFIX) -> HotfixBranch(hotfixVersionFromBranchName(name))
-                else -> DevBranch
+                    .let { gitHub.currentRepo().getIssue(it) }
+                    .let { IssueBranch(git, it) }
+                name.startsWith(BRANCH_RELEASE_PREFIX) -> ReleaseBranch(git, releaseVersionFromBranchName(name))
+                name.startsWith(BRANCH_ISSUE_PREFIX) -> HotfixBranch(git, hotfixVersionFromBranchName(name))
+                else -> devBranch
             }
+        }
+
+        fun checkout(branch: Branch) {
+            git.checkout(branch.name)
         }
 
 
         // region Issue
-        class IssueBranch(val issue: GHIssue) : Branch(branchNameFromIssue(issue))
+        class IssueBranch(git: Git, val issue: GHIssue) : Branch(git, git.flow.branchNameFromIssue(issue))
 
         fun createIssueBranch(issue: GHIssue): IssueBranch {
-            createBranch(branchNameFromIssue(issue), base = DevBranch.name)
-            return IssueBranch(issue)
+            git.createBranch(branchNameFromIssue(issue), base = devBranch.name)
+            return IssueBranch(git, issue)
         }
 
         fun branchNameFromIssue(issue: GHIssue): String {
@@ -142,7 +180,7 @@ object Git {
         // endregion
 
         // region Release
-        class ReleaseBranch(version: SemVer) : Branch("$BRANCH_RELEASE_PREFIX$version")
+        class ReleaseBranch(git: Git, val version: SemVer) : Branch(git, "$BRANCH_RELEASE_PREFIX$version")
 
         fun createReleaseBranch(version: SemVer): ReleaseBranch {
             if (version <= Unicorn.projectConfig.version)
@@ -150,8 +188,8 @@ object Git {
                     "version must be greater than the current version (${Unicorn.projectConfig.version}), was $version"
                 )
 
-            createBranch(branchNameFromRelease(version), base = DevBranch.name)
-            return ReleaseBranch(version)
+            git.createBranch(branchNameFromRelease(version), base = devBranch.name)
+            return ReleaseBranch(git, version)
         }
 
         fun branchNameFromRelease(version: SemVer): String {
@@ -168,7 +206,7 @@ object Git {
         // endregion
 
         // region Hotfix
-        class HotfixBranch(version: SemVer) : Branch("$BRANCH_HOTFIX_PREFIX$version")
+        class HotfixBranch(git: Git, val version: SemVer) : Branch(git, "$BRANCH_HOTFIX_PREFIX$version")
 
         fun hotfixVersionFromBranchName(name: String): SemVer {
             if (!name.startsWith(BRANCH_HOTFIX_PREFIX))
@@ -178,5 +216,14 @@ object Git {
                 .let { SemVer.parse(it) }
         }
         // endregion
+    }
+}
+
+open class Branch(val git: Git, val name: String) {
+    val ref: Ref
+        get() = git.api.repository.findRef(name)
+
+    fun checkout() {
+        git.checkout(name, false)
     }
 }

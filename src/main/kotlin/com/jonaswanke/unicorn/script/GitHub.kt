@@ -2,16 +2,18 @@ package com.jonaswanke.unicorn.script
 
 import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
-import com.github.ajalt.clikt.output.TermUi.echo
-import com.github.ajalt.clikt.output.TermUi.prompt
 import com.jonaswanke.unicorn.GlobalConfig
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
+import com.jonaswanke.unicorn.utils.echo
+import com.jonaswanke.unicorn.utils.prompt
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.GHIssue
+import org.kohsuke.github.GHPullRequest
 import org.kohsuke.github.GHRepository
 import org.kohsuke.github.GHUser
 import java.awt.Desktop
+import java.io.File
 import java.net.URI
 import java.net.URLEncoder
 import org.kohsuke.github.GitHub as ApiGitHub
@@ -64,21 +66,24 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
         }
     }
 
-    val currentRepoName: String?
-        get() {
-            return Git.remoteList().mapNotNull { remoteConfig ->
-                remoteConfig.urIs.firstOrNull { it.host == "github.com" }
-            }
-                .firstOrNull()
-                ?.path
-                ?.trimStart('/')
-                ?.substringBeforeLast('.')
+    fun currentRepoNameIfExists(directory: File = Unicorn.prefix): String? {
+        return Git(directory).remoteList().mapNotNull { remoteConfig ->
+            remoteConfig.urIs.firstOrNull { it.host == "github.com" }
         }
-    val currentRepo: GHRepository?
-        get() = currentRepoName?.let { api.getRepository(it) }
-    val requireCurrentRepo: GHRepository
-        get() = currentRepo
+            .firstOrNull()
+            ?.path
+            ?.trimStart('/')
+            ?.substringBeforeLast('.')
+    }
+
+    fun currentRepoIfExists(directory: File = Unicorn.prefix): GHRepository? {
+        return currentRepoNameIfExists(directory)?.let { api.getRepository(it) }
+    }
+
+    fun currentRepo(directory: File = Unicorn.prefix): GHRepository {
+        return currentRepoIfExists()
             ?: throw UsageError("No repository is configured for the current project")
+    }
 }
 
 // region Issue
@@ -92,14 +97,14 @@ fun GHIssue.assignTo(user: GHUser, throwIfAlreadyAssigned: Boolean = false) {
 
 
 const val LABEL_TYPE_PREFIX = "T: "
-val GHIssue.type: ConventionalCommits.Type
+val GHIssue.type: ConventionalCommit.Type
     get() {
         if (labels.count { it.name.startsWith(LABEL_TYPE_PREFIX) } != 1)
             throw UsageError("Issue $id ($title) must have exactly one label specifying its type: <$LABEL_TYPE_PREFIX[feat,fix,...]>")
 
         return labels.first { it.name.startsWith(LABEL_TYPE_PREFIX) }
             .name.removePrefix(LABEL_TYPE_PREFIX)
-            .let { ConventionalCommits.Type.fromString(it) }
+            .let { ConventionalCommit.Type.fromString(it) }
     }
 
 const val LABEL_COMPONENT_PREFIX = "C: "
@@ -108,11 +113,12 @@ val GHIssue.components
         .map { it.name.removePrefix(LABEL_COMPONENT_PREFIX) }
 
 
-fun ConventionalCommits.format(issue: GHIssue, description: String): String {
+fun ConventionalCommit.Companion.format(issue: GHIssue, description: String): String {
     return format(issue.type, issue.components, description)
 }
 
 fun GHIssue.openPullRequest(
+    git: Git,
     title: String,
     assignees: List<String> = listOf(GitHub.authenticate().api.myself.login),
     labels: List<String> = getLabels().map { it.name },
@@ -126,7 +132,7 @@ fun GHIssue.openPullRequest(
         append("${repository.htmlUrl}/compare/")
         if (base != null)
             append("${base.encode()}..")
-        append(Git.currentBranchName.encode())
+        append(git.currentBranchName.encode())
         append("?expand=1")
         append("&title=${title.encode()}")
         append("&assignees=${assignees.encode()}")
@@ -135,5 +141,46 @@ fun GHIssue.openPullRequest(
             append("&milestone=${milestone.encode()}")
     }
     Desktop.getDesktop().browse(URI(link))
+}
+// endregion
+
+// region Pull Request
+private val PR_ISSUES_REGEX =
+    "(?:closed|closes|close|fixed|fixes|fix|resolved|resolves|resolve):?\\s*(#\\d+\\s*(?:,\\s*#\\d+\\s*)*)"
+        .toRegex(RegexOption.IGNORE_CASE)
+val GHPullRequest.closedIssues: List<GHIssue>
+    get() = PR_ISSUES_REGEX.findAll(body)
+        .flatMap { result ->
+            result.groups[1]!!.value.splitToSequence(',')
+        }
+        .map { issueIdString ->
+            issueIdString.takeUnless { it.isBlank() }
+                ?.trim()
+                ?.removePrefix("#")
+                ?.toInt()
+        }
+        .filterNotNull()
+        .map { issueId ->
+            repository.getIssue(issueId)
+        }
+        .toList()
+
+fun GHPullRequest.toCommitMessage() = buildString {
+    val commit = ConventionalCommit.parse(title)
+    append(commit.description)
+
+    val issues = closedIssues
+    if (issues.isNotEmpty())
+        append(closedIssues.joinToString(prefix = ", fixes ") { "[#${it.number}](${it.htmlUrl})" })
+}
+// endregion
+
+// region Release
+class GHReleaseBuilder {
+
+}
+
+fun GHRepository.createRelease(version: SemVer, tagName: String = "v$version") {
+
 }
 // endregion
