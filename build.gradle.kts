@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
-    kotlin("jvm") version "1.3.20"
+    kotlin("jvm") version "1.3.41"
 }
 
 tasks.withType<KotlinCompile> {
@@ -28,9 +28,9 @@ dependencies {
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
     implementation("org.kohsuke:github-api:1.95")
 
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.7.1-1")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.7.1-2")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.7.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.9.8")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
 
     implementation("org.slf4j:slf4j-nop:1.7.25")
 }
