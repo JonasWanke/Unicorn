@@ -19,6 +19,10 @@ abstract class UnicornCommand(name: String, help: String = "", invokeWithoutSubc
     protected fun beforeRun() {
         Unicorn.prefix = prefix
     }
+
+    override fun run() {
+        beforeRun()
+    }
 }
 
 
@@ -30,7 +34,7 @@ fun Unicorn.command(
     help: String = "",
     builder: CommandBuilder
 ) {
-    val command = createCommand(name, help, false, builder)
+    val command = createCommand(name, help, builder)
     commands(command)
 }
 
@@ -39,7 +43,7 @@ fun Unicorn.executableCommand(
     help: String = "",
     builder: ExecutableCommandBuilder
 ) {
-    val command = createExecutableCommand(name, help, true, builder)
+    val command = createExecutableCommand(name, help, builder)
     commands(command)
 }
 
@@ -49,7 +53,7 @@ fun UnicornCommand.command(
     help: String = "",
     builder: CommandBuilder
 ) {
-    val command = createCommand(name, help, false, builder)
+    val command = createCommand(name, help, builder)
     subcommands(command)
 }
 
@@ -58,7 +62,7 @@ fun UnicornCommand.executableCommand(
     help: String = "",
     builder: ExecutableCommandBuilder
 ) {
-    val command = createExecutableCommand(name, help, true, builder)
+    val command = createExecutableCommand(name, help, builder)
     subcommands(command)
 }
 
@@ -66,24 +70,22 @@ fun UnicornCommand.executableCommand(
 private fun createCommand(
     name: String,
     help: String = "",
-    invokeWithoutSubcommand: Boolean = false,
     builder: CommandBuilder
 ): UnicornCommand {
-    return object : UnicornCommand(name, help, invokeWithoutSubcommand) {
-        override fun run() = Unit
-    }.apply { builder() }
+    return object : UnicornCommand(name, help, false) {}
+        .apply { builder() }
 }
 
 private fun createExecutableCommand(
     name: String,
     help: String = "",
-    invokeWithoutSubcommand: Boolean = false,
     builder: ExecutableCommandBuilder
 ): UnicornCommand {
-    return object : UnicornCommand(name, help, invokeWithoutSubcommand) {
+    return object : UnicornCommand(name, help, true) {
         val runnable = builder()
 
         override fun run() {
+            super.run()
             runnable()
         }
     }.apply { runnable }

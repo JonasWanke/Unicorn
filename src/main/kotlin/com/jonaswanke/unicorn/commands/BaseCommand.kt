@@ -1,18 +1,21 @@
 package com.jonaswanke.unicorn.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
+import kotlin.jvm.javaClass
 import com.github.ajalt.clikt.core.MissingParameter
-import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.jonaswanke.unicorn.GlobalConfig
+import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.Unicorn.globalConfig
-import com.jonaswanke.unicorn.utils.*
-import org.eclipse.jgit.api.Git
+import com.jonaswanke.unicorn.script.command.UnicornCommand
+import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
+import com.jonaswanke.unicorn.utils.TextIoConsoleWrapper
+import com.jonaswanke.unicorn.utils.prompt
+import com.jonaswanke.unicorn.utils.promptOptional
 import org.eclipse.jgit.transport.CredentialsProvider
-import org.kohsuke.github.GHRepository
 import org.kohsuke.github.GitHub
 import java.io.File
 
@@ -29,15 +32,10 @@ abstract class BaseCommand(
         }
     }
 
-    val prefix by option("--prefix")
+    open val prefix by option("--prefix")
         .file(exists = true, fileOkay = false)
         .default(File(System.getProperty("user.dir")))
 
-
-
-    // region Git
-    val git get() = Git.open(prefix)
-    // endregion
 
     // region GitHub
     private var githubAuthResult: GithubAuthResult? = null
@@ -99,24 +97,9 @@ abstract class BaseCommand(
     data class GithubAuthResult(val github: GitHub, val credentialsProvider: CredentialsProvider)
 
     val github get() = getGithubAuthResult().github
-    val githubCp get() = getGithubAuthResult().credentialsProvider
-
-    val githubRepoName: String?
-        get() {
-            return call(git.remoteList()).mapNotNull { remoteConfig ->
-                remoteConfig.urIs.firstOrNull { it.host == "github.com" }
-            }
-                .firstOrNull()
-                ?.path
-                ?.trimStart('/')
-                ?.substringBeforeLast('.')
-        }
-    val githubRepo: GHRepository?
-        get() = githubRepoName?.let { github.getRepository(it) }
-
-    fun requireGithubRepo(): GHRepository {
-        return githubRepo
-            ?: throw UsageError("No repository is configured for the current project")
-    }
     // endregion
+
+    override fun run() {
+        Unicorn.prefix = prefix
+    }
 }

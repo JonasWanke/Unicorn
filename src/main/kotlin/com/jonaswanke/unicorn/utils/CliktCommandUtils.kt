@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.output.CliktConsole
 import com.github.ajalt.clikt.output.TermUi
+import com.github.ajalt.clikt.output.defaultCliktConsole
 import java.io.IOError
 
 fun CliktCommand.editText(
@@ -21,11 +22,20 @@ fun CliktCommand.editFile(
 }
 
 
-fun CliktCommand.newLine() {
-    TermUi.echo("", trailingNewline = true, console = context.console)
+fun newLine(console: CliktConsole = TextIoConsoleWrapper) {
+    TermUi.echo("", trailingNewline = true, console = console)
 }
 
-fun CliktCommand.prompt(
+fun echo(
+    message: Any?,
+    trailingNewline: Boolean = true,
+    err: Boolean = false,
+    console: CliktConsole = TextIoConsoleWrapper
+) {
+    TermUi.echo(message, trailingNewline, err, console)
+}
+
+fun prompt(
     text: String,
     default: String? = null,
     hideInput: Boolean = false,
@@ -33,7 +43,7 @@ fun CliktCommand.prompt(
     confirmationPrompt: String = "Repeat for confirmation: ",
     promptSuffix: String = ": ",
     showDefault: Boolean = true,
-    console: CliktConsole = context.console,
+    console: CliktConsole = TextIoConsoleWrapper,
     convert: ((String) -> String) = { it }
 ): String {
     return prompt<String>(
@@ -49,7 +59,7 @@ fun CliktCommand.prompt(
     )
 }
 
-fun <T> CliktCommand.prompt(
+fun <T> prompt(
     text: String,
     default: String? = null,
     hideInput: Boolean = false,
@@ -57,7 +67,7 @@ fun <T> CliktCommand.prompt(
     confirmationPrompt: String = "Repeat for confirmation: ",
     promptSuffix: String = ": ",
     showDefault: Boolean = true,
-    console: CliktConsole = context.console,
+    console: CliktConsole = TextIoConsoleWrapper,
     convert: ((String) -> T?)
 ): T {
     // Original source: TermUi.prompt

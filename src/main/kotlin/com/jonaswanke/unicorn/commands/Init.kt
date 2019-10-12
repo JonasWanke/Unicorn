@@ -2,21 +2,23 @@ package com.jonaswanke.unicorn.commands
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.github.ajalt.clikt.core.*
+import com.github.ajalt.clikt.output.CliktConsole
+import com.github.ajalt.clikt.output.TermUi
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
-import com.jonaswanke.unicorn.*
-import com.jonaswanke.unicorn.script.ConventionalCommits
-import com.jonaswanke.unicorn.script.Unicorn
-import com.jonaswanke.unicorn.script.Unicorn.getProjectConfig
+import com.jonaswanke.unicorn.ProgramConfig
+import com.jonaswanke.unicorn.ProjectConfig
+import com.jonaswanke.unicorn.script.*
 import com.jonaswanke.unicorn.script.Unicorn.setProjectConfig
+import com.jonaswanke.unicorn.script.command.UnicornCommand
 import com.jonaswanke.unicorn.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.RepositoryBuilder
 import org.eclipse.jgit.transport.URIish
 import org.kohsuke.github.GHCreateRepositoryBuilder
@@ -44,7 +46,15 @@ open class Create : BaseCommand() {
     private val version by option("-v", "--version")
         .convert { SemVer.parse(it) }
 
+    override val prefix: File
+        get() = super.prefix.let {
+            if (name != null) File(it, name)
+            else it
+        }
+
     override fun run() {
+        super.run()
+
         val initInExisting = name == null
         if (initInExisting)
             confirm("Using create in an existing project is experimental. Continue?", abort = true)
@@ -65,8 +75,11 @@ open class Create : BaseCommand() {
             }
         }
 
+        val gitHub = GitHub.authenticate()
+        val repo = gitHub.currentRepoIfExists()
+
         val description = description
-            ?: if (initInExisting) githubRepo?.description else null
+            ?: if (initInExisting) repo?.description else null
                 ?: promptOptional("Provide a short description")
         val type: ProjectConfig.Type = type
             ?: prompt<ProjectConfig.Type>(
@@ -83,7 +96,7 @@ open class Create : BaseCommand() {
             ?: prompt<SemVer>(
                 if (initInExisting) "What's the current version of your project?"
                 else "What's the initial version of your project?",
-                default = (if (initInExisting) githubRepo?.latestRelease?.tagName?.removePrefix("v") else null)
+                default = (if (initInExisting) repo?.latestRelease?.tagName?.removePrefix("v") else null)
                     ?: "0.0.1"
             ) {
                 try {
@@ -170,7 +183,7 @@ open class Create : BaseCommand() {
 
         // Git
         newLine()
-        fun initGit(): Git {
+        fun initGit() {
             echo("Initializing git...")
 
             if (!fileExists(dir, GIT_GITIGNORE_FILE)) {
@@ -208,29 +221,16 @@ open class Create : BaseCommand() {
 
             copyTemplate(dir, replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
 
+            if (!isGitRepo(dir)) return
 
-            return if (isGitRepo(dir)) git
-            else {
-                Git.init()
-                    .setDirectory(dir)
-                    .call()
-                    .also { git ->
-                        call(git.add()) {
-                            addFilepattern(".")
-                        }
-                        Git.commit(ConventionalCommits.format())
-                        call(git.commit()) {
-                            message = "Initial commit"
-                        }
-                        call(git.checkout()) {
-                            setCreateBranch(true)
-                            setName(BRANCH_DEV)
-                        }
-                    }
-            }
+            val git = Git.init(dir)
+            git.add(".")
+            git.commit(ConventionalCommit.Type.CHORE, description = "initial commit")
+
+            git.checkout(git.flow.devBranch.name, createBranch = true)
         }
 
-        val git = initGit()
+        initGit()
 
 
         // Github
@@ -281,21 +281,15 @@ open class Create : BaseCommand() {
             }
 
             echo("Uploading")
-            call(git.remoteAdd()) {
-                setName(REMOTE_DEFAULT)
-                setUri(URIish(repo.httpTransportUrl))
-            }
-            git.trackBranch(BRANCH_MASTER)
-            git.trackBranch(BRANCH_DEV)
-            call(git.push()) {
-                setPushAll()
-                isForce = true
-            }
+            Git.addRemote(Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
+            Git.trackBranch(Git.Flow.MasterBranch.name)
+            Git.trackBranch(Git.Flow.DevBranch.name)
+            Git.push(pushAllBranches = true, force = true)
 
             return repo
         }
 
-        if (githubRepo == null) {
+        if (repo == null) {
             val githubRepo = uploadToGithub()
 
             fun configureGithub() {
@@ -311,13 +305,13 @@ open class Create : BaseCommand() {
                     githubRepo.createLabel(label.name, label.color)
 
                 // Default branch
-                echo("Setting $BRANCH_DEV as default branch")
-                githubRepo.defaultBranch = BRANCH_DEV
+                echo("Setting ${Git.Flow.DevBranch.name} as default branch")
+                githubRepo.defaultBranch = Git.Flow.DevBranch.name
 
                 // Branch protection
                 echo("Setting up branch protection")
                 githubRepo.apply {
-                    for (branch in listOf(getBranch(BRANCH_MASTER), getBranch(BRANCH_DEV)))
+                    for (branch in listOf(getBranch(Git.Flow.MasterBranch.name), getBranch(Git.Flow.DevBranch.name)))
                         branch.enableProtection()
                             .requiredReviewers(1)
                             .includeAdmins(false)
