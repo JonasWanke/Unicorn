@@ -183,7 +183,7 @@ open class Create : BaseCommand() {
 
         // Git
         newLine()
-        fun initGit() {
+        fun initGit(): Git {
             echo("Initializing git...")
 
             if (!fileExists(dir, GIT_GITIGNORE_FILE)) {
@@ -221,16 +221,17 @@ open class Create : BaseCommand() {
 
             copyTemplate(dir, replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
 
-            if (!isGitRepo(dir)) return
+            if (isGitRepo(dir)) return Git(dir)
 
-            val git = Git.init(dir)
-            git.add(".")
-            git.commit(ConventionalCommit.Type.CHORE, description = "initial commit")
+            return Git.init(dir).apply {
+                add(".")
+                commit(ConventionalCommit.Type.CHORE, description = "initial commit")
 
-            git.checkout(git.flow.devBranch.name, createBranch = true)
+                checkout(flow.devBranch.name, createBranch = true)
+            }
         }
 
-        initGit()
+        val git = initGit()
 
 
         // Github
@@ -281,10 +282,10 @@ open class Create : BaseCommand() {
             }
 
             echo("Uploading")
-            Git.addRemote(Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
-            Git.trackBranch(Git.Flow.MasterBranch.name)
-            Git.trackBranch(Git.Flow.DevBranch.name)
-            Git.push(pushAllBranches = true, force = true)
+            git.addRemote(Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
+            git.trackBranch(git.flow.masterBranch.name)
+            git.trackBranch(git.flow.devBranch.name)
+            git.push(pushAllBranches = true, force = true)
 
             return repo
         }
@@ -305,13 +306,13 @@ open class Create : BaseCommand() {
                     githubRepo.createLabel(label.name, label.color)
 
                 // Default branch
-                echo("Setting ${Git.Flow.DevBranch.name} as default branch")
-                githubRepo.defaultBranch = Git.Flow.DevBranch.name
+                echo("Setting ${git.flow.devBranch.name} as default branch")
+                githubRepo.defaultBranch = git.flow.devBranch.name
 
                 // Branch protection
                 echo("Setting up branch protection")
                 githubRepo.apply {
-                    for (branch in listOf(getBranch(Git.Flow.MasterBranch.name), getBranch(Git.Flow.DevBranch.name)))
+                    for (branch in listOf(getBranch(git.flow.masterBranch.name), getBranch(git.flow.devBranch.name)))
                         branch.enableProtection()
                             .requiredReviewers(1)
                             .includeAdmins(false)
