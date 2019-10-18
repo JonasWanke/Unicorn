@@ -1,0 +1,12 @@
+name: 'Unicorn'
+author: 'Jonas Wanke <contact@wanke.dev>'
+description: 'Check your PRs with Unicorn'
+inputs:
+  repo-token:
+    description: 'The GITHUB_TOKEN secret'
+runs:
+  using: 'docker'
+  image: 'action.Dockerfile'
+branding:
+  icon: check
+  color: purple

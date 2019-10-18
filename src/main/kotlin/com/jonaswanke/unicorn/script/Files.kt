@@ -89,7 +89,7 @@ object Files {
                         append("[")
                         append(fullName)
                         append("](")
-                        append(gitHub.currentRepo.htmlUrl)
+                        append(gitHub.currentRepo().htmlUrl)
                         append("/compare/${Unicorn.projectConfig.version}...$version")
                         append(")")
                     }

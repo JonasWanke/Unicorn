@@ -54,15 +54,22 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                     username = usernameAct, oauthToken = tokenAct, endpoint = endpointAct
                 )
                 Unicorn.globalConfig = Unicorn.globalConfig.copy(github = githubConfig)
-                val github = githubConfig.buildGitHubApi()
+                val api = githubConfig.buildGitHubApi()
 
-                val isValid = github.isCredentialValid
+                val isValid = api.isCredentialValid
                 if (isValid) {
                     echo("Login successful")
-                    return GitHub(github, OAuthCredentialsProvider(githubConfig.oauthToken))
+                    return GitHub(api, OAuthCredentialsProvider(githubConfig.oauthToken))
                 } else
                     echo("Your credentials are invalid. Please try again.")
             }
+        }
+
+        fun authenticateWithToken(token: String): GitHub? {
+            val api = ApiGitHub.connectUsingOAuth(token)
+                .takeIf { it.isCredentialValid }
+                ?: return null
+            return GitHub(api, OAuthCredentialsProvider(token))
         }
     }
 
