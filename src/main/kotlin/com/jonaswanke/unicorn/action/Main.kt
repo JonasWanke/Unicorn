@@ -19,7 +19,6 @@ private object MainCommand : BaseCommand() {
         val repoToken = getRequiredInput("repo-token")
 
         val gh = GitHub.authenticateWithToken(repoToken)
-            ?: throwError("Invalid repo-token")
         val repo = gh.currentRepoIfExists(prefix) ?: throwError("Not in a valid repository")
         val projectConfig = Unicorn.projectConfig
 

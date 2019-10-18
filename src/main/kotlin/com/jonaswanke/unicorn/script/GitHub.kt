@@ -65,10 +65,8 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
             }
         }
 
-        fun authenticateWithToken(token: String): GitHub? {
+        fun authenticateWithToken(token: String): GitHub {
             val api = ApiGitHub.connect("anonymous", token)
-                .takeIf { it.isCredentialValid }
-                ?: return null
             return GitHub(api, OAuthCredentialsProvider(token))
         }
     }
