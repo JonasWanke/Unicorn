@@ -16,6 +16,14 @@ abstract class UnicornCommand(name: String, help: String = "", invokeWithoutSubc
         .file(exists = true, fileOkay = false)
         .default(File(System.getProperty("user.dir")))
 
+    private val aliases = mutableMapOf<String, String>()
+    override fun aliases() = aliases.mapValues { listOf(it.value) }
+
+    fun addSubcommand(command: UnicornCommand, aliases: List<String> = emptyList()) {
+        subcommands(command)
+        this.aliases += aliases.associateWith { command.commandName }
+    }
+
     protected fun beforeRun() {
         Unicorn.prefix = prefix
     }
@@ -31,39 +39,43 @@ typealias ExecutableCommandBuilder = UnicornCommand.() -> (() -> Unit)
 
 fun Unicorn.command(
     name: String,
+    aliases: List<String> = emptyList(),
     help: String = "",
     builder: CommandBuilder
 ) {
     val command = createCommand(name, help, builder)
-    commands(command)
+    addCommand(command, aliases)
 }
 
 fun Unicorn.executableCommand(
     name: String,
+    aliases: List<String> = emptyList(),
     help: String = "",
     builder: ExecutableCommandBuilder
 ) {
     val command = createExecutableCommand(name, help, builder)
-    commands(command)
+    addCommand(command, aliases)
 }
 
 
 fun UnicornCommand.command(
     name: String,
+    aliases: List<String> = emptyList(),
     help: String = "",
     builder: CommandBuilder
 ) {
     val command = createCommand(name, help, builder)
-    subcommands(command)
+    addSubcommand(command, aliases)
 }
 
 fun UnicornCommand.executableCommand(
     name: String,
+    aliases: List<String> = emptyList(),
     help: String = "",
     builder: ExecutableCommandBuilder
 ) {
     val command = createExecutableCommand(name, help, builder)
-    subcommands(command)
+    addSubcommand(command, aliases)
 }
 
 
@@ -88,5 +100,5 @@ private fun createExecutableCommand(
             super.run()
             runnable()
         }
-    }.apply { runnable }
+    }
 }

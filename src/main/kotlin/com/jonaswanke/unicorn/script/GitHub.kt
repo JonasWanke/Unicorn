@@ -81,7 +81,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
     }
 
     fun currentRepo(directory: File = Unicorn.prefix): GHRepository {
-        return currentRepoIfExists()
+        return currentRepoIfExists(directory)
             ?: throw UsageError("No repository is configured for the current project")
     }
 }

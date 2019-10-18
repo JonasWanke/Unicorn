@@ -54,8 +54,8 @@ object Unicorn {
         Commands.main(argv)
     }
 
-    internal fun commands(vararg commands: UnicornCommand) {
-        Commands.subcommands(*commands)
+    internal fun addCommand(command: UnicornCommand, aliases: List<String> = emptyList()) {
+        Commands.addSubcommand(command, aliases)
     }
     // endregion
 }
