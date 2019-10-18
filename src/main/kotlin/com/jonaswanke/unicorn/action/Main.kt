@@ -3,7 +3,6 @@ package com.jonaswanke.unicorn.action
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.ajalt.clikt.parameters.options.option
 import com.jonaswanke.unicorn.commands.BaseCommand
 import com.jonaswanke.unicorn.script.Git
 import com.jonaswanke.unicorn.script.GitHub
@@ -15,11 +14,9 @@ fun main(args: Array<String>) {
 }
 
 private object MainCommand : BaseCommand() {
-    val repoToken: String? by option()
-
     override fun run() {
         super.run()
-        val repoToken = repoToken ?: throwError("Input repo-token is required")
+        val repoToken = getRequiredInput("repo-token")
 
         val gh = GitHub.authenticateWithToken(repoToken)
             ?: throwError("Invalid repo-token")
