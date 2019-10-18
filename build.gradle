@@ -63,16 +63,10 @@ jar {
 application {
     mainClassName = "com.jonaswanke.unicorn.action.MainKt"
 }
-    compile(kotlin("stdlib-jdk8"))
-}
-
-sourceSets {
-
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
-}*/
+//shadowJar {
+////    mergeServiceFiles()
+//    manifest {
+//        attributes('Main-Class': 'com.jonaswanke.unicorn.action.MainKt')
 //    }
 //}
 

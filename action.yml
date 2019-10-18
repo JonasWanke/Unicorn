@@ -6,7 +6,7 @@ inputs:
     description: 'The GITHUB_TOKEN secret'
 runs:
   using: 'docker'
-  image: 'action.Dockerfile'
+  image: 'Dockerfile'
 branding:
   icon: check
   color: purple
