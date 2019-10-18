@@ -1,4 +1,4 @@
-FROM gradle:5.6.3-jdk8 as builder
+FROM gradle:5.6-jdk8 as builder
 COPY --chown=gradle:gradle . /home/src
 RUN ls
 WORKDIR /home/src
