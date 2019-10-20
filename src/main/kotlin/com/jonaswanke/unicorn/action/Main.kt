@@ -1,5 +1,6 @@
 package com.jonaswanke.unicorn.action
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -40,16 +41,18 @@ private object MainCommand : BaseCommand() {
         val branch = git.flow.currentBranch(gh) as? Git.Flow.IssueBranch
             ?: throwError("Current branch is not a valid issue branch")
         branch.issue
-        val pr = repo.getPullRequest(payload.pullRequest.number)
+        val pr = repo.getPullRequest(payload.pullRequest.id)
         println(pr)
     }
 }
 
 data class WebhookPayload(
+    @JsonProperty("pull_request")
     val pullRequest: PullRequest? = null
 ) {
     data class PullRequest(
-        val number: Int,
+        @JsonProperty("number")
+        val id: Int,
         val htmlUrl: String? = null,
         val body: String? = null
     )
