@@ -4,6 +4,7 @@ description: 'Check your PRs with Unicorn'
 inputs:
   repo-token:
     description: 'The GITHUB_TOKEN secret'
+    required: true
 runs:
   using: 'docker'
   image: 'Dockerfile'
