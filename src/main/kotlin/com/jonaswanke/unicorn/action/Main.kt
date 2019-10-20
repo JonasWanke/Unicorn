@@ -41,7 +41,7 @@ private object MainCommand : BaseCommand() {
         val branch = git.flow.currentBranch(gh) as? Git.Flow.IssueBranch
             ?: throwError("Current branch is not a valid issue branch")
         branch.issue
-        val pr = repo.getPullRequest(payload.pullRequest.id)
+        val pr = repo.getPullRequest(payload.pullRequest.number)
         println(pr)
     }
 }
@@ -52,7 +52,7 @@ data class WebhookPayload(
 ) {
     data class PullRequest(
         @JsonProperty("number")
-        val id: Int,
+        val number: Int,
         @JsonProperty("html_url")
         val htmlUrl: String? = null,
         @JsonProperty("body")
