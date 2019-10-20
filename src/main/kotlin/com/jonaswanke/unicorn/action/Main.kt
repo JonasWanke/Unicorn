@@ -25,16 +25,16 @@ private object MainCommand : BaseCommand() {
         val projectDir = System.getenv("GITHUB_WORKSPACE")
             ?.let { File(it) }
             ?: throwError("GITHUB_WORKSPACE not set")
-        println(projectDir)
-        println(projectDir.listFiles())
+        println(projectDir.listFiles()?.joinToString())
         val projectConfig = Unicorn.getProjectConfig(projectDir)
 
         val eventFile = System.getenv("GITHUB_EVENT_PATH")?.let { File(it) }
             ?: throwError("GITHUB_EVENT_PATH not set")
+        println(eventFile.readLines().joinToString())
         val payload = ObjectMapper(JsonFactory())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .readValue(eventFile, WebhookPayload::class.java)
-        payload.pullRequest ?: throwError("Unicorn only supports pull_request events")
+        payload.pullRequest ?: throwError("Unicorn currently only supports events of type pull_request")
 
         val git = Git(prefix)
         val branch = git.flow.currentBranch(gh) as? Git.Flow.IssueBranch
