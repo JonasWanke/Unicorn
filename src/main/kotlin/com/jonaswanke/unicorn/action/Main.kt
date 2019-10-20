@@ -53,7 +53,9 @@ data class WebhookPayload(
     data class PullRequest(
         @JsonProperty("number")
         val id: Int,
+        @JsonProperty("html_url")
         val htmlUrl: String? = null,
+        @JsonProperty("body")
         val body: String? = null
     )
 }
