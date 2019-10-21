@@ -2,8 +2,6 @@ package com.jonaswanke.unicorn.commands
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.github.ajalt.clikt.core.*
-import com.github.ajalt.clikt.output.CliktConsole
-import com.github.ajalt.clikt.output.TermUi
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.convert
@@ -13,7 +11,6 @@ import com.jonaswanke.unicorn.ProgramConfig
 import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.script.*
 import com.jonaswanke.unicorn.script.Unicorn.setProjectConfig
-import com.jonaswanke.unicorn.script.command.UnicornCommand
 import com.jonaswanke.unicorn.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
@@ -46,10 +43,10 @@ open class Create : BaseCommand() {
     private val version by option("-v", "--version")
         .convert { SemVer.parse(it) }
 
+    val initInExisting get() = name == null
     override val prefix: File
         get() = super.prefix.let {
-            if (name != null) File(it, name)
-            else it
+            if (initInExisting) it else File(it, name)
         }
 
     override fun execute() {
@@ -117,16 +114,13 @@ open class Create : BaseCommand() {
 
         // Files
         newLine()
-        fun createFiles(): File {
+        fun createFiles() {
             echo("Creating files...")
 
-            val dir = if (initInExisting) prefix
-            else {
+            if (!initInExisting) {
                 echo("Creating directory")
-                File(prefix, "./$name").also {
-                    if (it.exists()) throw PrintMessage("The specified directory already exists!")
-                    it.mkdirs()
-                }
+                if (prefix.exists()) throw PrintMessage("The specified directory already exists!")
+                prefix.mkdirs()
             }
 
             echo("Saving project config")
@@ -137,41 +131,35 @@ open class Create : BaseCommand() {
                 type = type,
                 version = version
             )
-            setProjectConfig(config, dir)
+            Unicorn.projectConfig = config
 
             echo("Copying templates")
-            copyTemplate(dir, replacements, "README.md")
-            copyTemplate(dir, replacements, "licenses/Apache License 2.0.txt", "LICENSE")
-            File(dir, ".github").mkdir()
-            copyTemplate(dir, replacements, "github/PULL_REQUEST_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md")
-            File(dir, ".github/ISSUE_TEMPLATE").mkdir()
+            copyTemplate(replacements, "README.md")
+            copyTemplate(replacements, "licenses/Apache License 2.0.txt", "LICENSE")
+            File(".github").mkdir()
+            copyTemplate(replacements, "github/PULL_REQUEST_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md")
+            File(".github/ISSUE_TEMPLATE").mkdir()
             copyTemplate(
-                dir,
                 replacements,
                 "github/ISSUE_TEMPLATE/1-bug-report.md",
                 ".github/ISSUE_TEMPLATE/1-bug-report.md"
             )
             copyTemplate(
-                dir,
                 replacements,
                 "github/ISSUE_TEMPLATE/2-feature-request.md",
                 ".github/ISSUE_TEMPLATE/2-feature-request.md"
             )
-            return dir
         }
-
-        val dir = createFiles()
+        createFiles()
 
 
         // Travis CI
         newLine()
-        if (!fileExists(dir, CI_TRAVIS_CONFIG_FILE)
-            && confirm("Setup Travis CI?", default = true) == true
-        ) {
+        if (!fileExists(CI_TRAVIS_CONFIG_FILE) && confirm("Setup Travis CI?", default = true) == true) {
             when (type) {
                 ProjectConfig.Type.ANDROID -> {
                     echo("A config file is being generated for you, but you have to manually setup travis-ci.com to connect to GitHub and your repo.")
-                    copyTemplate(dir, replacements, "ci/travis-android.yml", CI_TRAVIS_CONFIG_FILE)
+                    copyTemplate(replacements, "ci/travis-android.yml", CI_TRAVIS_CONFIG_FILE)
                 }
                 else -> echo("Unfortunately, no template is available for your configuration yet :(")
             }
@@ -183,7 +171,7 @@ open class Create : BaseCommand() {
         fun initGit(): Git {
             echo("Initializing git...")
 
-            if (!fileExists(dir, GIT_GITIGNORE_FILE)) {
+            if (!fileExists(GIT_GITIGNORE_FILE)) {
                 val gitignore = promptOptional(
                     "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
                 ) { input ->
@@ -210,19 +198,19 @@ open class Create : BaseCommand() {
                     result
                 }
                 if (gitignore != null) {
-                    copyTemplate(dir, replacements, "gitignore", GIT_GITIGNORE_FILE)
-                    File(dir, GIT_GITIGNORE_FILE)
+                    copyTemplate(replacements, "gitignore", GIT_GITIGNORE_FILE)
+                    File(prefix, GIT_GITIGNORE_FILE)
                         .appendText(gitignore)
                 }
             }
 
-            copyTemplate(dir, replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
+            copyTemplate(replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
 
-            if (isGitRepo(dir)) return Git(dir)
+            if (isGitRepo(prefix)) return Git()
 
-            return Git.init(dir).apply {
+            return Git.init(prefix).apply {
                 add(".")
-                commit(ConventionalCommit.Type.CHORE, description = "initial commit")
+                commit(Unicorn.projectConfig.types.releaseCommit, description = "initial commit")
 
                 checkout(flow.devBranch.name, createBranch = true)
             }
@@ -252,13 +240,14 @@ open class Create : BaseCommand() {
                 return create()
             }
 
+            val gitHub = GitHub.authenticateInteractive()
             val organization = promptOptional<GHOrganization>(
                 "Which organization should this be uploaded to?",
                 optionalText = " (Blank for no organization)"
             ) {
                 if (it.isNullOrBlank()) null
                 else try {
-                    github.getOrganization(it)
+                    gitHub.api.getOrganization(it)
                 } catch (e: IOException) {
                     throw NoSuchOption(it)
                 }
@@ -267,7 +256,7 @@ open class Create : BaseCommand() {
             val private = confirm("Should the repository be private?", default = true)
                 ?: true
             val repoBuilder = organization?.createRepository(name)
-                ?: github.createRepository(name)
+                ?: gitHub.api.createRepository(name)
             val repo = try {
                 repoBuilder.init(private)
             } catch (e: HttpException) {
@@ -325,8 +314,8 @@ open class Create : BaseCommand() {
     data class Label(val name: String, val color: String)
 
 
-    private fun fileExists(dir: File, fileName: String): Boolean {
-        return File(dir, fileName).exists()
+    private fun fileExists(fileName: String): Boolean {
+        return File(prefix, fileName).exists()
     }
 
     private fun isGitRepo(dir: File): Boolean {
@@ -339,8 +328,8 @@ open class Create : BaseCommand() {
     }
 
     // region Resources
-    private fun copyTemplate(dir: File, replacements: Replacements, resource: String, file: String = resource) {
-        val dest = File(dir, file)
+    private fun copyTemplate(replacements: Replacements, resource: String, file: String = resource) {
+        val dest = File(prefix, file)
         if (dest.exists()) return
 
         dest.outputStream().bufferedWriter().use { writer ->

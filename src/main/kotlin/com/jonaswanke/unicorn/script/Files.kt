@@ -17,6 +17,7 @@ object Files {
 
         val DATE_FORMAT = SimpleDateFormat("yyyy-mm-dd")
 
+        /*
         fun formatDescription(
             prefixComment: String? = null,
             messages: List<ConventionalCommit> = emptyList(),
@@ -77,6 +78,7 @@ object Files {
                 append(suffixComment)
             }
         }
+        */
 
         fun addRelease(version: SemVer, name: String? = null, date: Date = Date(), description: String = "") {
             file.insert(MARKER_REGEX.format("<!--", MARKER_NEW_RELEASE, "-->").toRegex(RegexOption.IGNORE_CASE)) {
