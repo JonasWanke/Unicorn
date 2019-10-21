@@ -1,20 +1,20 @@
 package com.jonaswanke.unicorn.action
 
-private const val ICON_ERROR = ":x:"
-private const val ICON_WARNING = ":warning:"
-private const val ICON_INFO = ":information_source:"
 private const val ICON_CHECK = ":heavy_check_mark:"
+private const val ICON_INFO = ":information_source:"
+private const val ICON_WARNING = ":warning:"
+private const val ICON_ERROR = ":x:"
 
 sealed class CheckResult {
     companion object {
-        fun error(message: String, help: String? = null): CheckResult =
-            Simple(Report.Severity.ERROR, message, help)
+        fun info(message: String, help: String? = null): CheckResult =
+            Simple(Report.Severity.INFO, message, help)
 
         fun warning(message: String, help: String? = null): CheckResult =
             Simple(Report.Severity.WARNING, message, help)
 
-        fun info(message: String, help: String? = null): CheckResult =
-            Simple(Report.Severity.INFO, message, help)
+        fun error(message: String, help: String? = null): CheckResult =
+            Simple(Report.Severity.ERROR, message, help)
     }
 
     abstract val severityCounts: Map<Report.Severity, Int>
@@ -86,7 +86,8 @@ data class Report(
             </p>""".trimIndent()
     }
 
-    val severity get() = sections.map { it.severity }.min()
+    val severity: Severity
+        get() = createAllSections().map { it.severity }.max() ?: Severity.INFO
 
     private fun createCheckResultSections(): List<Section> {
         return Severity.values()
@@ -97,12 +98,12 @@ data class Report(
             .toSortedMap()
             .map { (severity, checks) ->
                 val title = "${checks.size} " + when (severity to (checks.size == 1)) {
-                    Severity.ERROR to true -> "Error"
-                    Severity.ERROR to false -> "Errors"
-                    Severity.WARNING to true -> "Warning"
-                    Severity.WARNING to false -> "Warnings"
                     Severity.INFO to true -> "Info"
                     Severity.INFO to false -> "Infos"
+                    Severity.WARNING to true -> "Warning"
+                    Severity.WARNING to false -> "Warnings"
+                    Severity.ERROR to true -> "Error"
+                    Severity.ERROR to false -> "Errors"
                     else -> throw IllegalStateException("Else branch can't be reached")
                 }
                 Section(severity, title) {
@@ -113,22 +114,24 @@ data class Report(
             }
     }
 
+    private fun createAllSections(): List<Section> = createCheckResultSections() + sections
+
+
     override fun toString() = buildString {
         append("## ")
         append(severity.takeUnless { it == Severity.INFO }?.icon ?: ICON_CHECK)
         appendln(" Unicorn Report")
         appendln()
 
-        (createCheckResultSections() + sections)
-            .forEach { it.appendTo(this) }
+        createAllSections().forEach { it.appendTo(this) }
 
         append(SUFFIX)
     }
 
     enum class Severity(val icon: String) {
-        ERROR(ICON_ERROR),
+        INFO(ICON_INFO),
         WARNING(ICON_WARNING),
-        INFO(ICON_INFO);
+        ERROR(ICON_ERROR);
     }
 
     data class Section(
