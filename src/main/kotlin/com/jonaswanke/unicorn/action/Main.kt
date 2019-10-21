@@ -1,36 +1,25 @@
 package com.jonaswanke.unicorn.action
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.core.JsonFactory
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.jonaswanke.unicorn.ProjectConfig
+import com.jonaswanke.unicorn.action.Action.throwError
 import com.jonaswanke.unicorn.script.ConventionalCommit
 import com.jonaswanke.unicorn.script.GitHub
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.closedIssues
 import org.kohsuke.github.GHIssue
 import org.kohsuke.github.GHPullRequest
-import java.io.File
+import kotlin.system.exitProcess
 
 
 fun main() {
-    Unicorn.prefix = System.getenv("GITHUB_WORKSPACE")
-        ?.let { File(it) }
-        ?: throwError("GITHUB_WORKSPACE not set")
-    val repoToken = getRequiredInput("repo-token")
+    Unicorn.prefix = Action.Env.githubWorkspace
+    val repoToken = Action.getRequiredInput("repo-token")
 
     val gh = GitHub.authenticateWithToken(repoToken)
-    val repo = System.getenv("GITHUB_REPOSITORY")
-        ?.let { gh.api.getRepository(it) }
-        ?: throwError("GITHUB_REPOSITORY not set")
+    val repo = gh.api.getRepository(Action.Env.githubRepository)
     val projectConfig = Unicorn.getProjectConfig()
 
-    val eventFile = System.getenv("GITHUB_EVENT_PATH")?.let { File(it) }
-        ?: throwError("GITHUB_EVENT_PATH not set")
-    val payload = ObjectMapper(JsonFactory())
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-        .readValue(eventFile, WebhookPayload::class.java)
+    val payload = Action.getPayload()
     payload.pullRequest ?: throwError("Unicorn currently only supports events of type pull_request")
 
     val pr = repo.getPullRequest(payload.pullRequest.number)
@@ -96,14 +85,4 @@ private fun GHIssue.createOrUpdateComment(identifier: String, body: String) {
         }
 
     comment(newBody)
-}
-
-data class WebhookPayload(
-    @JsonProperty("pull_request")
-    val pullRequest: PullRequest? = null
-) {
-    data class PullRequest(
-        @JsonProperty("number")
-        val number: Int
-    )
 }
