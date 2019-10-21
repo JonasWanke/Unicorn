@@ -25,7 +25,7 @@ fun Unicorn.command(
     builder: CommandBuilder
 ) {
     val command = createCommand(name, aliases, help, epilog, builder)
-    addCommand(command, aliases)
+    addCommand(command)
 }
 
 fun Unicorn.executableCommand(
@@ -36,7 +36,7 @@ fun Unicorn.executableCommand(
     builder: ExecutableCommandBuilder
 ) {
     val command = createExecutableCommand(name, aliases, help, epilog, builder)
-    addCommand(command, aliases)
+    addCommand(command)
 }
 
 
