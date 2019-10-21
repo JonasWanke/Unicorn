@@ -2,6 +2,7 @@ package com.jonaswanke.unicorn.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
@@ -11,9 +12,10 @@ import java.io.File
 
 
 abstract class BaseCommand(
+    name: String? = null,
+    val aliases: List<String> = emptyList(),
     help: String = "",
     epilog: String = "",
-    name: String? = null,
     invokeWithoutSubcommand: Boolean = false
 ) : CliktCommand(help, epilog, name, invokeWithoutSubcommand) {
     init {
@@ -22,15 +24,25 @@ abstract class BaseCommand(
         }
     }
 
+    private val subcommands = mutableListOf<BaseCommand>()
+    override fun aliases() = subcommands.flatMap { command ->
+        command.aliases.map { it to listOf(command.commandName) }
+    }.toMap()
+
+    fun addSubcommand(command: BaseCommand) {
+        subcommands(command)
+        subcommands += command
+    }
+
     open val prefix by option("--prefix")
         .file(exists = true, fileOkay = false)
         .default(File(System.getProperty("user.dir")))
 
-
-    }
-
-
-    override fun run() {
+    final override fun run() {
         Unicorn.prefix = prefix
+        execute()
+        echo("Done!")
     }
+
+    open fun execute() {}
 }

@@ -52,10 +52,7 @@ open class Create : BaseCommand() {
             else it
         }
 
-    override fun run() {
-        super.run()
-
-        val initInExisting = name == null
+    override fun execute() {
         if (initInExisting)
             confirm("Using create in an existing project is experimental. Continue?", abort = true)
 
@@ -323,7 +320,6 @@ open class Create : BaseCommand() {
         }
 
         newLine()
-        echo("Done!")
     }
 
     data class Label(val name: String, val color: String)

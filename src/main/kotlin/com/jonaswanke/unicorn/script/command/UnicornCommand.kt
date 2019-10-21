@@ -1,37 +1,17 @@
 package com.jonaswanke.unicorn.script.command
 
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.subcommands
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.types.file
+import com.jonaswanke.unicorn.commands.BaseCommand
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.UnicornMarker
-import java.io.File
 
 @UnicornMarker
-abstract class UnicornCommand(name: String, help: String = "", invokeWithoutSubcommand: Boolean = false) :
-    CliktCommand(help, name = name, invokeWithoutSubcommand = invokeWithoutSubcommand) {
-    val prefix by option("--prefix")
-        .file(exists = true, fileOkay = false)
-        .default(File(System.getProperty("user.dir")))
-
-    private val aliases = mutableMapOf<String, String>()
-    override fun aliases() = aliases.mapValues { listOf(it.value) }
-
-    fun addSubcommand(command: UnicornCommand, aliases: List<String> = emptyList()) {
-        subcommands(command)
-        this.aliases += aliases.associateWith { command.commandName }
-    }
-
-    protected fun beforeRun() {
-        Unicorn.prefix = prefix
-    }
-
-    override fun run() {
-        beforeRun()
-    }
-}
+abstract class UnicornCommand(
+    name: String? = null,
+    aliases: List<String> = emptyList(),
+    help: String = "",
+    epilog: String = "",
+    invokeWithoutSubcommand: Boolean = false
+) : BaseCommand(name, aliases, help, epilog, invokeWithoutSubcommand)
 
 
 typealias CommandBuilder = UnicornCommand.() -> Unit
@@ -41,9 +21,10 @@ fun Unicorn.command(
     name: String,
     aliases: List<String> = emptyList(),
     help: String = "",
+    epilog: String = "",
     builder: CommandBuilder
 ) {
-    val command = createCommand(name, help, builder)
+    val command = createCommand(name, aliases, help, epilog, builder)
     addCommand(command, aliases)
 }
 
@@ -51,9 +32,10 @@ fun Unicorn.executableCommand(
     name: String,
     aliases: List<String> = emptyList(),
     help: String = "",
+    epilog: String = "",
     builder: ExecutableCommandBuilder
 ) {
-    val command = createExecutableCommand(name, help, builder)
+    val command = createExecutableCommand(name, aliases, help, epilog, builder)
     addCommand(command, aliases)
 }
 
@@ -62,43 +44,46 @@ fun UnicornCommand.command(
     name: String,
     aliases: List<String> = emptyList(),
     help: String = "",
+    epilog: String = "",
     builder: CommandBuilder
 ) {
-    val command = createCommand(name, help, builder)
-    addSubcommand(command, aliases)
+    val command = createCommand(name, aliases, help, epilog, builder)
+    addSubcommand(command)
 }
 
 fun UnicornCommand.executableCommand(
     name: String,
     aliases: List<String> = emptyList(),
     help: String = "",
+    epilog: String = "",
     builder: ExecutableCommandBuilder
 ) {
-    val command = createExecutableCommand(name, help, builder)
-    addSubcommand(command, aliases)
+    val command = createExecutableCommand(name, aliases, help, epilog, builder)
+    addSubcommand(command)
 }
 
 
 private fun createCommand(
     name: String,
+    aliases: List<String> = emptyList(),
     help: String = "",
+    epilog: String = "",
     builder: CommandBuilder
 ): UnicornCommand {
-    return object : UnicornCommand(name, help, false) {}
+    return object : UnicornCommand(name, aliases, help, epilog, false) {}
         .apply { builder() }
 }
 
 private fun createExecutableCommand(
     name: String,
+    aliases: List<String> = emptyList(),
     help: String = "",
+    epilog: String = "",
     builder: ExecutableCommandBuilder
 ): UnicornCommand {
-    return object : UnicornCommand(name, help, true) {
+    return object : UnicornCommand(name, aliases, help, epilog, true) {
         val runnable = builder()
 
-        override fun run() {
-            super.run()
-            runnable()
-        }
+        override fun execute() = runnable()
     }
 }

@@ -1,6 +1,5 @@
 package com.jonaswanke.unicorn.script
 
-import com.github.ajalt.clikt.core.subcommands
 import com.jonaswanke.unicorn.GlobalConfig
 import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.commands.Commands
@@ -54,8 +53,8 @@ object Unicorn {
         Commands.main(argv)
     }
 
-    internal fun addCommand(command: UnicornCommand, aliases: List<String> = emptyList()) {
-        Commands.addSubcommand(command, aliases)
+    internal fun addCommand(command: UnicornCommand) {
+        Commands.addSubcommand(command)
     }
     // endregion
 }
