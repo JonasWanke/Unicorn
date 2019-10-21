@@ -58,7 +58,7 @@ sealed class CheckResult {
 
         override fun appendTo(severity: Report.Severity, builder: StringBuilder) {
             val relevantResults = results.filter { it.severityCounts[severity] ?: 0 > 0 }
-            if (relevantResults.isNotEmpty()) return
+            if (relevantResults.isEmpty()) return
 
             with(builder) {
                 append("<li>")
@@ -88,7 +88,7 @@ data class Report(
 
     val severity get() = sections.map { it.severity }.min()
 
-    fun createCheckResultSections(): List<Section> {
+    private fun createCheckResultSections(): List<Section> {
         return Severity.values()
             .associate { severity ->
                 severity to checkResults.filter { it.severityCounts[severity] ?: 0 > 0 }
