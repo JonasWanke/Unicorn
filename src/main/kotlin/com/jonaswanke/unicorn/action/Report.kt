@@ -59,6 +59,7 @@ sealed class CheckResult {
                 append("<li>")
                 append(message)
                 help?.let {
+                    appendln("<br>")
                     append("<i>")
                     append(it)
                     append("</i>")

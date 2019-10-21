@@ -23,17 +23,18 @@ private fun runTitleChecks(pr: GHPullRequest, config: ProjectConfig): CheckResul
         results += title.validate(config).map { error ->
             when (error) {
                 is ConventionalCommit.ValidationError.InvalidType -> {
-                    val allowedTypes = config.types.list.joinToString { "`$it`" }
-                    CheckResult.error("type `${error.type}` is invalid", "allowed values are: $allowedTypes")
+                    val allowedTypes = config.types.list.joinToString { "<kbd>$it</kbd>" }
+                    CheckResult.error("type <kbd>${error.type}</kbd> is invalid", "allowed values are: $allowedTypes")
                 }
                 is ConventionalCommit.ValidationError.InvalidScopes -> {
-                    val allowedComponents = config.components.joinToString { "`$it`" }
-                    val invalidComponents = error.scopes.joinToString { "`${it.value}` (position ${it.index + 1})" }
+                    val allowedComponents = config.components.joinToString { "<kbd>${it.name}</kbd>" }
+                    val invalidComponents =
+                        error.scopes.joinToString { "<kbd>${it.value}</kbd> (position ${it.index + 1})" }
                     val help = "allowed values are: $allowedComponents"
                     if (error.scopes.size == 1)
-                        CheckResult.error("component `$invalidComponents` is invalid", help)
+                        CheckResult.error("component $invalidComponents is invalid", help)
                     else
-                        CheckResult.error("components `$invalidComponents` are invalid", help)
+                        CheckResult.error("components $invalidComponents are invalid", help)
                 }
             }
         }
