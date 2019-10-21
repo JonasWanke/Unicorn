@@ -151,6 +151,7 @@ data class Report(
                 append(" ")
                 appendln(title)
                 bodyBuilder()
+                appendln()
             }
         }
     }
