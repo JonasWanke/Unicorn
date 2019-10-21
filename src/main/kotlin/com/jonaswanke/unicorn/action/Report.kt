@@ -92,11 +92,11 @@ data class Report(
 
     private fun createCheckResultSections(): List<Section> {
         return Severity.values()
-            .associate { severity ->
+            .map { severity ->
                 severity to checkResults.filter { it.severityCounts[severity] ?: 0 > 0 }
             }
-            .filter { it.value.isNotEmpty() }
-            .toSortedMap()
+            .filter { (_, results) -> results.isNotEmpty() }
+            .sortedByDescending { (severity, _) -> severity }
             .map { (severity, checks) ->
                 val title = "${checks.size} " + when (severity to (checks.size == 1)) {
                     Severity.INFO to true -> "Info"
@@ -108,9 +108,11 @@ data class Report(
                     else -> throw IllegalStateException("Else branch can't be reached")
                 }
                 Section(severity, title) {
+                    appendln("<ul>")
                     checks.forEach { check ->
                         check.appendTo(severity, this)
                     }
+                    appendln("</ul>")
                 }
             }
     }
