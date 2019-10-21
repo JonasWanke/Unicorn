@@ -22,7 +22,7 @@ class ConventionalCommit(
                 ?: throw IllegalArgumentException("Not a valid conventional commit message: $message")
 
             val type = result.groups["type"]!!.value
-            val scopes = result.groups["scopes"]!!.value
+            val scopes = (result.groups["scopes"]?.value ?: "")
                 .split(',')
                 .mapNotNull { scope ->
                     scope.takeUnless { it.isBlank() }
