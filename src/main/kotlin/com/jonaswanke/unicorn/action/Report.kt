@@ -62,7 +62,8 @@ sealed class CheckResult {
 
             with(builder) {
                 append("<li>")
-                appendln(title)
+                append(title)
+                appendln(":")
 
                 appendln("<ul>")
                 relevantResults.forEach {
