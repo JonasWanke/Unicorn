@@ -7,14 +7,38 @@ private const val ICON_ERROR = ":x:"
 
 sealed class CheckResult {
     companion object {
-        fun info(message: String, help: String? = null): CheckResult =
-            Simple(Report.Severity.INFO, message, help)
+        fun info(message: String, help: String? = null): CheckResult {
+            log(Report.Severity.INFO, message, help)
+            return Simple(Report.Severity.INFO, message, help)
+        }
 
-        fun warning(message: String, help: String? = null): CheckResult =
-            Simple(Report.Severity.WARNING, message, help)
+        fun warning(message: String, help: String? = null): CheckResult {
+            log(Report.Severity.WARNING, message, help)
+            return Simple(Report.Severity.WARNING, message, help)
+        }
 
-        fun error(message: String, help: String? = null): CheckResult =
-            Simple(Report.Severity.ERROR, message, help)
+        fun error(message: String, help: String? = null): CheckResult {
+            log(Report.Severity.ERROR, message, help)
+            return Simple(Report.Severity.ERROR, message, help)
+        }
+
+        private fun log(severity: Report.Severity, message: String, help: String? = null) {
+            val helpFormatted = help?.let { "Note:" }
+            when (severity) {
+                Report.Severity.INFO -> {
+                    print(message)
+                    helpFormatted?.let { print(it) }
+                }
+                Report.Severity.WARNING -> {
+                    Action.printWarning(message)
+                    helpFormatted?.let { Action.printWarning(it) }
+                }
+                Report.Severity.ERROR -> {
+                    Action.printError(message)
+                    helpFormatted?.let { Action.printError(it) }
+                }
+            }
+        }
     }
 
     abstract val severityCounts: Map<Report.Severity, Int>
