@@ -109,7 +109,7 @@ class Git(val directory: File = Unicorn.prefix) {
     private fun <C : GitCommand<T>, T> call(command: C, configure: C.() -> Unit = {}): T {
         return command.also {
             if (it is TransportCommand<*, *>)
-                it.setCredentialsProvider(GitHub.getIfAuthenticated()?.credentialsProvider)
+                it.setCredentialsProvider(GitHub.authenticateOrNull()?.credentialsProvider)
             it.configure()
         }.call()
     }

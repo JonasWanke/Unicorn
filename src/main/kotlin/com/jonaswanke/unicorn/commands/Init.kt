@@ -75,7 +75,7 @@ open class Create : BaseCommand() {
             }
         }
 
-        val gitHub = GitHub.authenticate()
+        val gitHub = GitHub.authenticateInteractive()
         val repo = gitHub.currentRepoIfExists()
 
         val description = description

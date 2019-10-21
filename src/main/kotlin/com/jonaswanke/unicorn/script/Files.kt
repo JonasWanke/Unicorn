@@ -84,7 +84,7 @@ object Files {
                 writeLine(buildString {
                     val fullName = if (name == null) version.toString() else "$version $name"
                     append("## ")
-                    val gitHub = GitHub.getIfAuthenticated()
+                    val gitHub = GitHub.authenticateOrNull()
                     if (gitHub != null) {
                         append("[")
                         append(fullName)

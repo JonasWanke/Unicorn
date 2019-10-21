@@ -8,10 +8,7 @@ import com.jonaswanke.unicorn.utils.echo
 import com.jonaswanke.unicorn.utils.prompt
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
-import org.kohsuke.github.GHIssue
-import org.kohsuke.github.GHPullRequest
-import org.kohsuke.github.GHRepository
-import org.kohsuke.github.GHUser
+import org.kohsuke.github.*
 import java.awt.Desktop
 import java.io.File
 import java.net.URI
@@ -20,24 +17,26 @@ import org.kohsuke.github.GitHub as ApiGitHub
 
 class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
     companion object {
-        fun getIfAuthenticated(): GitHub? {
-            Unicorn.globalConfig.github?.also { githubConfig ->
-                val api = githubConfig.buildGitHubApi()
-                if (api.isCredentialValid)
-                    return GitHub(api, OAuthCredentialsProvider(githubConfig.oauthToken))
-                echo("The stored GitHub credentials are invalid")
-            }
-            return null
+        fun authenticateOrNull(config: GlobalConfig.GithubConfig? = Unicorn.globalConfig.github): GitHub? {
+            config ?: return null
+
+            val api = GitHubBuilder().apply {
+                withOAuthToken(config.oauthToken, config.username)
+                config.endpoint?.let { withEndpoint(it) }
+            }.build()
+
+            return api.takeIf { it.isCredentialValid }
+                ?.let { GitHub(api, OAuthCredentialsProvider(config.oauthToken)) }
         }
 
-        fun authenticate(
+        fun authenticateInteractive(
             forceNew: Boolean = false,
             username: String? = null,
             token: String? = null,
             endpoint: String? = null
         ): GitHub {
             if (!forceNew)
-                getIfAuthenticated()?.also { return it }
+                authenticateOrNull()?.also { return it }
 
             echo("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
             while (true) {
@@ -54,14 +53,12 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                     username = usernameAct, oauthToken = tokenAct, endpoint = endpointAct
                 )
                 Unicorn.globalConfig = Unicorn.globalConfig.copy(github = githubConfig)
-                val api = githubConfig.buildGitHubApi()
 
-                val isValid = api.isCredentialValid
-                if (isValid) {
+                authenticateOrNull(githubConfig)?.let {
                     echo("Login successful")
-                    return GitHub(api, OAuthCredentialsProvider(githubConfig.oauthToken))
-                } else
-                    echo("Your credentials are invalid. Please try again.")
+                    return it
+                }
+                echo("Your credentials are invalid. Please try again.")
             }
         }
 
@@ -102,14 +99,13 @@ fun GHIssue.assignTo(user: GHUser, throwIfAlreadyAssigned: Boolean = false) {
 
 
 const val LABEL_TYPE_PREFIX = "T: "
-val GHIssue.type: ConventionalCommit.Type
+val GHIssue.type: String
     get() {
         if (labels.count { it.name.startsWith(LABEL_TYPE_PREFIX) } != 1)
             throw UsageError("Issue $id ($title) must have exactly one label specifying its type: <$LABEL_TYPE_PREFIX[feat,fix,...]>")
 
         return labels.first { it.name.startsWith(LABEL_TYPE_PREFIX) }
             .name.removePrefix(LABEL_TYPE_PREFIX)
-            .let { ConventionalCommit.Type.fromString(it) }
     }
 
 const val LABEL_COMPONENT_PREFIX = "C: "
@@ -125,7 +121,7 @@ fun ConventionalCommit.Companion.format(issue: GHIssue, description: String): St
 fun GHIssue.openPullRequest(
     git: Git,
     title: String,
-    assignees: List<String> = listOf(GitHub.authenticate().api.myself.login),
+    assignees: List<String> = listOf(GitHub.authenticateInteractive().api.myself.login),
     labels: List<String> = getLabels().map { it.name },
     milestone: String? = this.milestone.title,
     base: String? = null
