@@ -11,6 +11,12 @@ plugins {
     id "com.github.johnrengelman.shadow" version "5.1.0"
 }
 
+repositories {
+    jcenter()
+    maven { url 'https://jitpack.io' }
+}
+
+
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     kotlinOptions {
         jvmTarget = "1.8"
@@ -34,17 +40,13 @@ dependencies {
     implementation("net.swiftzer.semver:semver:1.1.0")
     implementation("com.github.ajalt:clikt:1.6.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
-    implementation("org.kohsuke:github-api:1.95")
+    implementation("com.github.github-api:github-api:72d4b9bf62")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.9.8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
 
     implementation("org.slf4j:slf4j-nop:1.7.25")
-}
-
-repositories {
-    jcenter()
 }
 
 sourceSets {

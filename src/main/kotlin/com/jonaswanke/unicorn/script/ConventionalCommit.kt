@@ -74,7 +74,8 @@ class ConventionalCommit(
         val validScopes = config.components.map { it.name }
 
         return listOfNotNull(
-            (type !in config.types.list).thenTake { ValidationError.InvalidType(type) },
+            config.types.list.none { type == it.name }
+                .thenTake { ValidationError.InvalidType(type) },
             scopes.withIndex()
                 .filter { it.value !in validScopes }
                 .takeIf { it.isNotEmpty() }
