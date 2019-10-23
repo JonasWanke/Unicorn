@@ -4,6 +4,9 @@ import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.action.Action.throwError
 import com.jonaswanke.unicorn.script.*
 import org.kohsuke.github.GHIssue
+import org.kohsuke.github.GHPullRequest
+import java.nio.file.FileSystems
+import java.nio.file.Paths
 import kotlin.system.exitProcess
 
 
@@ -21,6 +24,7 @@ fun main() {
     val pr = repo.getPullRequest(payload.pullRequest.number)
 
     assignAuthors(pr)
+    inferLabels(pr, projectConfig)
 
     val checkResults = runChecks(pr, projectConfig)
     val report = Report(checkResults = checkResults)
@@ -33,6 +37,26 @@ fun main() {
 private fun assignAuthors(pr: GHPullRequest) {
     pr.listCommits().map { it.commit.author }
         .let { pr.addAssignees() }
+}
+
+private fun inferLabels(pr: GHPullRequest, config: ProjectConfig) {
+    val closedIssues = pr.closedIssues
+
+    // Type
+    pr.getType(config)?.let { pr.setType(it, config) }
+
+    // Components
+    val fileSystem = FileSystems.getDefault()
+    config.components.filter { component ->
+        val matchers = component.paths.map { fileSystem.getPathMatcher("glob:$it") }
+        pr.listFiles().any { file ->
+            matchers.any { it.matches(Paths.get(file.filename)) }
+        }
+    }
+
+    // Priority
+    closedIssues.mapNotNull { it.getPriority(config) }.max()
+        ?.let { pr.setPriority(it, config) }
 }
 
 private fun GHIssue.createOrUpdateComment(identifier: String, body: String) {

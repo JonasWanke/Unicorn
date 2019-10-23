@@ -3,6 +3,7 @@ package com.jonaswanke.unicorn.script
 import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.GlobalConfig
+import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
 import com.jonaswanke.unicorn.utils.echo
 import com.jonaswanke.unicorn.utils.prompt
@@ -11,6 +12,7 @@ import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.*
 import java.awt.Desktop
 import java.io.File
+import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
 import org.kohsuke.github.GitHub as ApiGitHub
@@ -173,6 +175,103 @@ fun GHPullRequest.toCommitMessage() = buildString {
     val issues = closedIssues
     if (issues.isNotEmpty())
         append(closedIssues.joinToString(prefix = ", fixes ") { "[#${it.number}](${it.htmlUrl})" })
+}
+// endregion
+
+// region Label
+fun GHIssue.setLabels(labels: List<Label>, group: LabelGroup) {
+    labels.forEach { require(it in group) }
+
+    // Remove labels from group that are no longer wanted
+    this.labels
+        .filter { it.name.startsWith(group.prefix) }
+        .filter { existing -> labels.none { it.name == existing.name } }
+        .let { removeLabels(it) }
+
+    // Add new labels
+    labels.map { it.get(repository) }
+        .filter { new -> this.labels.none { it.name == new.name } }
+        .let { addLabels(it) }
+}
+
+fun GHIssue.getLabels(group: LabelGroup): List<Label> =
+    labels.filter { it.name.startsWith(group.prefix) }
+        .mapNotNull {
+            group[it.name] ?: {
+                println("Unknown label \"${it.name}\" with known prefix \"${group.prefix}\"")
+                null
+            }()
+        }
+
+fun GHIssue.getType(config: ProjectConfig): String? {
+    if (this is GHPullRequest)
+        ConventionalCommit.tryParse(title, config)
+            ?.let { return type }
+
+    val labels = getLabels(config.typeLabelGroup)
+    if (labels.size > 1) {
+        println("Multiple type labels found on issue #${number}")
+        return null
+    }
+    return labels.firstOrNull()?.name
+        ?.removePrefix(config.typeLabelGroup.prefix)
+}
+
+fun GHIssue.setType(type: String, config: ProjectConfig) {
+    val label = config.typeLabelGroup[type]
+    if (label == null) {
+        println("Invalid type: $type")
+        return
+    }
+    setLabels(listOf(label), config.typeLabelGroup)
+}
+
+fun GHIssue.getPriority(config: ProjectConfig): Int? {
+    val labels = getLabels(config.priorityLabelGroup)
+    if (labels.size > 1) {
+        println("Multiple priority labels found on issue #${number}")
+        return null
+    }
+    return labels.firstOrNull()
+        ?.let { config.priorityLabelGroup.instances.indexOf(it) }
+}
+
+fun GHIssue.setPriority(priority: Int, config: ProjectConfig) {
+    setLabels(listOf(config.priorityLabelGroup.instances[priority]), config.priorityLabelGroup)
+}
+
+data class Label(
+    val name: String,
+    val color: String,
+    val description: String?
+) {
+    fun get(repo: GHRepository): GHLabel {
+        return try {
+            repo.getLabel(name).also {
+                if (it.color != color)
+                    it.color = color
+                if (it.description != description)
+                    it.description = description
+            }
+        } catch (e: IOException) {
+            repo.createLabel(name, color, description)
+        }
+    }
+}
+
+class LabelGroup(
+    val color: String,
+    val prefix: String,
+    val descriptionPrefix: String = "",
+    instances: List<Pair<String, String?>>
+) {
+    val instances = instances.map { (title, description) -> Label(prefix + title, color, descriptionPrefix + description) }
+
+    operator fun get(name: String) =
+        instances.firstOrNull { it.name == name } ?: instances.firstOrNull { it.name == prefix + name }
+
+    operator fun contains(label: Label) = label in instances
+    operator fun contains(label: GHLabel) = label.name.startsWith(prefix)
 }
 // endregion
 
