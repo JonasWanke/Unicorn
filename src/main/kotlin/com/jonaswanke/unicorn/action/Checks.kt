@@ -6,12 +6,13 @@ import com.jonaswanke.unicorn.script.closedIssues
 import org.kohsuke.github.GHPullRequest
 
 
-internal fun runChecks(pr: GHPullRequest, config: ProjectConfig): List<CheckResult> = listOf(
-    runTitleChecks(pr, config),
-    runClosedIssuesCheck(pr)
+internal fun runChecks(pr: GHPullRequest, config: ProjectConfig): List<CheckResult> = listOfNotNull(
+    runTitleCheck(pr, config),
+    runClosedIssuesCheck(pr),
+    runCommitCheck(pr, config)
 )
 
-private fun runTitleChecks(pr: GHPullRequest, config: ProjectConfig): CheckResult {
+private fun runTitleCheck(pr: GHPullRequest, config: ProjectConfig): CheckResult {
     val results = mutableListOf<CheckResult>()
     val title = try {
         ConventionalCommit.parse(pr.title)
@@ -49,4 +50,16 @@ private fun runClosedIssuesCheck(pr: GHPullRequest): CheckResult {
     )
     val closedIssuesString = closedIssues.joinToString { "#${it.number}" }
     return CheckResult.info("This PR will close the following issues: $closedIssuesString")
+}
+
+private fun runCommitCheck(pr: GHPullRequest, config: ProjectConfig): CheckResult? {
+    return pr.listCommits().filter { ConventionalCommit.tryParse(it.commit.message, config) == null }
+        .map { CheckResult.warning(it.commit.message) }
+        .let {
+            if (it.isEmpty()) return null
+
+            val title =
+                "The following commit ${if (it.size == 1) "message doesn't" else "messages don't"}  follow <a href=\\\"https://www.conventionalcommits.org/en/v1.0.0\\\">conventional commits</a>\""
+            CheckResult.Group(title, it)
+        }
 }

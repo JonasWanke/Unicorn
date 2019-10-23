@@ -16,10 +16,9 @@ class ConventionalCommit(
             return ConventionalCommit(type, scopes, description).toString()
         }
 
-        fun parse(message: String, config: ProjectConfig? = null): ConventionalCommit {
+        fun tryParse(message: String, config: ProjectConfig? = null): ConventionalCommit? {
             // config.types.list.joinToString("|")
-            val result = regex.matchEntire(message)
-                ?: throw IllegalArgumentException("Not a valid conventional commit message: $message")
+            val result = regex.matchEntire(message) ?: return null
 
             val type = result.groups["type"]!!.value
             val scopes = (result.groups["scopes"]?.value ?: "")
@@ -34,6 +33,11 @@ class ConventionalCommit(
             config?.let { commit.validate(it) }
 
             return commit
+        }
+
+        fun parse(message: String, config: ProjectConfig? = null): ConventionalCommit {
+            return tryParse(message, config)
+                ?: throw IllegalArgumentException("Not a valid conventional commit message: $message")
         }
     }
 
