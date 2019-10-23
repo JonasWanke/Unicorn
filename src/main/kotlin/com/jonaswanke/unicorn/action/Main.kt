@@ -1,8 +1,8 @@
 package com.jonaswanke.unicorn.action
 
+import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.action.Action.throwError
-import com.jonaswanke.unicorn.script.GitHub
-import com.jonaswanke.unicorn.script.Unicorn
+import com.jonaswanke.unicorn.script.*
 import org.kohsuke.github.GHIssue
 import kotlin.system.exitProcess
 
@@ -20,12 +20,19 @@ fun main() {
 
     val pr = repo.getPullRequest(payload.pullRequest.number)
 
+    assignAuthors(pr)
+
     val checkResults = runChecks(pr, projectConfig)
     val report = Report(checkResults = checkResults)
     pr.createOrUpdateComment("unicorn-report", report.toString())
 
     // Notify GitHub of erroneous status
     if (report.severity == Report.Severity.ERROR) exitProcess(1)
+}
+
+private fun assignAuthors(pr: GHPullRequest) {
+    pr.listCommits().map { it.commit.author }
+        .let { pr.addAssignees() }
 }
 
 private fun GHIssue.createOrUpdateComment(identifier: String, body: String) {
