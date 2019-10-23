@@ -270,6 +270,7 @@ data class Label(
                     it.description = description
             }
         } catch (e: IOException) {
+            println(e)
             repo.createLabel(name, color, description)
         }
     }

@@ -48,13 +48,13 @@ private fun inferLabels(pr: GHPullRequest, config: ProjectConfig) {
     // Components
     val fileSystem = FileSystems.getDefault()
     config.components.filter { component ->
-        val matchers = component.paths.map { fileSystem.getPathMatcher("glob:$it") }
+        val matchers = component.paths.map {
+            println("Creating path matcher for glob $it")
+            fileSystem.getPathMatcher("glob:$it")
+        }
         pr.listFiles().any { file ->
             println("Matching file $file (${file.filename})")
-            matchers.any {
-                println("  with matcher $it")
-                it.matches(Paths.get(file.filename))
-            }
+            matchers.any { it.matches(Paths.get(file.filename)) }
         }
     }
 
