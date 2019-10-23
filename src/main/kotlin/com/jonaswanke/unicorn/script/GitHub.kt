@@ -15,6 +15,8 @@ import java.io.File
 import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
+import java.nio.file.FileSystems
+import java.nio.file.Paths
 import org.kohsuke.github.GitHub as ApiGitHub
 
 class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
@@ -100,24 +102,9 @@ fun GHIssue.assignTo(user: GHUser, throwIfAlreadyAssigned: Boolean = false) {
 }
 
 
-const val LABEL_TYPE_PREFIX = "T: "
-val GHIssue.type: String
-    get() {
-        if (labels.count { it.name.startsWith(LABEL_TYPE_PREFIX) } != 1)
-            throw UsageError("Issue $id ($title) must have exactly one label specifying its type: <$LABEL_TYPE_PREFIX[feat,fix,...]>")
-
-        return labels.first { it.name.startsWith(LABEL_TYPE_PREFIX) }
-            .name.removePrefix(LABEL_TYPE_PREFIX)
-    }
-
-const val LABEL_COMPONENT_PREFIX = "C: "
-val GHIssue.components
-    get() = labels.filter { it.name.startsWith(LABEL_COMPONENT_PREFIX) }
-        .map { it.name.removePrefix(LABEL_COMPONENT_PREFIX) }
-
-
-fun ConventionalCommit.Companion.format(issue: GHIssue, description: String): String {
-    return format(issue.type, issue.components, description)
+fun ConventionalCommit.Companion.format(issue: GHIssue, description: String, config: ProjectConfig): String? {
+    val type = issue.getType(config) ?: return null
+    return format(type, issue.getComponents(config), description)
 }
 
 fun GHIssue.openPullRequest(
@@ -206,7 +193,7 @@ fun GHIssue.getLabels(group: LabelGroup): List<Label> =
 fun GHIssue.getType(config: ProjectConfig): String? {
     if (this is GHPullRequest)
         ConventionalCommit.tryParse(title, config)
-            ?.let { return type }
+            ?.let { return it.type }
 
     val labels = getLabels(config.typeLabelGroup)
     if (labels.size > 1) {
@@ -224,6 +211,35 @@ fun GHIssue.setType(type: String, config: ProjectConfig) {
         return
     }
     setLabels(listOf(label), config.typeLabelGroup)
+}
+
+fun GHIssue.getComponents(config: ProjectConfig): List<String> {
+    val labels = if (this is GHPullRequest) {
+        val fileSystem = FileSystems.getDefault()
+        config.components
+            .filter { component ->
+                val matchers = component.paths
+                    .map { fileSystem.getPathMatcher("glob:$it") }
+                listFiles().any { file ->
+                    matchers.any { it.matches(Paths.get(file.filename)) }
+                }
+            }
+            .map { it.name }
+
+    } else getLabels(config.componentsLabelGroup)
+        .map { it.name }
+    return labels.map { it.removePrefix(config.labels.components.prefix) }
+}
+
+fun GHIssue.setComponents(components: List<String>, config: ProjectConfig) {
+    val labels = components.map { config.componentsLabelGroup[it] }
+        .also { labels ->
+            labels.forEachIndexed { index, label ->
+                if (label == null) println("Invalid component: ${components[index]}")
+            }
+        }
+        .filterNotNull()
+    setLabels(labels, config.componentsLabelGroup)
 }
 
 fun GHIssue.getPriority(config: ProjectConfig): Int? {
@@ -265,7 +281,8 @@ class LabelGroup(
     val descriptionPrefix: String = "",
     instances: List<Pair<String, String?>>
 ) {
-    val instances = instances.map { (title, description) -> Label(prefix + title, color, descriptionPrefix + description) }
+    val instances =
+        instances.map { (title, description) -> Label(prefix + title, color, descriptionPrefix + description) }
 
     operator fun get(name: String) =
         instances.firstOrNull { it.name == name } ?: instances.firstOrNull { it.name == prefix + name }

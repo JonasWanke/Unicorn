@@ -36,6 +36,12 @@ data class ProjectConfig(
         labels.priorities.descriptionPrefix,
         types.list.map { it.name to it.description }
     )
+    val componentsLabelGroup: LabelGroup = LabelGroup(
+        labels.components.color,
+        labels.components.prefix,
+        labels.components.descriptionPrefix,
+        components.map { it.name to it.description }
+    )
     val priorityLabelGroup: LabelGroup = LabelGroup(
         labels.priorities.color,
         labels.priorities.prefix,
