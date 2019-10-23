@@ -23,10 +23,10 @@ sealed class CheckResult {
         }
 
         private fun log(severity: Report.Severity, message: String, help: String? = null) {
-            val helpFormatted = help?.let { "Note:" }
+            val helpFormatted = help?.let { "Note: $it" }
             when (severity) {
                 Report.Severity.INFO -> {
-                    print(message)
+                    println(message)
                     helpFormatted?.let { print(it) }
                 }
                 Report.Severity.WARNING -> {

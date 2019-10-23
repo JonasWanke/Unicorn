@@ -24,7 +24,7 @@ private fun runTitleCheck(pr: GHPullRequest, config: ProjectConfig): CheckResult
         results += title.validate(config).map { error ->
             when (error) {
                 is ConventionalCommit.ValidationError.InvalidType -> {
-                    val allowedTypes = config.types.list.joinToString { "<kbd>$it</kbd>" }
+                    val allowedTypes = config.types.list.joinToString { "<kbd>${it.name}</kbd>" }
                     CheckResult.error("type <kbd>${error.type}</kbd> is invalid", "allowed values are: $allowedTypes")
                 }
                 is ConventionalCommit.ValidationError.InvalidScopes -> {
@@ -54,12 +54,12 @@ private fun runClosedIssuesCheck(pr: GHPullRequest): CheckResult {
 
 private fun runCommitCheck(pr: GHPullRequest, config: ProjectConfig): CheckResult? {
     return pr.listCommits().filter { ConventionalCommit.tryParse(it.commit.message, config) == null }
-        .map { CheckResult.warning(it.commit.message) }
+        .map { CheckResult.warning("`${it.commit.message}`") }
         .let {
             if (it.isEmpty()) return null
 
             val title =
-                "The following commit ${if (it.size == 1) "message doesn't" else "messages don't"}  follow <a href=\\\"https://www.conventionalcommits.org/en/v1.0.0\\\">conventional commits</a>\""
+                "The following commit ${if (it.size == 1) "message doesn't" else "messages don't"}  follow <a href=\"https://www.conventionalcommits.org/en/v1.0.0\">conventional commits</a>"
             CheckResult.Group(title, it)
         }
 }
