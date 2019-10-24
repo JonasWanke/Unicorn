@@ -263,7 +263,7 @@ data class Label(
 ) {
     fun get(repo: GHRepository): GHLabel {
         return try {
-            repo.getLabel(name).also {
+            repo.getLabel(URLEncoder.encode(name, "UTF-8").replace("+", "%20")).also {
                 if (it.color != color)
                     it.color = color
                 if (it.description != description)

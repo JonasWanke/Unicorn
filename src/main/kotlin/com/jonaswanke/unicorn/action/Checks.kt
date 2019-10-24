@@ -54,7 +54,7 @@ private fun runClosedIssuesCheck(pr: GHPullRequest): CheckResult {
 
 private fun runCommitCheck(pr: GHPullRequest, config: ProjectConfig): CheckResult? {
     return pr.listCommits().filter { ConventionalCommit.tryParse(it.commit.message, config) == null }
-        .map { CheckResult.warning("`${it.commit.message}`") }
+        .map { CheckResult.warning("<code>${it.commit.message}</code>>") }
         .let {
             if (it.isEmpty()) return null
 
