@@ -47,16 +47,23 @@ private fun inferLabels(pr: GHPullRequest, config: ProjectConfig) {
 
     // Components
     val fileSystem = FileSystems.getDefault()
-    config.components.filter { component ->
-        val matchers = component.paths.map {
-            println("Creating path matcher for glob \"glob:$it\"")
-            fileSystem.getPathMatcher("glob:$it")
+    config.components
+        .associateWith { it.paths }
+        .mapValues { (_, paths) ->
+            paths.map {
+                println("Creating path matcher for glob \"glob:$it\"")
+                fileSystem.getPathMatcher("glob:$it")
+            }
         }
-        pr.listFiles().any { file ->
-            println("Matching file ${file.filename}")
-            matchers.any { it.matches(Paths.get(file.filename)) }
+        .filter { (component, matchers) ->
+            pr.listFiles().any { file ->
+                println("Matching file ${file.filename}")
+                matchers.any { it.matches(Paths.get(file.filename)) }
+                    .also { if (it) print("$component matches ${file.filename}") }
+            }
         }
-    }
+        .map { (component, _) -> component.name }
+        .let { pr.setComponents(it, config) }
 
     // Priority
     closedIssues.mapNotNull { it.getPriority(config) }.max()
