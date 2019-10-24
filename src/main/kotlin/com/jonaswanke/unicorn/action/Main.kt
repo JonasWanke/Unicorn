@@ -50,16 +50,11 @@ private fun inferLabels(pr: GHPullRequest, config: ProjectConfig) {
     config.components
         .associateWith { it.paths }
         .mapValues { (_, paths) ->
-            paths.map {
-                println("Creating path matcher for glob \"glob:$it\"")
-                fileSystem.getPathMatcher("glob:$it")
-            }
+            paths.map { fileSystem.getPathMatcher("glob:$it") }
         }
         .filter { (component, matchers) ->
             pr.listFiles().any { file ->
-                println("Matching file ${file.filename}")
                 matchers.any { it.matches(Paths.get(file.filename)) }
-                    .also { if (it) print("$component matches ${file.filename}") }
             }
         }
         .map { (component, _) -> component.name }

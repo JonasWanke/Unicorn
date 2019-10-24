@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.GlobalConfig
 import com.jonaswanke.unicorn.ProjectConfig
+import com.jonaswanke.unicorn.action.Action
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
 import com.jonaswanke.unicorn.utils.echo
 import com.jonaswanke.unicorn.utils.prompt
@@ -173,12 +174,22 @@ fun GHIssue.setLabels(labels: List<Label>, group: LabelGroup) {
     this.labels
         .filter { it.name.startsWith(group.prefix) }
         .filter { existing -> labels.none { it.name == existing.name } }
-        .let { removeLabels(it) }
+        .takeUnless { it.isEmpty() }
+        ?.let {
+            removeLabels(it)
+            if (this is GHPullRequest) refresh()
+            else Action.printWarning("Updating issue labels is buggy ATM")
+        }
 
     // Add new labels
     labels.map { it.get(repository) }
         .filter { new -> this.labels.none { it.name == new.name } }
-        .let { addLabels(it) }
+        .takeUnless { it.isEmpty() }
+        ?.let {
+            addLabels(it)
+            if (this is GHPullRequest) refresh()
+            else Action.printWarning("Updating issue labels is buggy ATM")
+        }
 }
 
 fun GHIssue.getLabels(group: LabelGroup): List<Label> =
@@ -282,8 +293,13 @@ class LabelGroup(
     val descriptionPrefix: String = "",
     instances: List<Pair<String, String?>>
 ) {
-    val instances =
-        instances.map { (title, description) -> Label(prefix + title, color, descriptionPrefix + description) }
+    val instances = instances.map { (title, description) ->
+        Label(
+            prefix + title,
+            color,
+            descriptionPrefix + (description ?: title)
+        )
+    }
 
     operator fun get(name: String) =
         instances.firstOrNull { it.name == name } ?: instances.firstOrNull { it.name == prefix + name }
