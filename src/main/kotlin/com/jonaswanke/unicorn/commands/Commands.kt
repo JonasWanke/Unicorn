@@ -6,7 +6,8 @@ object Commands : BaseCommand() {
     init {
         subcommands(
             Login(), Logout(),
-            Create()
+            Create(),
+            LabelCommand()
         )
     }
 

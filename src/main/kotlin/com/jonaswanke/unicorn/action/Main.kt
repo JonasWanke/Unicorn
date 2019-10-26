@@ -52,7 +52,7 @@ private fun inferLabels(pr: GHPullRequest, config: ProjectConfig) {
         .mapValues { (_, paths) ->
             paths.map { fileSystem.getPathMatcher("glob:$it") }
         }
-        .filter { (component, matchers) ->
+        .filter { (_, matchers) ->
             pr.listFiles().any { file ->
                 matchers.any { it.matches(Paths.get(file.filename)) }
             }
