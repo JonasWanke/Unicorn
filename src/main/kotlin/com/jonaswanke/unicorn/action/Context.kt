@@ -1,11 +1,9 @@
 package com.jonaswanke.unicorn.action
 
 import com.jonaswanke.unicorn.GlobalConfig
-import com.jonaswanke.unicorn.commands.LogCollector
 import com.jonaswanke.unicorn.commands.Priority
 import com.jonaswanke.unicorn.commands.RunContext
 import com.jonaswanke.unicorn.utils.Markup
-import com.jonaswanke.unicorn.utils.MarkupBuilder
 import java.io.File
 
 class GitHubActionRunContext : RunContext() {
