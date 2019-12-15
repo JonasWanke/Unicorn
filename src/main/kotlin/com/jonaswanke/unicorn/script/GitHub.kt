@@ -53,7 +53,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
             if (!forceNew)
                 authenticateOrNull(context)?.also { return it }
             if (!context.isInteractive) {
-                context.e("Login didn't work. Username: ${context.globalConfig.gitHub?.username}, custom endpoint: ${context.globalConfig.gitHub?.endpoint}")
+                context.e("Login didn't work. ${context.globalConfig} Username: ${context.globalConfig.gitHub?.username}, custom endpoint: ${context.globalConfig.gitHub?.endpoint}")
                 throw UsageError("GitHub login failed")
             }
 
