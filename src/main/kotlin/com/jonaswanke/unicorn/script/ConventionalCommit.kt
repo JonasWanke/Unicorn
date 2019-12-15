@@ -108,7 +108,7 @@ class ConventionalCommit(
         val validScopes: List<String>
     ) {
         val isTypeValid: Boolean
-            get() = invalidType != null
+            get() = invalidType == null
         val areScopesValid: Boolean
             get() = invalidScopes.isEmpty()
 
