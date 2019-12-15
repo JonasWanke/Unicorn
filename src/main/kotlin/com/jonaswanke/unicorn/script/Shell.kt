@@ -1,16 +1,22 @@
 package com.jonaswanke.unicorn.script
 
+import com.jonaswanke.unicorn.commands.RunContext
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 const val EXIT_VALUE_DEFAULT = 0
 
 fun execute(
+    context: RunContext,
     vararg arguments: String,
     directory: File? = null,
     timeout: Long? = 10,
     timeoutUnit: TimeUnit = TimeUnit.SECONDS
 ): String {
+    context.i {
+        +"Executing \"${arguments.joinToString(" ")}\""
+        if (directory != null) +"in directory $directory"
+    }
     val process = ProcessBuilder(*arguments)
         .directory(directory)
         .start()

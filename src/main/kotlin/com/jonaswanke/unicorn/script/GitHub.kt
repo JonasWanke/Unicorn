@@ -5,6 +5,7 @@ import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.GlobalConfig
 import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.action.Action
+import com.jonaswanke.unicorn.commands.RunContext
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
 import com.jonaswanke.unicorn.utils.echo
 import com.jonaswanke.unicorn.utils.prompt
@@ -12,7 +13,6 @@ import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.*
 import java.awt.Desktop
-import java.io.File
 import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
@@ -22,26 +22,40 @@ import org.kohsuke.github.GitHub as ApiGitHub
 
 class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
     companion object {
-        fun authenticateOrNull(config: GlobalConfig.GithubConfig? = Unicorn.globalConfig.github): GitHub? {
-            config ?: return null
+        fun authenticateOrNull(context: RunContext): GitHub? {
+            val config = context.globalConfig.gitHub ?: return null
 
             val api = GitHubBuilder().apply {
-                withOAuthToken(config.oauthToken, config.username)
-                config.endpoint?.let { withEndpoint(it) }
+                if (config.anonymousToken != null)
+                    withOAuthToken(config.anonymousToken, "anonymous")
+                else if (config.username != null && config.oauthToken != null)
+                    withOAuthToken(config.oauthToken, config.username)
+
+                if (config.endpoint != null)
+                    withEndpoint(config.endpoint)
             }.build()
 
-            return api.takeIf { it.isCredentialValid }
-                ?.let { GitHub(api, OAuthCredentialsProvider(config.oauthToken)) }
+            // isCredentialValid tries to retrieve the current user which doesn't work with an anonymous token
+            return api.takeIf { config.anonymousToken != null || it.isCredentialValid }
+                ?.let { GitHub(api, OAuthCredentialsProvider(config.anonymousToken ?: config.oauthToken!!)) }
         }
 
-        fun authenticateInteractive(
+        fun authenticate(
+            context: RunContext,
             forceNew: Boolean = false,
             username: String? = null,
             token: String? = null,
             endpoint: String? = null
         ): GitHub {
+            @Suppress("NAME_SHADOWING")
+            val context = context.group("GitHub login")
+
             if (!forceNew)
-                authenticateOrNull()?.also { return it }
+                authenticateOrNull(context)?.also { return it }
+            if (!context.isInteractive) {
+                context.e("Login didn't work. Username: ${context.globalConfig.gitHub?.username}, custom endpoint: ${context.globalConfig.gitHub?.endpoint}")
+                throw UsageError("GitHub login failed")
+            }
 
             echo("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
             while (true) {
@@ -54,27 +68,22 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                 val endpointAct = endpoint
                     ?: promptOptional("Custom GitHub endpoint?")
 
-                val githubConfig = GlobalConfig.GithubConfig(
+                val githubConfig = GlobalConfig.GitHubConfig(
                     username = usernameAct, oauthToken = tokenAct, endpoint = endpointAct
                 )
-                Unicorn.globalConfig = Unicorn.globalConfig.copy(github = githubConfig)
+                context.globalConfig = context.globalConfig.copy(gitHub = githubConfig)
 
-                authenticateOrNull(githubConfig)?.let {
-                    echo("Login successful")
+                authenticateOrNull(context)?.let {
+                    context.i("Login successful")
                     return it
                 }
-                echo("Your credentials are invalid. Please try again.")
+                context.w("Your credentials are invalid. Please try again.")
             }
-        }
-
-        fun authenticateWithToken(token: String): GitHub {
-            val api = ApiGitHub.connect("anonymous", token)
-            return GitHub(api, OAuthCredentialsProvider(token))
         }
     }
 
-    fun currentRepoNameIfExists(directory: File = Unicorn.prefix): String? {
-        return Git(directory).remoteList().mapNotNull { remoteConfig ->
+    fun currentRepoNameOrNull(context: RunContext): String? {
+        return Git(context).listRemotes(context).mapNotNull { remoteConfig ->
             remoteConfig.urIs.firstOrNull { it.host == "github.com" }
         }
             .firstOrNull()
@@ -83,35 +92,47 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
             ?.substringBeforeLast('.')
     }
 
-    fun currentRepoIfExists(directory: File = Unicorn.prefix): GHRepository? {
-        return currentRepoNameIfExists(directory)?.let { api.getRepository(it) }
+    fun currentRepoOrNull(context: RunContext): GHRepository? {
+        return currentRepoNameOrNull(context)?.let { api.getRepository(it) }
     }
 
-    fun currentRepo(directory: File = Unicorn.prefix): GHRepository {
-        return currentRepoIfExists(directory)
+    fun currentRepo(context: RunContext): GHRepository {
+        return currentRepoOrNull(context)
             ?: throw UsageError("No repository is configured for the current project")
     }
 }
 
 // region Issue
-fun GHIssue.assignTo(user: GHUser, throwIfAlreadyAssigned: Boolean = false) {
-    val assignees = assignees
-    if (assignees.size > 1 || (assignees.size == 1 && assignees.first() != user))
-        throw UsageError("Issue $id is already assigned to ${assignees.joinToString { it.name }}")
+fun GHIssue.assignTo(context: RunContext, user: GHUser, throwIfAlreadyAssigned: Boolean = false): List<GHUser> {
+    @Suppress("NAME_SHADOWING")
+    val context = context.group("Assign GitHub issue #$number to ${user.login}")
+
+    val oldAssignees = assignees
+    context.d("Current assignees: ${oldAssignees.joinToString { it.login }}")
+    if (throwIfAlreadyAssigned && (oldAssignees.size > 1 || (oldAssignees.size == 1 && oldAssignees.first() != user)))
+        throw UsageError("Issue is already assigned")
 
     assignTo(user)
+    context.i("Successfully assigned")
+
+    return oldAssignees
 }
 
 
-fun ConventionalCommit.Companion.format(issue: GHIssue, description: String, config: ProjectConfig): String? {
-    val type = issue.getType(config) ?: return null
-    return format(type, issue.getComponents(config), description)
+fun ConventionalCommit.Companion.format(
+    context: RunContext,
+    issue: GHIssue,
+    description: String
+): String? {
+    val type = issue.getType(context) ?: return null
+    return format(type, issue.getComponents(context), description)
 }
 
 fun GHIssue.openPullRequest(
-    git: Git,
+    context: RunContext,
     title: String,
-    assignees: List<String> = listOf(GitHub.authenticateInteractive().api.myself.login),
+    git: Git = context.git,
+    assignees: List<String> = listOf(GitHub.authenticate(context).api.myself.login),
     labels: List<String> = getLabels().map { it.name },
     milestone: String? = this.milestone.title,
     base: String? = null
@@ -201,18 +222,19 @@ fun GHIssue.getLabels(group: LabelGroup): List<Label> =
             }()
         }
 
-fun GHIssue.getType(config: ProjectConfig): String? {
+fun GHIssue.getType(context: RunContext): String? {
     if (this is GHPullRequest)
-        ConventionalCommit.tryParse(title, config)
+        ConventionalCommit.tryParse(title)
+            ?.takeIf { it.isValid(context) }
             ?.let { return it.type }
 
-    val labels = getLabels(config.typeLabelGroup)
+    val labels = getLabels(context.projectConfig.typeLabelGroup)
     if (labels.size > 1) {
-        println("Multiple type labels found on issue #${number}")
+        context.w("Multiple type labels found on issue #${number}")
         return null
     }
     return labels.firstOrNull()?.name
-        ?.removePrefix(config.typeLabelGroup.prefix)
+        ?.removePrefix(context.projectConfig.typeLabelGroup.prefix)
 }
 
 fun GHIssue.setType(type: String, config: ProjectConfig) {
@@ -224,10 +246,10 @@ fun GHIssue.setType(type: String, config: ProjectConfig) {
     setLabels(listOf(label), config.typeLabelGroup)
 }
 
-fun GHIssue.getComponents(config: ProjectConfig): List<String> {
+fun GHIssue.getComponents(context: RunContext): List<String> {
     val labels = if (this is GHPullRequest) {
         val fileSystem = FileSystems.getDefault()
-        config.components
+        context.projectConfig.components
             .filter { component ->
                 val matchers = component.paths
                     .map { fileSystem.getPathMatcher("glob:$it") }
@@ -237,34 +259,37 @@ fun GHIssue.getComponents(config: ProjectConfig): List<String> {
             }
             .map { it.name }
 
-    } else getLabels(config.componentsLabelGroup)
+    } else getLabels(context.projectConfig.componentsLabelGroup)
         .map { it.name }
-    return labels.map { it.removePrefix(config.labels.components.prefix) }
+    return labels.map { it.removePrefix(context.projectConfig.labels.components.prefix) }
 }
 
-fun GHIssue.setComponents(components: List<String>, config: ProjectConfig) {
-    val labels = components.map { config.componentsLabelGroup[it] }
+fun GHIssue.setComponents(context: RunContext, components: List<String>) {
+    val labels = components.map { context.projectConfig.componentsLabelGroup[it] }
         .also { labels ->
             labels.forEachIndexed { index, label ->
                 if (label == null) println("Invalid component: ${components[index]}")
             }
         }
         .filterNotNull()
-    setLabels(labels, config.componentsLabelGroup)
+    setLabels(labels, context.projectConfig.componentsLabelGroup)
 }
 
-fun GHIssue.getPriority(config: ProjectConfig): Int? {
-    val labels = getLabels(config.priorityLabelGroup)
+fun GHIssue.getPriority(context: RunContext): Int? {
+    val labels = getLabels(context.projectConfig.priorityLabelGroup)
     if (labels.size > 1) {
         println("Multiple priority labels found on issue #${number}")
         return null
     }
     return labels.firstOrNull()
-        ?.let { config.priorityLabelGroup.instances.indexOf(it) }
+        ?.let { context.projectConfig.priorityLabelGroup.instances.indexOf(it) }
 }
 
-fun GHIssue.setPriority(priority: Int, config: ProjectConfig) {
-    setLabels(listOf(config.priorityLabelGroup.instances[priority]), config.priorityLabelGroup)
+fun GHIssue.setPriority(context: RunContext, priority: Int) {
+    setLabels(
+        listOf(context.projectConfig.priorityLabelGroup.instances[priority]),
+        context.projectConfig.priorityLabelGroup
+    )
 }
 
 data class Label(

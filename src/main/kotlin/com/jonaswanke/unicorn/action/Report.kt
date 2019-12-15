@@ -1,10 +1,68 @@
 package com.jonaswanke.unicorn.action
 
+import com.jonaswanke.unicorn.commands.LogCollector
+import com.jonaswanke.unicorn.commands.Priority
+import com.jonaswanke.unicorn.utils.*
+import java.io.File
+
 private const val ICON_CHECK = ":heavy_check_mark:"
 private const val ICON_INFO = ":information_source:"
 private const val ICON_WARNING = ":warning:"
 private const val ICON_ERROR = ":x:"
 
+class ReportLogCollector : LogCollector<LogCollector.SimpleGroup> {
+    val reportItems = ReportItem.Group(LogCollector.SimpleGroup(this, Markup()))
+
+    override fun log(
+        priority: Priority,
+        markup: Markup,
+        groups: List<LogCollector.SimpleGroup>,
+        file: File?,
+        line: Int?,
+        col: Int?
+    ) {
+        val group = groups
+            .foldRight(reportItems) { group, position ->
+                position.children
+                    .filterIsInstance<ReportItem.Group>()
+                    .firstOrNull { it.group == group }
+                    ?: ReportItem.Group(group).also {
+                        position.children += it
+                    }
+            }
+        group.children += ReportItem.Line(priority, markup)
+    }
+
+    override fun group(name: Markup) = LogCollector.SimpleGroup(this, name)
+
+}
+
+sealed class ReportItem {
+    data class Group(val group: LogCollector.SimpleGroup) : ReportItem() {
+        val children: MutableList<ReportItem> = mutableListOf()
+
+        fun filter(predicate: (Line) -> Boolean): Group {
+            val result = Group(group)
+            for (child in children)
+                when (child) {
+                    is Group -> {
+                        val filtered = child.filter(predicate)
+                        if (filtered.children.isNotEmpty())
+                            result.children += child
+                    }
+                    is Line -> if (predicate(child)) result.children += child
+                }
+            return result
+        }
+    }
+
+    data class Line(
+        val priority: Priority,
+        val markup: Markup
+    ) : ReportItem()
+}
+
+@Deprecated("")
 sealed class CheckResult {
     companion object {
         fun info(message: String, help: String? = null): CheckResult {
@@ -102,7 +160,7 @@ sealed class CheckResult {
 }
 
 data class Report(
-    val checkResults: List<CheckResult> = emptyList(),
+    val checkResults: ReportItem.Group? = null,
     val sections: List<Section> = emptyList()
 ) {
     companion object {
@@ -119,12 +177,20 @@ data class Report(
     private fun createCheckResultSections(): List<Section> {
         return Severity.values()
             .map { severity ->
-                severity to checkResults.filter { it.severityCounts[severity] ?: 0 > 0 }
+                val results = checkResults?.filter {
+                    when (severity) {
+                        Severity.INFO -> it.priority == Priority.INFO
+                        Severity.WARNING -> it.priority == Priority.WARNING
+                        Severity.ERROR -> it.priority in listOf(Priority.ERROR, Priority.WTF)
+                    }
+                }
+                severity to results
             }
-            .filter { (_, results) -> results.isNotEmpty() }
             .sortedByDescending { (severity, _) -> severity }
-            .map { (severity, checks) ->
-                val title = "${checks.size} " + when (severity to (checks.size == 1)) {
+            .mapNotNull { (severity, results) ->
+                if (results == null) return@mapNotNull null
+
+                val title = "${results.children.size} " + when (severity to (results.children.size == 1)) {
                     Severity.INFO to true -> "Info"
                     Severity.INFO to false -> "Infos"
                     Severity.WARNING to true -> "Warning"
@@ -133,29 +199,46 @@ data class Report(
                     Severity.ERROR to false -> "Errors"
                     else -> throw IllegalStateException("Else branch can't be reached")
                 }
-                Section(severity, title) {
-                    appendln("<ul>")
-                    checks.forEach { check ->
-                        check.appendTo(severity, this)
+
+                fun appendGroup(markup: Markup, group: ReportItem.Group): Unit {
+                    markup.apply{
+                        list {
+                            for (child in group.children)
+                                when (child) {
+                                    is ReportItem.Group -> appendGroup(markup, child)
+                                    is ReportItem.Line -> +child.markup
+                                }
+                        }
                     }
-                    appendln("</ul>")
                 }
+
+                Section(severity, title, buildMarkup {
+                    h3("${severity.icon} $title")
+
+                    for (child in results.children)
+                        when (child) {
+                            is ReportItem.Group -> appendGroup(this, child)
+                            is ReportItem.Line -> +child.markup
+                        }
+                })
             }
     }
 
     private fun createAllSections(): List<Section> = createCheckResultSections() + sections
 
 
-    override fun toString() = buildString {
-        append("## ")
-        append(severity.takeUnless { it == Severity.INFO }?.icon ?: ICON_CHECK)
-        appendln(" Unicorn Report")
-        appendln()
+    override fun toString() = buildMarkup {
+        h2 {
+            +(severity.takeUnless { it == Severity.INFO }?.icon ?: ICON_CHECK)
+            +" Unicorn Report"
+        }
 
-        createAllSections().forEach { it.appendTo(this) }
+        createAllSections()
+            .map { it.build() }
+            .forEach { +it }
 
-        append(SUFFIX)
-    }
+        +SUFFIX
+    }.toMarkdownString()
 
     enum class Severity(val icon: String) {
         INFO(ICON_INFO),
@@ -166,22 +249,11 @@ data class Report(
     data class Section(
         val severity: Severity,
         val title: String,
-        val bodyBuilder: StringBuilder.() -> Unit
+        val body: Markup
     ) {
-        companion object {
-            fun simple(severity: Severity, title: String, body: String): Section =
-                Section(severity, title) { append(body) }
-        }
-
-        fun appendTo(builder: StringBuilder) {
-            with(builder) {
-                append("### ")
-                append(severity.icon)
-                append(" ")
-                appendln(title)
-                bodyBuilder()
-                appendln()
-            }
+        fun build(): Markup = buildMarkup {
+            h3("${severity.icon} $title")
+            +body
         }
     }
 }

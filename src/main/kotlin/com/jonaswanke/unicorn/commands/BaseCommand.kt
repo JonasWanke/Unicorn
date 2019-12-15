@@ -44,5 +44,7 @@ abstract class BaseCommand(
         echo("Done!")
     }
 
+    val runContext: RunContext = TODO()
+
     open fun execute() {}
 }

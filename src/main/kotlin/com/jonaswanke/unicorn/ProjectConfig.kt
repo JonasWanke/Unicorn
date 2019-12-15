@@ -63,7 +63,7 @@ data class ProjectConfig(
         val releaseCommit: String = "chore",
         val feature: String = "feat",
         val fix: String = "fix"
-    ){
+    ) {
         data class Type(
             val name: String,
             val description: String? = null

@@ -1,7 +1,7 @@
 package com.jonaswanke.unicorn.action
 
-import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.action.Action.throwError
+import com.jonaswanke.unicorn.commands.RunContext
 import com.jonaswanke.unicorn.script.*
 import org.kohsuke.github.GHIssue
 import org.kohsuke.github.GHPullRequest
@@ -11,12 +11,10 @@ import kotlin.system.exitProcess
 
 
 fun main() {
-    Unicorn.prefix = Action.Env.githubWorkspace
-    val repoToken = Action.getRequiredInput("repo-token")
+    val context = GitHubActionRunContext()
 
-    val gh = GitHub.authenticateWithToken(repoToken)
+    val gh = GitHub.authenticate(context)
     val repo = gh.api.getRepository(Action.Env.githubRepository)
-    val projectConfig = Unicorn.getProjectConfig()
 
     val payload = Action.getPayload()
     payload.pullRequest ?: throwError("Unicorn currently only supports events of type pull_request")
@@ -24,10 +22,11 @@ fun main() {
     val pr = repo.getPullRequest(payload.pullRequest.number)
 
     assignAuthors(pr)
-    inferLabels(pr, projectConfig)
+    inferLabels(context, pr)
 
-    val checkResults = runChecks(pr, projectConfig)
-    val report = Report(checkResults = checkResults)
+    val reportCollector = ReportLogCollector()
+    runChecks(context, reportCollector, pr)
+    val report = Report(reportCollector.reportItems)
     pr.createOrUpdateComment("unicorn-report", report.toString())
 
     // Notify GitHub of erroneous status
@@ -39,15 +38,16 @@ private fun assignAuthors(pr: GHPullRequest) {
         .let { pr.addAssignees() }
 }
 
-private fun inferLabels(pr: GHPullRequest, config: ProjectConfig) {
+private fun inferLabels(context: RunContext, pr: GHPullRequest) {
     val closedIssues = pr.closedIssues
 
     // Type
-    pr.getType(config)?.let { pr.setType(it, config) }
+    pr.getType(context)
+        ?.let { pr.setType(it, context.projectConfig) }
 
     // Components
     val fileSystem = FileSystems.getDefault()
-    config.components
+    context.projectConfig.components
         .associateWith { it.paths }
         .mapValues { (_, paths) ->
             paths.map { fileSystem.getPathMatcher("glob:$it") }
@@ -58,11 +58,11 @@ private fun inferLabels(pr: GHPullRequest, config: ProjectConfig) {
             }
         }
         .map { (component, _) -> component.name }
-        .let { pr.setComponents(it, config) }
+        .let { pr.setComponents(context, it) }
 
     // Priority
-    closedIssues.mapNotNull { it.getPriority(config) }.max()
-        ?.let { pr.setPriority(it, config) }
+    closedIssues.mapNotNull { it.getPriority(context) }.max()
+        ?.let { pr.setPriority(context, it) }
 }
 
 private fun GHIssue.createOrUpdateComment(identifier: String, body: String) {

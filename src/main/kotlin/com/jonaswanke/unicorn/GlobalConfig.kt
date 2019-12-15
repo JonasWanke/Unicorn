@@ -1,11 +1,12 @@
 package com.jonaswanke.unicorn
 
 data class GlobalConfig(
-    val github: GithubConfig?
+    val gitHub: GitHubConfig?
 ) {
-    data class GithubConfig(
-        val username: String,
-        val oauthToken: String,
-        val endpoint: String?
+    data class GitHubConfig(
+        val username: String? = null,
+        val oauthToken: String? = null,
+        val anonymousToken: String? = null,
+        val endpoint: String? = null
     )
 }

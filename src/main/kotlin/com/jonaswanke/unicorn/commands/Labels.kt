@@ -6,7 +6,6 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.validate
 import com.jonaswanke.unicorn.script.GitHub
-import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.encodedLabelName
 
 class LabelCommand : BaseCommand(name = "label", aliases = listOf("l")) {
@@ -41,8 +40,7 @@ private class CreateCommand : BaseCommand(
         }
 
     override fun execute() {
-        val repo = GitHub.authenticateInteractive()
-            .currentRepo(prefix)
+        val repo = GitHub.authenticate(runContext).currentRepo(runContext)
         val label = repo.createLabel(name.encodedLabelName, color)
         echo("Created label ${label.name} with color #${label.color}")
     }
@@ -55,9 +53,8 @@ private class SyncCommand :
         help = "Creates all missing type, component and priority labels"
     ) {
     override fun execute() {
-        val repo = GitHub.authenticateInteractive()
-            .currentRepo(prefix)
-        val config = Unicorn.projectConfig
+        val repo = GitHub.authenticate(runContext).currentRepo(runContext)
+        val config = runContext.projectConfig
 
         val labels = config.typeLabelGroup.instances +
                 config.componentsLabelGroup.instances +

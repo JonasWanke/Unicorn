@@ -1,6 +1,6 @@
 package com.jonaswanke.unicorn.script
 
-import com.jonaswanke.unicorn.utils.newLine
+import com.jonaswanke.unicorn.commands.RunContext
 import net.swiftzer.semver.SemVer
 import java.io.BufferedWriter
 import java.io.File
@@ -21,31 +21,22 @@ object Files {
         fun formatDescription(
             prefixComment: String? = null,
             messages: List<ConventionalCommit> = emptyList(),
-            suffixComment: String? = null
+            suffixComment: String? = null,
+            config: ProjectConfig = Unicorn.projectConfig
         ) = buildString {
             if (!prefixComment.isNullOrBlank()) {
                 append(prefixComment)
                 repeat(2) { newLine() }
             }
 
+            val typeOrder = config.types.list.withIndex().associate { (index, type) -> type to index }
             if (messages.isNotEmpty()) {
                 messages.groupBy { it.type }
                     .toList()
-                    .sortedWith(compareBy {
-                        when (it.first) {
-                            ConventionalCommit.Type.FEAT -> 8
-                            ConventionalCommit.Type.FIX -> 7
-                            ConventionalCommit.Type.PERF -> 6
-                            ConventionalCommit.Type.UI -> 5
-                            ConventionalCommit.Type.DOCS -> 4
-                            ConventionalCommit.Type.REFACTOR -> 3
-                            ConventionalCommit.Type.CHORE -> 2
-                            ConventionalCommit.Type.BUILD -> 1
-                        }
-                    })
+                    .sortedBy { typeOrder[it] }
                     .forEach { (type, commits) ->
                         append("### ")
-                        append(
+                        append(it
                             when (type) {
                                 ConventionalCommit.Type.CHORE -> "Chore"
                                 ConventionalCommit.Type.BUILD -> "Build system changes"
@@ -80,19 +71,25 @@ object Files {
         }
         */
 
-        fun addRelease(version: SemVer, name: String? = null, date: Date = Date(), description: String = "") {
+        fun addRelease(
+            context: RunContext,
+            version: SemVer,
+            name: String? = null,
+            date: Date = Date(),
+            description: String = ""
+        ) {
             file.insert(MARKER_REGEX.format("<!--", MARKER_NEW_RELEASE, "-->").toRegex(RegexOption.IGNORE_CASE)) {
                 writeLine("<a name=\"$version\"></a>")
                 writeLine(buildString {
                     val fullName = if (name == null) version.toString() else "$version $name"
                     append("## ")
-                    val gitHub = GitHub.authenticateOrNull()
+                    val gitHub = GitHub.authenticateOrNull(context)
                     if (gitHub != null) {
                         append("[")
                         append(fullName)
                         append("](")
-                        append(gitHub.currentRepo().htmlUrl)
-                        append("/compare/${Unicorn.projectConfig.version}...$version")
+                        append(gitHub.currentRepo(context).htmlUrl)
+                        append("/compare/${context.projectConfig.version}...$version")
                         append(")")
                     }
                     append(" - ")

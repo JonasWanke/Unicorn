@@ -1,5 +1,7 @@
 package com.jonaswanke.unicorn.script
 
+import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.utils.code
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.api.GitCommand
 import org.eclipse.jgit.api.TransportCommand
@@ -13,7 +15,7 @@ import org.kohsuke.github.GHIssue
 import java.io.File
 import org.eclipse.jgit.api.Git as ApiGit
 
-class Git(val directory: File = Unicorn.prefix) {
+class Git(val directory: File) {
     companion object {
         fun init(directory: File): Git {
             ApiGit.init()
@@ -23,34 +25,41 @@ class Git(val directory: File = Unicorn.prefix) {
         }
     }
 
+    constructor(context: RunContext) : this(context.directory)
+
     val api by lazy { ApiGit.open(directory) }
 
     val flow = Flow(this)
 
 
-    fun remoteList(): List<RemoteConfig> {
-        return call(api.remoteList())
-    }
+    fun checkout(context: RunContext, name: String, createBranch: Boolean = false): Ref {
+        context.i {
+            code {
+                +"git checkout"
+                if (createBranch) +" -b"
+                +" $name"
+            }
+        }
 
-    fun checkout(name: String, createBranch: Boolean = false) {
-        call(api.checkout()) {
+        return call(context, api.checkout()) {
             setName(name)
             setCreateBranch(createBranch)
         }
     }
 
-
     // region Commits
-    fun add(vararg filePattern: String) {
-        call(api.add()) {
+    fun add(context: RunContext, vararg filePattern: String) {
+        context.d { code("git add ${filePattern.joinToString(" ") { "\"$it\"" }}") }
+        call(context, api.add()) {
             filePattern.forEach {
                 addFilepattern(it)
             }
         }
     }
 
-    fun commit(message: String) {
-        call(api.commit()) {
+    fun commit(context: RunContext, message: String) {
+        context.i { code { +"git commit -m \"$message\"" } }
+        call(context, api.commit()) {
             setMessage(message)
         }
     }
@@ -61,44 +70,58 @@ class Git(val directory: File = Unicorn.prefix) {
         get() = api.repository.branch
 
     fun createBranch(
+        context: RunContext,
         name: String,
         base: String = Constants.HEAD
     ): Ref {
-        if (base != Constants.HEAD)
-            call(api.checkout()) {
-                setName(base)
-            }
-        val ref = call(api.checkout()) {
-            setCreateBranch(true)
-            setName(name)
-        }
-        trackBranch(name)
-        call(api.push())
+        @Suppress("NAME_SHADOWING")
+        val context = context.group("creating branch $name")
+
+        if (base != Constants.HEAD) checkout(context, base)
+        val ref = checkout(context, name, createBranch = true)
+        trackBranch(context, name)
+        push(context)
         return ref
     }
     // endregion
 
     // region Remote
-    fun addRemote(name: String, uri: URIish) {
-        call(api.remoteAdd()) {
+    fun listRemotes(context: RunContext): List<RemoteConfig> {
+        context.d { code("git remote") }
+        return call(context, api.remoteList())
+    }
+
+    fun addRemote(context: RunContext, name: String, uri: URIish) {
+        context.i { code("git remote add $name $uri") }
+        call(context, api.remoteAdd()) {
             setName(name)
             setUri(uri)
         }
     }
 
     fun trackBranch(
+        context: RunContext,
         name: String,
         remoteName: String = "${Constants.R_HEADS}$name",
         remote: String = Constants.DEFAULT_REMOTE_NAME
     ) {
+        context.i("git: track branch $name -> $remote:$remoteName")
         api.repository.config.apply {
             setString(ConfigConstants.CONFIG_BRANCH_SECTION, name, ConfigConstants.CONFIG_KEY_REMOTE, remote)
             setString(ConfigConstants.CONFIG_BRANCH_SECTION, name, ConfigConstants.CONFIG_KEY_MERGE, remoteName)
         }.save()
     }
 
-    fun push(pushAllBranches: Boolean = false, force: Boolean = false) {
-        call(api.push()) {
+    fun push(context: RunContext, pushAllBranches: Boolean = false, force: Boolean = false) {
+        context.i {
+            code {
+                +"git push"
+                if (pushAllBranches) +" --all"
+                if (force) +" -f"
+            }
+        }
+
+        call(context, api.push()) {
             if (pushAllBranches) setPushAll()
             isForce = force
         }
@@ -106,10 +129,10 @@ class Git(val directory: File = Unicorn.prefix) {
     // endregion
 
     // region Helpers
-    private fun <C : GitCommand<T>, T> call(command: C, configure: C.() -> Unit = {}): T {
+    private fun <C : GitCommand<T>, T> call(context: RunContext, command: C, configure: C.() -> Unit = {}): T {
         return command.also {
             if (it is TransportCommand<*, *>)
-                it.setCredentialsProvider(GitHub.authenticateOrNull()?.credentialsProvider)
+                it.setCredentialsProvider(GitHub.authenticateOrNull(context)?.credentialsProvider)
             it.configure()
         }.call()
     }
@@ -135,13 +158,13 @@ class Git(val directory: File = Unicorn.prefix) {
 
         val devBranch = Branch(git, BRANCH_DEV_NAME)
 
-        fun currentBranch(gitHub: GitHub): Branch {
+        fun currentBranch(context: RunContext, gitHub: GitHub): Branch {
             val name = git.currentBranchName
             return when {
                 name == BRANCH_MASTER_NAME -> masterBranch
                 name == BRANCH_DEV_NAME -> devBranch
                 name.startsWith(BRANCH_ISSUE_PREFIX) -> issueIdFromBranchName(name)
-                    .let { gitHub.currentRepo().getIssue(it) }
+                    .let { gitHub.currentRepo(context).getIssue(it) }
                     .let { IssueBranch(git, it) }
                 name.startsWith(BRANCH_RELEASE_PREFIX) -> ReleaseBranch(git, releaseVersionFromBranchName(name))
                 name.startsWith(BRANCH_ISSUE_PREFIX) -> HotfixBranch(git, hotfixVersionFromBranchName(name))
@@ -149,16 +172,19 @@ class Git(val directory: File = Unicorn.prefix) {
             }
         }
 
-        fun checkout(branch: Branch) {
-            git.checkout(branch.name)
+        fun checkout(context: RunContext, branch: Branch) {
+            git.checkout(context, branch.name)
         }
 
 
         // region Issue
         class IssueBranch(git: Git, val issue: GHIssue) : Branch(git, git.flow.branchNameFromIssue(issue))
 
-        fun createIssueBranch(issue: GHIssue): IssueBranch {
-            git.createBranch(branchNameFromIssue(issue), base = devBranch.name)
+        fun createIssueBranch(context: RunContext, issue: GHIssue): IssueBranch {
+            @Suppress("NAME_SHADOWING")
+            val context = context.group("Git Flow: create issue branch for #${issue.number}")
+
+            git.createBranch(context, branchNameFromIssue(issue), base = devBranch.name)
             return IssueBranch(git, issue)
         }
 
@@ -182,13 +208,14 @@ class Git(val directory: File = Unicorn.prefix) {
         // region Release
         class ReleaseBranch(git: Git, val version: SemVer) : Branch(git, "$BRANCH_RELEASE_PREFIX$version")
 
-        fun createReleaseBranch(version: SemVer): ReleaseBranch {
-            if (version <= Unicorn.projectConfig.version)
-                throw IllegalArgumentException(
-                    "version must be greater than the current version (${Unicorn.projectConfig.version}), was $version"
-                )
+        fun createReleaseBranch(context: RunContext, version: SemVer): ReleaseBranch {
+            @Suppress("NAME_SHADOWING")
+            val context = context.group("Git Flow: create issue branch for v$version")
+            require(version > context.projectConfig.version) {
+                "version must be greater than the current version (${context.projectConfig.version}), was $version"
+            }
 
-            git.createBranch(branchNameFromRelease(version), base = devBranch.name)
+            git.createBranch(context, branchNameFromRelease(version), base = devBranch.name)
             return ReleaseBranch(git, version)
         }
 
@@ -219,11 +246,14 @@ class Git(val directory: File = Unicorn.prefix) {
     }
 }
 
+val RunContext.git: Git
+    get() = Git(this)
+
 open class Branch(val git: Git, val name: String) {
     val ref: Ref
         get() = git.api.repository.findRef(name)
 
-    fun checkout() {
-        git.checkout(name, false)
+    fun checkout(context: RunContext) {
+        git.checkout(context, name, false)
     }
 }

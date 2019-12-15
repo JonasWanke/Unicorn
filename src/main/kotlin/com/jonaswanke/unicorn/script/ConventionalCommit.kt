@@ -1,6 +1,9 @@
 package com.jonaswanke.unicorn.script
 
 import com.jonaswanke.unicorn.ProjectConfig
+import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.utils.joined
+import com.jonaswanke.unicorn.utils.kbd
 
 class ConventionalCommit(
     type: String,
@@ -8,7 +11,7 @@ class ConventionalCommit(
     description: String
 ) {
     companion object {
-        val regex = ("^\\s*(?<type>\\w+)" + // type: "fix"
+        private val regex = ("^\\s*(?<type>\\w+)" + // type: "fix"
                 "(?:\\((?<scopes>(?:\\w|(?<=\\w)/(?=\\w))+?(?:,\\s*(?:\\w|(?<=\\w)/(?=\\w))+?)*?)\\))?:\\s*" + // scopes: "(commands/init, commands/login): "
                 "(?<description>.*?)\\s*\$").toRegex() // message: "login on create"
 
@@ -16,8 +19,7 @@ class ConventionalCommit(
             return ConventionalCommit(type, scopes, description).toString()
         }
 
-        fun tryParse(message: String, config: ProjectConfig? = null): ConventionalCommit? {
-            // config.types.list.joinToString("|")
+        fun tryParse(message: String): ConventionalCommit? {
             val result = regex.matchEntire(message) ?: return null
 
             val type = result.groups["type"]!!.value
@@ -30,13 +32,11 @@ class ConventionalCommit(
             val description = result.groups["description"]!!.value
             val commit = ConventionalCommit(type, scopes, description)
 
-            config?.let { commit.validate(it) }
-
             return commit
         }
 
-        fun parse(message: String, config: ProjectConfig? = null): ConventionalCommit {
-            return tryParse(message, config)
+        fun parse(message: String): ConventionalCommit {
+            return tryParse(message)
                 ?: throw IllegalArgumentException("Not a valid conventional commit message: $message")
         }
     }
@@ -45,12 +45,10 @@ class ConventionalCommit(
         .apply {
             require(isNotEmpty()) { "type must not be blank" }
         }
-    val scopes: List<String> = scopes.map { it.trim() }
+    val scopes: List<String> = scopes
+        .filter { it.isNotBlank() }
+        .map { it.trim() }
         .sorted()
-        .apply {
-            for (scope in this)
-                require(scope.isNotEmpty()) { "scopes must not be blank, was \"${scopes.joinToString()}\"" }
-        }
     val description: String = description.trim()
         .apply {
             require(!isEmpty()) { "description must not be blank, was \"$description\"" }
@@ -69,29 +67,57 @@ class ConventionalCommit(
         fun releaseCommit(config: ProjectConfig): String = config.types.releaseCommit
     }
 
+    fun isValid(context: RunContext): Boolean = validate(context).isValid
+    fun validate(context: RunContext): ValidationResult {
+        // Type
+        val validTypes = context.projectConfig.types.list.map { it.name }
+        val invalidType = type
+            .takeIf { it !in validTypes }
+            ?.also {
+                context.e {
+                    +"type "
+                    kbd(type)
+                    +" is invalid. Allowed values are: "
+                    joined(validTypes) { kbd(it) }
+                }
+            }
 
-    fun validate(config: ProjectConfig): List<ValidationError> {
-        val validScopes = config.components.map { it.name }
+        // Scopes
+        val validScopes = context.projectConfig.components.map { it.name }
+        val invalidScopes = scopes.withIndex()
+            .filter { it.value !in validScopes }
+            .takeIf { it.isNotEmpty() }
+            ?.also { invalidScopes ->
+                context.e {
+                    +if (invalidScopes.size == 1) "component " else "components "
+                    joined(invalidScopes) {
+                        kbd(it.value)
+                        +" (position ${it.index + 1})"
+                    }
+                    +if (invalidScopes.size == 1) " is invalid" else "are invalid"
+                }
+            }.orEmpty()
 
-        return listOfNotNull(
-            config.types.list.none { type == it.name }
-                .thenTake { ValidationError.InvalidType(type) },
-            scopes.withIndex()
-                .filter { it.value !in validScopes }
-                .takeIf { it.isNotEmpty() }
-                ?.let { ValidationError.InvalidScopes(it) }
-        )
+        return ValidationResult(invalidType, validTypes, invalidScopes, validScopes)
     }
 
-    sealed class ValidationError {
-        class InvalidType(val type: String) : ValidationError()
-        class InvalidScopes(val scopes: List<IndexedValue<String>>) : ValidationError()
+    class ValidationResult(
+        val invalidType: String?,
+        val validTypes: List<String>,
+        val invalidScopes: List<IndexedValue<String>>,
+        val validScopes: List<String>
+    ) {
+        val isTypeValid: Boolean
+            get() = invalidType != null
+        val areScopesValid: Boolean
+            get() = invalidScopes.isEmpty()
+
+        val isValid: Boolean
+            get() = isTypeValid && areScopesValid
     }
 }
 
-private fun <T> Boolean.thenTake(block: () -> T): T? = if (this) block() else null
-
-fun Git.commit(type: String, scopes: List<String> = emptyList(), description: String) {
-    commit(ConventionalCommit.format(type, scopes, description))
+fun Git.commit(context: RunContext, type: String, scopes: List<String> = emptyList(), description: String) {
+    commit(context, ConventionalCommit.format(type, scopes, description))
 }
 

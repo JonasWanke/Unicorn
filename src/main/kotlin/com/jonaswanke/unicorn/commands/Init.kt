@@ -9,8 +9,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.jonaswanke.unicorn.ProgramConfig
 import com.jonaswanke.unicorn.ProjectConfig
-import com.jonaswanke.unicorn.script.*
-import com.jonaswanke.unicorn.script.Unicorn.setProjectConfig
+import com.jonaswanke.unicorn.script.Git
+import com.jonaswanke.unicorn.script.GitHub
+import com.jonaswanke.unicorn.script.commit
+import com.jonaswanke.unicorn.script.git
 import com.jonaswanke.unicorn.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
@@ -46,7 +48,7 @@ open class Create : BaseCommand() {
     val initInExisting get() = name == null
     override val prefix: File
         get() = super.prefix.let {
-            if (initInExisting) it else File(it, name)
+            if (initInExisting) it else File(it, name!!)
         }
 
     override fun execute() {
@@ -62,15 +64,15 @@ open class Create : BaseCommand() {
             if (!prefix.isDirectory)
                 throw UsageError("The specified path is not a directory. If you want to create a new repository, please specify a name")
             try {
-                Unicorn.projectConfig
+                runContext.projectConfig
                 throw UsageError("Unicorn is already initialized in the specified directory")
             } catch (e: IOException) {
                 // Means no project config file was found - expected
             }
         }
 
-        val gitHub = GitHub.authenticateInteractive()
-        val repo = gitHub.currentRepoIfExists()
+        val gitHub = GitHub.authenticate(runContext)
+        val repo = gitHub.currentRepoOrNull(runContext)
 
         val description = description
             ?: if (initInExisting) repo?.description else null
@@ -131,7 +133,7 @@ open class Create : BaseCommand() {
                 type = type,
                 version = version
             )
-            Unicorn.projectConfig = config
+            runContext.projectConfig = config
 
             echo("Copying templates")
             copyTemplate(replacements, "README.md")
@@ -206,13 +208,13 @@ open class Create : BaseCommand() {
 
             copyTemplate(replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
 
-            if (isGitRepo(prefix)) return Git()
+            if (isGitRepo(prefix)) return runContext.git
 
             return Git.init(prefix).apply {
-                add(".")
-                commit(Unicorn.projectConfig.types.releaseCommit, description = "initial commit")
+                add(runContext, ".")
+                commit(runContext, runContext.projectConfig.types.releaseCommit, description = "initial commit")
 
-                checkout(flow.devBranch.name, createBranch = true)
+                checkout(runContext, flow.devBranch.name, createBranch = true)
             }
         }
 
@@ -240,7 +242,7 @@ open class Create : BaseCommand() {
                 return create()
             }
 
-            val gitHub = GitHub.authenticateInteractive()
+            val gitHub = GitHub.authenticate(runContext)
             val organization = promptOptional<GHOrganization>(
                 "Which organization should this be uploaded to?",
                 optionalText = " (Blank for no organization)"
@@ -268,10 +270,10 @@ open class Create : BaseCommand() {
             }
 
             echo("Uploading")
-            git.addRemote(Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
-            git.trackBranch(git.flow.masterBranch.name)
-            git.trackBranch(git.flow.devBranch.name)
-            git.push(pushAllBranches = true, force = true)
+            git.addRemote(runContext, Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
+            git.trackBranch(runContext, git.flow.masterBranch.name)
+            git.trackBranch(runContext, git.flow.devBranch.name)
+            git.push(runContext, pushAllBranches = true, force = true)
 
             return repo
         }

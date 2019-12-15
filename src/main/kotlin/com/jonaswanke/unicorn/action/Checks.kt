@@ -1,65 +1,94 @@
 package com.jonaswanke.unicorn.action
 
-import com.jonaswanke.unicorn.ProjectConfig
+import com.jonaswanke.unicorn.commands.RunContext
 import com.jonaswanke.unicorn.script.ConventionalCommit
 import com.jonaswanke.unicorn.script.closedIssues
+import com.jonaswanke.unicorn.utils.*
 import org.kohsuke.github.GHPullRequest
 
 
-internal fun runChecks(pr: GHPullRequest, config: ProjectConfig): List<CheckResult> = listOfNotNull(
-    runTitleCheck(pr, config),
-    runClosedIssuesCheck(pr),
-    runCommitCheck(pr, config)
-)
+internal fun runChecks(context: RunContext, reportCollector: ReportLogCollector, pr: GHPullRequest) {
+    runTitleCheck(context, reportCollector, pr)
+    runClosedIssuesCheck(reportCollector, pr)
+    runCommitCheck(reportCollector, pr)
+}
 
-private fun runTitleCheck(pr: GHPullRequest, config: ProjectConfig): CheckResult {
-    val results = mutableListOf<CheckResult>()
-    val title = try {
-        ConventionalCommit.parse(pr.title)
-    } catch (e: IllegalArgumentException) {
-        results += CheckResult.error("doesn't follow <a href=\"https://www.conventionalcommits.org/en/v1.0.0\">conventional commits</a>")
-        null
-    }
-    if (title != null)
-        results += title.validate(config).map { error ->
-            when (error) {
-                is ConventionalCommit.ValidationError.InvalidType -> {
-                    val allowedTypes = config.types.list.joinToString { "<kbd>${it.name}</kbd>" }
-                    CheckResult.error("type <kbd>${error.type}</kbd> is invalid", "allowed values are: $allowedTypes")
+private fun runTitleCheck(context: RunContext, reportCollector: ReportLogCollector, pr: GHPullRequest) =
+    reportCollector.group("PR title:") {
+        val title = try {
+            ConventionalCommit.parse(pr.title)
+        } catch (e: IllegalArgumentException) {
+            e {
+                +"doesn't follow "
+                link("https://www.conventionalcommits.org/en/v1.0.0") {
+                    +"conventional commits"
                 }
-                is ConventionalCommit.ValidationError.InvalidScopes -> {
-                    val allowedComponents = config.components.joinToString { "<kbd>${it.name}</kbd>" }
-                    val invalidComponents =
-                        error.scopes.joinToString { "<kbd>${it.value}</kbd> (position ${it.index + 1})" }
-                    val help = "allowed values are: $allowedComponents"
-                    if (error.scopes.size == 1)
-                        CheckResult.error("component $invalidComponents is invalid", help)
-                    else
-                        CheckResult.error("components $invalidComponents are invalid", help)
+            }
+            return@group
+        }
+        title.validate(context).let { result ->
+            if (!result.isTypeValid) {
+                e {
+                    +"type "
+                    kbd(result.invalidType)
+                    +" is invalid"
+                    newLine()
+
+                    italic {
+                        +"allowed values are: "
+                        joined(result.validTypes) { kbd(it) }
+                    }
+                }
+            }
+            if (!result.areScopesValid) {
+                e {
+                    +if (result.invalidScopes.size == 1) "component " else "components "
+                    joined(result.invalidScopes) {
+                        kbd(it.value)
+                        +" (position ${it.index + 1})"
+                    }
+                    +if (result.invalidScopes.size == 1) " is invalid" else "are invalid"
+                    newLine()
+
+                    italic {
+                        +"allowed values are: "
+                        joined(result.validScopes) { kbd(it) }
+                    }
                 }
             }
         }
-    return CheckResult.Group("PR title", results)
-}
+    }
 
-private fun runClosedIssuesCheck(pr: GHPullRequest): CheckResult {
+private fun runClosedIssuesCheck(reportCollector: ReportLogCollector, pr: GHPullRequest) {
     val closedIssues = pr.closedIssues
-    if (closedIssues.isEmpty()) return CheckResult.warning(
-        "This PR won't close any issues",
-        "Reference issues in you PR description using <code>Closes: #issueId</code>"
-    )
-    val closedIssuesString = closedIssues.joinToString { "#${it.number}" }
-    return CheckResult.info("This PR will close the following issues: $closedIssuesString")
-}
+    if (closedIssues.isEmpty()) {
+        reportCollector.i {
+            +"This PR won't close any issues"
+            newLine()
 
-private fun runCommitCheck(pr: GHPullRequest, config: ProjectConfig): CheckResult? {
-    return pr.listCommits().filter { ConventionalCommit.tryParse(it.commit.message, config) == null }
-        .map { CheckResult.warning("<code>${it.commit.message}</code>") }
-        .let {
-            if (it.isEmpty()) return null
-
-            val title =
-                "The following commit ${if (it.size == 1) "message doesn't" else "messages don't"}  follow <a href=\"https://www.conventionalcommits.org/en/v1.0.0\">conventional commits</a>"
-            CheckResult.Group(title, it)
+            italic {
+                +"Reference issues in you PR description using "
+                code("Closes: #issueId")
+            }
         }
+        return
+    }
+
+    val closedIssuesString = closedIssues.joinToString { "#${it.number}" }
+    reportCollector.i("This PR will close the following issues: $closedIssuesString")
 }
+
+private fun runCommitCheck(reportCollector: ReportLogCollector, pr: GHPullRequest) =
+    reportCollector.group(buildMarkup {
+        +"The following commit messages don't follow "
+        link("https://www.conventionalcommits.org/en/v1.0.0", "conventional commits")
+        +":"
+    }) {
+        pr.listCommits()
+            .filter { ConventionalCommit.tryParse(it.commit.message) == null }
+            .forEach {
+                w {
+                    code(it.commit.message)
+                }
+            }
+    }
