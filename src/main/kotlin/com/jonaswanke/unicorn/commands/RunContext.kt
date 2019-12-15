@@ -79,7 +79,12 @@ abstract class RunContext : LogCollector<RunContext.Group> {
     val globalConfigFile: File
         get() = File(globalDir, CONFIG_GLOBAL_FILE)
     open var globalConfig: GlobalConfig by cached(
-        initialGetter = { globalConfigFile.inputStream().readConfig<GlobalConfig>() },
+        initialGetter = {
+            globalConfigFile.takeIf { it.exists() }
+                ?.inputStream()
+                ?.readConfig<GlobalConfig>()
+                ?: GlobalConfig()
+        },
         setter = { globalConfigFile.outputStream().writeConfig(it) }
     )
     // endregion
@@ -126,7 +131,7 @@ class ConsoleRunContext(
     override fun log(
         priority: Priority,
         markup: Markup,
-        groups: List<RunContext.Group>,
+        groups: List<Group>,
         file: File?,
         line: Int?,
         col: Int?
