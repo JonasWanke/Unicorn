@@ -12,6 +12,7 @@ class GitHubActionRunContext : RunContext() {
     override var globalConfig: GlobalConfig
         get() {
             val config = super.globalConfig
+            println(config)
             return config.copy(
                 gitHub = (config.gitHub ?: GlobalConfig.GitHubConfig()).copy(
                     anonymousToken = Action.getRequiredInput("repo-token")
