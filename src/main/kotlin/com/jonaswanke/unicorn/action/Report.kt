@@ -38,8 +38,13 @@ class ReportLogCollector : LogCollector<LogCollector.SimpleGroup> {
 }
 
 sealed class ReportItem {
+    abstract val totalLineCount: Int
+
     data class Group(val group: LogCollector.SimpleGroup) : ReportItem() {
         val children: MutableList<ReportItem> = mutableListOf()
+
+        override val totalLineCount: Int
+            get() = children.sumBy { it.totalLineCount }
 
         fun filter(predicate: (Line) -> Boolean): Group {
             val result = Group(group)
@@ -59,7 +64,9 @@ sealed class ReportItem {
     data class Line(
         val priority: Priority,
         val markup: Markup
-    ) : ReportItem()
+    ) : ReportItem() {
+        override val totalLineCount = 1
+    }
 }
 
 @Deprecated("")
@@ -190,7 +197,8 @@ data class Report(
             .mapNotNull { (severity, results) ->
                 if (results == null) return@mapNotNull null
 
-                val title = "${results.children.size} " + when (severity to (results.children.size == 1)) {
+                val totalChildCount = results.totalLineCount
+                val title = "$totalChildCount " + when (severity to (totalChildCount == 1)) {
                     Severity.INFO to true -> "Info"
                     Severity.INFO to false -> "Infos"
                     Severity.WARNING to true -> "Warning"
