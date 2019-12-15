@@ -197,28 +197,21 @@ data class Report(
                     Severity.WARNING to false -> "Warnings"
                     Severity.ERROR to true -> "Error"
                     Severity.ERROR to false -> "Errors"
-                    else -> throw IllegalStateException("Else branch can't be reached")
+                    else -> throw IllegalStateException("else branch can't be reached")
                 }
 
-                fun appendGroup(markup: Markup, group: ReportItem.Group): Unit {
-                    markup.apply {
-                        list {
-                            for (child in group.children)
-                                when (child) {
-                                    is ReportItem.Group -> appendGroup(markup, child)
-                                    is ReportItem.Line -> +child.markup
-                                }
-                        }
+                fun groupToMarkup(group: ReportItem.Group): Markup = buildMarkup {
+                    +group.group.name
+                    list {
+                        for (child in group.children)
+                            when (child) {
+                                is ReportItem.Group -> +groupToMarkup(child)
+                                is ReportItem.Line -> +child.markup
+                            }
                     }
                 }
 
-                Section(severity, title, buildMarkup {
-                    for (child in results.children)
-                        when (child) {
-                            is ReportItem.Group -> appendGroup(this, child)
-                            is ReportItem.Line -> +child.markup
-                        }
-                })
+                Section(severity, title, groupToMarkup(results))
             }
     }
 

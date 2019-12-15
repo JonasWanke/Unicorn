@@ -161,7 +161,7 @@ class ItalicTag(parent: MarkupTag?) : MarkupTag(parent) {
         appendChildrenToConsole(this)
     }
 
-    override fun appendToMarkdown(builder: StringBuilder) = markdownAppendSimpleHtml(builder, "u")
+    override fun appendToMarkdown(builder: StringBuilder) = markdownAppendSimpleHtml(builder, "i")
 }
 
 fun MarkupTag.italic(content: String? = null, builder: ItalicTag.() -> Unit = {}) {
