@@ -107,6 +107,8 @@ abstract class RunContext : LogCollector<RunContext.Group> {
     ) : RunContext(), LogCollector.Group<Group> {
         override val environment by parent::environment
         override val isInteractive by parent::isInteractive
+        override val globalDir by parent::globalDir
+        override var globalConfig by parent::globalConfig
         override val projectDir by parent::projectDir
         override var projectConfig by parent::projectConfig
     }
