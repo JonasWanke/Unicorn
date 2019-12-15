@@ -201,7 +201,7 @@ data class Report(
                 }
 
                 fun appendGroup(markup: Markup, group: ReportItem.Group): Unit {
-                    markup.apply{
+                    markup.apply {
                         list {
                             for (child in group.children)
                                 when (child) {
@@ -213,8 +213,6 @@ data class Report(
                 }
 
                 Section(severity, title, buildMarkup {
-                    h3("${severity.icon} $title")
-
                     for (child in results.children)
                         when (child) {
                             is ReportItem.Group -> appendGroup(this, child)
@@ -252,8 +250,10 @@ data class Report(
         val body: Markup
     ) {
         fun build(): Markup = buildMarkup {
-            h3("${severity.icon} $title")
-            +body
+            p {
+                h3("${severity.icon} $title")
+                +body
+            }
         }
     }
 }

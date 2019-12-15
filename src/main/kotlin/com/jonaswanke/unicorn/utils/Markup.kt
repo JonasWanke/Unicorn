@@ -64,7 +64,7 @@ abstract class MarkupTag(val parent: MarkupTag?) {
 
     fun consoleAppendSimple(builder: StringBuilder, prefix: String = "", postfix: String = ""): Unit = with(builder) {
         append(prefix)
-        appendChildrenToMarkdown(this)
+        appendChildrenToConsole(this)
         append(postfix)
     }
 
@@ -85,7 +85,7 @@ abstract class MarkupTag(val parent: MarkupTag?) {
     abstract fun appendToMarkdown(builder: StringBuilder)
 
     fun appendChildrenToMarkdown(builder: StringBuilder) {
-        children.forEach { it.appendToConsole(builder) }
+        children.forEach { it.appendToMarkdown(builder) }
     }
 
     fun markdownAppendSimpleHtml(builder: StringBuilder, tag: String): Unit = with(builder) {
@@ -262,7 +262,7 @@ class ListTag(parent: MarkupTag?) : BlockTag(parent) {
         appendln("<ul>")
         children.forEach {
             appendln("<li>")
-            it.appendToConsole(builder)
+            it.appendToMarkdown(builder)
             appendln("</li>")
         }
         appendln("</ul>")

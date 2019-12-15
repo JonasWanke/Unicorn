@@ -11,7 +11,7 @@ import java.io.File
 object Action {
     // region GitHub -> Action
     fun getInput(name: String): String? {
-        return System.getenv("INPUT_${name.replace(' ', '_').toUpperCase()}").trim()
+        return System.getenv("INPUT_${name.replace(' ', '_').toUpperCase()}")?.trim()
     }
 
     fun getRequiredInput(name: String): String {
@@ -37,7 +37,7 @@ object Action {
     fun getPayload(): WebhookPayload {
         return ObjectMapper(JsonFactory())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .readValue(Env.githubEventPath, Action.WebhookPayload::class.java)
+            .readValue(Env.githubEventPath, WebhookPayload::class.java)
     }
 
     data class WebhookPayload(

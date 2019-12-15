@@ -12,7 +12,6 @@ class GitHubActionRunContext : RunContext() {
     override var globalConfig: GlobalConfig
         get() {
             val config = super.globalConfig
-            println(config)
             return config.copy(
                 gitHub = (config.gitHub ?: GlobalConfig.GitHubConfig()).copy(
                     anonymousToken = Action.getRequiredInput("repo-token")
@@ -33,6 +32,7 @@ class GitHubActionRunContext : RunContext() {
         line: Int?,
         col: Int?
     ) {
+        val message = (groups.map { it.name } + markup).joinToString(": ") { it.toConsoleString() }
         fun logCommand(command: String) {
             val metadata = mapOf(
                 "file" to file?.path,
@@ -45,12 +45,12 @@ class GitHubActionRunContext : RunContext() {
                 ?.let { " $it" }
                 ?: ""
 
-            println("::$command $metadata::${markup.toConsoleString().dataEscaped}")
+            println("::$command $metadata::${message.dataEscaped}")
         }
 
         when (priority) {
             Priority.DEBUG -> logCommand("debug")
-            Priority.INFO -> println(markup.toConsoleString())
+            Priority.INFO -> println(message)
             Priority.WARNING -> logCommand("warning")
             Priority.ERROR, Priority.WTF -> logCommand("error")
         }
