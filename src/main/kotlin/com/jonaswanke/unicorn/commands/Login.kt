@@ -9,13 +9,13 @@ open class Login : BaseCommand() {
     private val username by argument("username").optional()
     private val endpoint by option("-e", "--endpoint")
 
-    override fun execute() {
-        GitHub.authenticate(runContext, true, username = username, endpoint = endpoint)
+    override fun execute(context: RunContext) {
+        GitHub.authenticate(context, true, username = username, endpoint = endpoint)
     }
 }
 
 open class Logout : BaseCommand() {
-    override fun execute() {
-        runContext.globalConfig = runContext.globalConfig.copy(gitHub = null)
+    override fun execute(context: RunContext) {
+        context.globalConfig = context.globalConfig.copy(gitHub = null)
     }
 }

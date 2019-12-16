@@ -11,5 +11,5 @@ object Commands : BaseCommand() {
         )
     }
 
-    override fun execute() = Unit
+    override fun execute(context: RunContext) = Unit
 }

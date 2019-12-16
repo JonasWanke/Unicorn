@@ -7,7 +7,8 @@ import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.action.Action
 import com.jonaswanke.unicorn.commands.RunContext
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
-import com.jonaswanke.unicorn.utils.echo
+import com.jonaswanke.unicorn.utils.lazy
+import com.jonaswanke.unicorn.utils.list
 import com.jonaswanke.unicorn.utils.prompt
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
@@ -46,18 +47,24 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
             username: String? = null,
             token: String? = null,
             endpoint: String? = null
-        ): GitHub {
-            @Suppress("NAME_SHADOWING")
-            val context = context.group("GitHub login")
-
+        ): GitHub = context.group("GitHub login") {
             if (!forceNew)
-                authenticateOrNull(context)?.also { return it }
-            if (!context.isInteractive) {
-                context.e("Login didn't work. Username: ${context.globalConfig.gitHub?.username}, custom endpoint: ${context.globalConfig.gitHub?.endpoint}")
-                throw UsageError("GitHub login failed")
+                authenticateOrNull(this)?.also { return@group it }
+            if (!isInteractive) {
+                val gitHub = globalConfig.gitHub
+                if (gitHub == null)
+                    exit("Login failed: No login data available")
+                else
+                    exit {
+                        +"Login failed. credentials used:"
+                        list {
+                            +"Username: ${gitHub.username}"
+                            gitHub.endpoint?.let { +"Custom endpoint: $it" }
+                        }
+                    }
             }
 
-            echo("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
+            i("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
             while (true) {
                 val usernameAct = username
                     ?: prompt("GitHub username")
@@ -71,14 +78,17 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                 val githubConfig = GlobalConfig.GitHubConfig(
                     username = usernameAct, oauthToken = tokenAct, endpoint = endpointAct
                 )
-                context.globalConfig = context.globalConfig.copy(gitHub = githubConfig)
+                globalConfig = globalConfig.copy(gitHub = githubConfig)
 
                 authenticateOrNull(context)?.let {
-                    context.i("Login successful")
-                    return it
+                    i("Login successful")
+                    return@group it
                 }
-                context.w("Your credentials are invalid. Please try again.")
+                w("Your credentials are invalid. Please try again.")
             }
+
+            @Suppress("UNREACHABLE_CODE")
+            throw IllegalStateException("Can't be reached")
         }
     }
 
@@ -102,21 +112,29 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
     }
 }
 
+val RunContext.gitHub: GitHub by lazy { GitHub.authenticate(this) }
+val RunContext.gitHubRepo: GHRepository by lazy { gitHub.currentRepo(this) }
+
 // region Issue
-fun GHIssue.assignTo(context: RunContext, user: GHUser, throwIfAlreadyAssigned: Boolean = false): List<GHUser> {
-    @Suppress("NAME_SHADOWING")
-    val context = context.group("Assign GitHub issue #$number to ${user.login}")
-
-    val oldAssignees = assignees
-    context.d("Current assignees: ${oldAssignees.joinToString { it.login }}")
-    if (throwIfAlreadyAssigned && (oldAssignees.size > 1 || (oldAssignees.size == 1 && oldAssignees.first() != user)))
-        throw UsageError("Issue is already assigned")
-
-    assignTo(user)
-    context.i("Successfully assigned")
-
-    return oldAssignees
+fun String.toIssueId(context: RunContext): Int {
+    val trimmed = if (startsWith("#")) substring(1) else this
+    return trimmed.toIntOrNull()
+        ?: context.exit("Couldn't parse issue id \"$trimmed\"")
 }
+
+fun GHIssue.assignTo(context: RunContext, user: GHUser, throwIfAlreadyAssigned: Boolean = false): List<GHUser> =
+    context.group("Assign GitHub issue #$number to ${user.login}") {
+        val oldAssignees = assignees
+        d("Current assignees: ${oldAssignees.joinToString { it.login }}")
+
+        if (throwIfAlreadyAssigned && (oldAssignees.size > 1 || (oldAssignees.size == 1 && oldAssignees.first() != user)))
+            exit("Issue is already assigned")
+
+        assignTo(user)
+        i("Successfully assigned")
+
+        oldAssignees
+    }
 
 
 fun ConventionalCommit.Companion.format(

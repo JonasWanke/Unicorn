@@ -1,6 +1,7 @@
 package com.jonaswanke.unicorn.script.command
 
 import com.jonaswanke.unicorn.commands.BaseCommand
+import com.jonaswanke.unicorn.commands.RunContext
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.UnicornMarker
 
@@ -15,7 +16,7 @@ abstract class UnicornCommand(
 
 
 typealias CommandBuilder = UnicornCommand.() -> Unit
-typealias ExecutableCommandBuilder = UnicornCommand.() -> (() -> Unit)
+typealias ExecutableCommandBuilder = UnicornCommand.() -> (RunContext.() -> Unit)
 
 fun Unicorn.command(
     name: String,
@@ -84,6 +85,6 @@ private fun createExecutableCommand(
     return object : UnicornCommand(name, aliases, help, epilog, true) {
         val runnable = builder()
 
-        override fun execute() = runnable()
+        override fun execute(context: RunContext) = context.runnable()
     }
 }

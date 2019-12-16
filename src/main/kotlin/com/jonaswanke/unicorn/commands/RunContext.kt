@@ -1,6 +1,6 @@
 package com.jonaswanke.unicorn.commands
 
-import com.github.ajalt.clikt.output.CliktConsole
+import com.github.ajalt.clikt.core.CliktError
 import com.jonaswanke.unicorn.GlobalConfig
 import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.utils.*
@@ -15,6 +15,11 @@ interface LogCollector<G : LogCollector.Group<G>> {
     fun w(markupBuilder: MarkupBuilder) = log(Priority.WARNING, buildMarkup(markupBuilder))
     fun e(message: String) = e { +message }
     fun e(markupBuilder: MarkupBuilder) = log(Priority.ERROR, buildMarkup(markupBuilder))
+    fun exit(message: String): Nothing = exit { +message }
+    fun exit(markupBuilder: MarkupBuilder): Nothing {
+        log(Priority.ERROR, buildMarkup(markupBuilder))
+        throw CliktError()
+    }
     fun wtf(message: String) = wtf { +message }
     fun wtf(markupBuilder: MarkupBuilder) = log(Priority.WTF, buildMarkup(markupBuilder))
 
@@ -120,26 +125,4 @@ enum class Priority {
     WARNING,
     ERROR,
     WTF
-}
-
-
-class ConsoleRunContext(
-    override val projectDir: File,
-    val console: CliktConsole,
-    val minLogPriority: Priority = Priority.INFO
-) : RunContext() {
-    override val environment = Environment.CONSOLE
-
-    override fun log(
-        priority: Priority,
-        markup: Markup,
-        groups: List<Group>,
-        file: File?,
-        line: Int?,
-        col: Int?
-    ) {
-        if (priority < minLogPriority) return
-
-        TODO()
-    }
 }

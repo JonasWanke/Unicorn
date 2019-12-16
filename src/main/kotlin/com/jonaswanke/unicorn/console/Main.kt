@@ -1,15 +1,14 @@
-package com.jonaswanke.unicorn
+package com.jonaswanke.unicorn.console
 
-import com.jonaswanke.unicorn.commands.Commands
-import com.jonaswanke.unicorn.script.*
-import com.jonaswanke.unicorn.script.command.*
+import com.jonaswanke.unicorn.script.Unicorn
+import com.jonaswanke.unicorn.script.unicorn
 import java.io.File
 import java.security.Permission
 import javax.script.ScriptEngineManager
 
 fun main(args: Array<String>) {
     readScript()
-    Commands.main(args)
+    Unicorn.main(args.asList())
 }
 
 private fun readScript() {

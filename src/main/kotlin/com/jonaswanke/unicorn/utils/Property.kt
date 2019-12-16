@@ -1,5 +1,6 @@
 package com.jonaswanke.unicorn.utils
 
+import kotlin.properties.ReadOnlyProperty
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KMutableProperty0
 import kotlin.reflect.KProperty
@@ -17,9 +18,45 @@ fun <T : Any> cached(initialGetter: () -> T, setter: (T) -> Unit): ReadWriteProp
         override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
             this.value = value
             setter(value)
+            lazy(initialGetter)
         }
     }
 }
 
 operator fun <R> KProperty0<R>.getValue(thisRef: Any, property: KProperty<*>): R = get()
 operator fun <R> KMutableProperty0<R>.setValue(thisRef: Any, property: KProperty<*>, value: R) = set(value)
+
+fun <R, T> lazy(initializer: R.() -> T): ReadOnlyProperty<R, T> = SynchronizedLazyImpl(initializer)
+
+private object UNINITIALIZED_VALUE
+// Mostly copied from Kotlin's JVM lazy
+private class SynchronizedLazyImpl<in R, out T>(initializer: R.() -> T) : ReadOnlyProperty<R, T> {
+    private var initializer: (R.() -> T)? = initializer
+    @Volatile
+    private var _value: Any? = UNINITIALIZED_VALUE
+
+    override fun getValue(thisRef: R, property: KProperty<*>): T {
+        val _v1 = _value
+        if (_v1 !== UNINITIALIZED_VALUE) {
+            @Suppress("UNCHECKED_CAST")
+            return _v1 as T
+        }
+
+        return synchronized(this) {
+            val _v2 = _value
+            if (_v2 !== UNINITIALIZED_VALUE) {
+                @Suppress("UNCHECKED_CAST") (_v2 as T)
+            } else {
+                val typedValue = initializer!!(thisRef)
+                _value = typedValue
+                initializer = null
+                typedValue
+            }
+        }
+    }
+
+    val isInitialized: Boolean
+        get() = _value !== UNINITIALIZED_VALUE
+
+    override fun toString(): String = if (isInitialized) _value.toString() else "Lazy value not initialized yet."
+}

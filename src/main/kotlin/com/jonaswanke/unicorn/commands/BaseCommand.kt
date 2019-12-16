@@ -6,7 +6,7 @@ import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
-import com.jonaswanke.unicorn.script.Unicorn
+import com.jonaswanke.unicorn.console.ConsoleRunContext
 import com.jonaswanke.unicorn.utils.TextIoConsoleWrapper
 import java.io.File
 
@@ -39,12 +39,10 @@ abstract class BaseCommand(
         .default(File(System.getProperty("user.dir")))
 
     final override fun run() {
-        Unicorn.prefix = prefix
-        execute()
+        val runContext = ConsoleRunContext(prefix, context.console)
+        execute(runContext)
         echo("Done!")
     }
 
-    val runContext: RunContext = TODO()
-
-    open fun execute() {}
+    open fun execute(context: RunContext) {}
 }

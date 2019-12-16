@@ -51,7 +51,7 @@ open class Create : BaseCommand() {
             if (initInExisting) it else File(it, name!!)
         }
 
-    override fun execute() {
+    override fun execute(context: RunContext) {
         if (initInExisting)
             confirm("Using create in an existing project is experimental. Continue?", abort = true)
 
@@ -64,15 +64,15 @@ open class Create : BaseCommand() {
             if (!prefix.isDirectory)
                 throw UsageError("The specified path is not a directory. If you want to create a new repository, please specify a name")
             try {
-                runContext.projectConfig
+                context.projectConfig
                 throw UsageError("Unicorn is already initialized in the specified directory")
             } catch (e: IOException) {
                 // Means no project config file was found - expected
             }
         }
 
-        val gitHub = GitHub.authenticate(runContext)
-        val repo = gitHub.currentRepoOrNull(runContext)
+        val gitHub = GitHub.authenticate(context)
+        val repo = gitHub.currentRepoOrNull(context)
 
         val description = description
             ?: if (initInExisting) repo?.description else null
@@ -133,7 +133,7 @@ open class Create : BaseCommand() {
                 type = type,
                 version = version
             )
-            runContext.projectConfig = config
+            context.projectConfig = config
 
             echo("Copying templates")
             copyTemplate(replacements, "README.md")
@@ -208,13 +208,13 @@ open class Create : BaseCommand() {
 
             copyTemplate(replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
 
-            if (isGitRepo(prefix)) return runContext.git
+            if (isGitRepo(prefix)) return context.git
 
             return Git.init(prefix).apply {
-                add(runContext, ".")
-                commit(runContext, runContext.projectConfig.types.releaseCommit, description = "initial commit")
+                add(context, ".")
+                commit(context, context.projectConfig.types.releaseCommit, description = "initial commit")
 
-                checkout(runContext, flow.devBranch.name, createBranch = true)
+                checkout(context, flow.devBranch.name, createBranch = true)
             }
         }
 
@@ -242,7 +242,7 @@ open class Create : BaseCommand() {
                 return create()
             }
 
-            val gitHub = GitHub.authenticate(runContext)
+            val gitHub = GitHub.authenticate(context)
             val organization = promptOptional<GHOrganization>(
                 "Which organization should this be uploaded to?",
                 optionalText = " (Blank for no organization)"
@@ -270,10 +270,10 @@ open class Create : BaseCommand() {
             }
 
             echo("Uploading")
-            git.addRemote(runContext, Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
-            git.trackBranch(runContext, git.flow.masterBranch.name)
-            git.trackBranch(runContext, git.flow.devBranch.name)
-            git.push(runContext, pushAllBranches = true, force = true)
+            git.addRemote(context, Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
+            git.trackBranch(context, git.flow.masterBranch.name)
+            git.trackBranch(context, git.flow.devBranch.name)
+            git.push(context, pushAllBranches = true, force = true)
 
             return repo
         }
