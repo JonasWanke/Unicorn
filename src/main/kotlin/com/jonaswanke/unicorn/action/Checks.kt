@@ -2,7 +2,7 @@ package com.jonaswanke.unicorn.action
 
 import com.jonaswanke.unicorn.commands.RunContext
 import com.jonaswanke.unicorn.script.ConventionalCommit
-import com.jonaswanke.unicorn.script.closedIssues
+import com.jonaswanke.unicorn.api.closedIssues
 import com.jonaswanke.unicorn.utils.*
 import org.kohsuke.github.GHPullRequest
 

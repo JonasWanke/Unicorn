@@ -1,8 +1,8 @@
 package com.jonaswanke.unicorn.action
 
 import com.jonaswanke.unicorn.action.Action.throwError
+import com.jonaswanke.unicorn.api.*
 import com.jonaswanke.unicorn.commands.RunContext
-import com.jonaswanke.unicorn.script.*
 import org.kohsuke.github.GHIssue
 import org.kohsuke.github.GHPullRequest
 import java.nio.file.FileSystems

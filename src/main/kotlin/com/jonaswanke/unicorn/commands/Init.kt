@@ -9,10 +9,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.jonaswanke.unicorn.ProgramConfig
 import com.jonaswanke.unicorn.ProjectConfig
-import com.jonaswanke.unicorn.script.Git
-import com.jonaswanke.unicorn.script.GitHub
-import com.jonaswanke.unicorn.script.commit
-import com.jonaswanke.unicorn.script.git
+import com.jonaswanke.unicorn.api.Git
+import com.jonaswanke.unicorn.api.commit
+import com.jonaswanke.unicorn.api.git
+import com.jonaswanke.unicorn.api.gitHub
 import com.jonaswanke.unicorn.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
@@ -71,8 +71,7 @@ open class Create : BaseCommand() {
             }
         }
 
-        val gitHub = GitHub.authenticate(context)
-        val repo = gitHub.currentRepoOrNull(context)
+        val repo = context.gitHub.currentRepoOrNull(context)
 
         val description = description
             ?: if (initInExisting) repo?.description else null
@@ -242,14 +241,13 @@ open class Create : BaseCommand() {
                 return create()
             }
 
-            val gitHub = GitHub.authenticate(context)
             val organization = promptOptional<GHOrganization>(
                 "Which organization should this be uploaded to?",
                 optionalText = " (Blank for no organization)"
             ) {
                 if (it.isNullOrBlank()) null
                 else try {
-                    gitHub.api.getOrganization(it)
+                    context.gitHub.api.getOrganization(it)
                 } catch (e: IOException) {
                     throw NoSuchOption(it)
                 }
@@ -258,7 +256,7 @@ open class Create : BaseCommand() {
             val private = confirm("Should the repository be private?", default = true)
                 ?: true
             val repoBuilder = organization?.createRepository(name)
-                ?: gitHub.api.createRepository(name)
+                ?: context.gitHub.api.createRepository(name)
             val repo = try {
                 repoBuilder.init(private)
             } catch (e: HttpException) {

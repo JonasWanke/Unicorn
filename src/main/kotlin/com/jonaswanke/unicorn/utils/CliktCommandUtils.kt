@@ -4,7 +4,6 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.output.CliktConsole
 import com.github.ajalt.clikt.output.TermUi
-import com.github.ajalt.clikt.output.defaultCliktConsole
 import java.io.IOError
 
 fun CliktCommand.editText(

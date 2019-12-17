@@ -1,4 +1,4 @@
-package com.jonaswanke.unicorn.script
+package com.jonaswanke.unicorn.api
 
 import com.jonaswanke.unicorn.commands.RunContext
 import net.swiftzer.semver.SemVer

@@ -1,4 +1,4 @@
-package com.jonaswanke.unicorn.script
+package com.jonaswanke.unicorn.api
 
 import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
@@ -6,6 +6,7 @@ import com.jonaswanke.unicorn.GlobalConfig
 import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.action.Action
 import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.script.promptOptional
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
 import com.jonaswanke.unicorn.utils.lazy
 import com.jonaswanke.unicorn.utils.list
@@ -38,7 +39,9 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
 
             // isCredentialValid tries to retrieve the current user which doesn't work with an anonymous token
             return api.takeIf { config.anonymousToken != null || it.isCredentialValid }
-                ?.let { GitHub(api, OAuthCredentialsProvider(config.anonymousToken ?: config.oauthToken!!)) }
+                ?.let {
+                    GitHub(api, OAuthCredentialsProvider(config.anonymousToken ?: config.oauthToken!!))
+                }
         }
 
         fun authenticate(

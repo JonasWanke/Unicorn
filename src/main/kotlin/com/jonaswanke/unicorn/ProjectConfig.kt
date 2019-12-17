@@ -1,6 +1,6 @@
 package com.jonaswanke.unicorn
 
-import com.jonaswanke.unicorn.script.LabelGroup
+import com.jonaswanke.unicorn.api.LabelGroup
 import net.swiftzer.semver.SemVer
 
 data class ProjectConfig(

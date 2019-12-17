@@ -5,8 +5,8 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.validate
-import com.jonaswanke.unicorn.script.encodedLabelName
-import com.jonaswanke.unicorn.script.gitHubRepo
+import com.jonaswanke.unicorn.api.encodedLabelName
+import com.jonaswanke.unicorn.api.gitHubRepo
 import com.jonaswanke.unicorn.utils.kbd
 
 class LabelCommand : BaseCommand(name = "label", aliases = listOf("l")) {

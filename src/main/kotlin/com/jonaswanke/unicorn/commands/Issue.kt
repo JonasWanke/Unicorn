@@ -1,10 +1,10 @@
 package com.jonaswanke.unicorn.commands
 
-import com.jonaswanke.unicorn.script.*
 import com.jonaswanke.unicorn.script.command.argument
 import com.jonaswanke.unicorn.script.command.command
 import com.jonaswanke.unicorn.script.command.executableCommand
 import com.jonaswanke.unicorn.script.command.register
+import com.jonaswanke.unicorn.api.*
 
 internal fun Unicorn.registerIssueCommands() {
     command(
@@ -41,10 +41,7 @@ internal fun Unicorn.registerIssueCommands() {
 
                 val issue = branch.issue
                 val title = ConventionalCommit.format(this, issue, description)
-                if (title == null) {
-                    this.e("Commit doesn't have a type label")
-                    return@run
-                }
+                    ?: this.exit("Commit doesn't have a type label")
                 issue.openPullRequest(this, title = title)
             }
         }
