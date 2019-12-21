@@ -19,8 +19,8 @@ interface UnicornArgument<out T, A : ArgumentDelegate<T>> : UnicornParameter<T> 
     override fun build(command: BaseCommand): A
 }
 
-internal typealias UnicornRawArgument = UnicornArgument<String, ProcessedArgument<String, String>>
 internal typealias UnicornProcessedArgument<AllT, ValueT> = UnicornArgument<AllT, ProcessedArgument<AllT, ValueT>>
+internal typealias UnicornRawArgument = UnicornProcessedArgument<String, String>
 
 
 internal fun <InT, In : ArgumentDelegate<InT>, OutT, Out : ArgumentDelegate<OutT>> UnicornArgument<InT, In>.buildDelegate(
