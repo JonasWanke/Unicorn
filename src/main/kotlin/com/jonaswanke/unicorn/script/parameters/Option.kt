@@ -26,6 +26,7 @@ interface UnicornOption<out T, A : OptionDelegate<T>> : UnicornParameter<T> {
 internal typealias UnicornOptionWithValues<AllT, EachT, ValueT> = UnicornOption<AllT, OptionWithValues<AllT, EachT, ValueT>>
 internal typealias UnicornNullableOption<EachT, ValueT> = UnicornOption<EachT?, OptionWithValues<EachT?, EachT, ValueT>>
 internal typealias UnicornRawOption = UnicornNullableOption<String, String>
+internal typealias UnicornFlagOption<T> = UnicornOption<T, FlagOption<T>>
 
 
 internal fun <InT, In : OptionDelegate<InT>, OutT, Out : OptionDelegate<OutT>> UnicornOption<InT, In>.buildDelegate(
@@ -234,6 +235,45 @@ fun <T : Any> UnicornRawOption.convert(
     envvarSplit: Regex = Regex("\\s+"),
     conversion: ValueTransformer<T>
 ) = buildDelegate { convert(metavar, envvarSplit, conversion) }
+// endregion
+
+// region Flag
+/**
+ * Turn an option into a boolean flag.
+ *
+ * @param secondaryNames additional names for that option that cause the option value to be false. It's good
+ *   practice to provide secondary names so that users can disable an option that was previously enabled.
+ * @param default the value for this property if the option is not given on the command line.
+ */
+fun UnicornRawOption.flag(vararg secondaryNames: String, default: Boolean = false): UnicornFlagOption<Boolean> =
+    buildDelegate { flag(*secondaryNames, default = default) }
+
+/**
+ * Turn an option into a flag that counts the number of times the option occurs on the command line.
+ */
+fun UnicornRawOption.counted(): UnicornFlagOption<Int> = buildDelegate { counted() }
+
+/** Turn an option into a set of flags that each map to a value. */
+fun <T : Any> UnicornRawOption.switch(choices: Map<String, T>): UnicornFlagOption<T?> =
+    buildDelegate { switch(choices) }
+
+/** Turn an option into a set of flags that each map to a value. */
+fun <T : Any> UnicornRawOption.switch(vararg choices: Pair<String, T>): UnicornFlagOption<T?> =
+    buildDelegate { switch(*choices) }
+
+/** Set a default value for a option. */
+@JvmName("flagDefault")
+fun <T : Any> UnicornFlagOption<T?>.default(value: T): UnicornFlagOption<T> = buildDelegate { default(value) }
+
+/**
+ * Check the final option value and raise an error if it's not valid.
+ *
+ * The [validator] is called with the final option type (the output of [transformAll]), and should call `fail`
+ * if the value is not valid. It is not called if the delegate value is null.
+ */
+@JvmName("flagValidate")
+fun <T : Any> UnicornFlagOption<T>.validate(validator: OptionValidator<T>): UnicornOption<T, OptionDelegate<T>> =
+    buildDelegate { validate(validator) }
 // endregion
 
 // region Types
