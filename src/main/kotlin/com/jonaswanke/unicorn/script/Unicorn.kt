@@ -10,6 +10,7 @@ annotation class UnicornMarker
 object Unicorn {
     internal fun main(argv: List<String>) {
         registerLoginLogoutCommands()
+        registerCreateCommand()
         registerIssueCommands()
         registerLabelCommands()
         Commands.main(argv)

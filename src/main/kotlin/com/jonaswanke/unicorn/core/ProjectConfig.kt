@@ -5,7 +5,6 @@ import net.swiftzer.semver.SemVer
 
 data class ProjectConfig(
     val unicornVersion: SemVer,
-    val type: Type,
     val name: String,
     val description: String? = null,
     val version: SemVer = SemVer(0, 0, 1),
@@ -20,16 +19,6 @@ data class ProjectConfig(
     ),
     val labels: Labels = Labels()
 ) {
-    enum class Type {
-        ANDROID,
-        ANGULAR,
-        OTHER;
-
-        companion object {
-            val stringToValueMap = values().associateBy { it.name.toLowerCase() }
-        }
-    }
-
     val typeLabelGroup: LabelGroup = LabelGroup(
         labels.types.color,
         labels.types.prefix,

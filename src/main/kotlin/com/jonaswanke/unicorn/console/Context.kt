@@ -10,7 +10,7 @@ import com.jonaswanke.unicorn.utils.TextIoConsole
 import java.io.File
 
 class ConsoleRunContext private constructor(
-    override val projectDir: File,
+    override var projectDir: File,
     val console: CliktConsole,
     override val log: LogCollector = ConsoleLogCollector(Priority.INFO)
 ) : InteractiveRunContext() {

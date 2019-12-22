@@ -44,5 +44,5 @@ abstract class BaseCommand(
         runContext.log.i("Done!")
     }
 
-    abstract fun execute(context: ConsoleRunContext)
+    open fun execute(context: ConsoleRunContext) = Unit
 }

@@ -8,6 +8,7 @@ import org.eclipse.jgit.api.TransportCommand
 import org.eclipse.jgit.lib.ConfigConstants
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.Ref
+import org.eclipse.jgit.lib.RepositoryBuilder
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
 import org.jetbrains.kotlin.serialization.js.DynamicTypeDeserializer.id
@@ -22,6 +23,15 @@ class Git(val directory: File) {
                 .setDirectory(directory)
                 .call()
             return Git(directory)
+        }
+
+        fun isInitializedIn(directory: File): Boolean {
+            if (!directory.isDirectory) return false
+
+            return RepositoryBuilder().apply {
+                addCeilingDirectory(directory)
+                findGitDir(directory)
+            }.gitDir != null
         }
     }
 

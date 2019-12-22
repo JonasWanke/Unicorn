@@ -1,5 +1,7 @@
 package com.jonaswanke.unicorn.script
 
+import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.option
 import com.jonaswanke.unicorn.commands.BaseCommand
 import com.jonaswanke.unicorn.console.ConsoleRunContext
 import com.jonaswanke.unicorn.script.parameters.UnicornParameter
@@ -39,6 +41,7 @@ class UnicornCommandBuilder(
         bodyBuilder = {
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
                 val p1: P1 by param1.build(this)
+                val a by option().flag()
                 override fun execute(context: ConsoleRunContext) = context.body(p1)
             }
         }

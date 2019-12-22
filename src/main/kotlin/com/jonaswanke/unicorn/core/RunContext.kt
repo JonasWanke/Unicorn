@@ -220,5 +220,5 @@ abstract class InteractiveRunContext : RunContext() {
         abort: Boolean = false,
         promptSuffix: String = ": ",
         showDefault: Boolean = true
-    ): Boolean? = TermUi.confirm(text, default, abort, promptSuffix, showDefault, TextIoConsole)
+    ): Boolean = TermUi.confirm(text, default, abort, promptSuffix, showDefault, TextIoConsole) ?: default
 }

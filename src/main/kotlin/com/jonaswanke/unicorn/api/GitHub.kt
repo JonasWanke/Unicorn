@@ -42,6 +42,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                     GitHub(api, OAuthCredentialsProvider(config.anonymousToken ?: config.oauthToken!!))
                 }
         }
+
         private class OAuthCredentialsProvider(token: String) : UsernamePasswordCredentialsProvider(token, "")
 
         fun authenticate(
@@ -96,6 +97,8 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
     }
 
     fun currentRepoNameOrNull(context: RunContext): String? {
+        if (!Git.isInitializedIn(context.projectDir)) return null
+
         return Git(context).listRemotes(context).mapNotNull { remoteConfig ->
             remoteConfig.urIs.firstOrNull { it.host == "github.com" }
         }
@@ -362,6 +365,9 @@ class LabelGroup(
 class GHReleaseBuilder {
 
 }
+
+val GHRepository.latestReleaseVersion: SemVer?
+    get() = latestRelease?.tagName?.removePrefix("v")?.let { SemVer.parseOrNull(it) }
 
 fun GHRepository.createRelease(version: SemVer, tagName: String = "v$version") {
 

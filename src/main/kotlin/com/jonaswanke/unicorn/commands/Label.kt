@@ -20,7 +20,7 @@ internal fun Unicorn.registerLabelCommands() {
             run(
                 argument("name"),
                 option("-c", "--color", help = "Color of the label (6 hex digits, optionally with '#' in front)")
-                    .convert { if (it.startsWith('#')) it.substring(1) else it }
+                    .convert { it.removePrefix("#") }
                     .default(COLOR_DEFAULT)
                     .validate {
                         require(it.length == COLOR_LENGTH) {
