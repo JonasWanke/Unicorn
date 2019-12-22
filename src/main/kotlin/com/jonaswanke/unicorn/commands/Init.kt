@@ -7,12 +7,13 @@ import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
-import com.jonaswanke.unicorn.ProgramConfig
-import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.api.Git
 import com.jonaswanke.unicorn.api.commit
 import com.jonaswanke.unicorn.api.git
 import com.jonaswanke.unicorn.api.gitHub
+import com.jonaswanke.unicorn.core.ProgramConfig
+import com.jonaswanke.unicorn.core.ProjectConfig
+import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.*
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient

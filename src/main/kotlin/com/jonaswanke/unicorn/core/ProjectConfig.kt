@@ -1,4 +1,4 @@
-package com.jonaswanke.unicorn
+package com.jonaswanke.unicorn.core
 
 import com.jonaswanke.unicorn.api.LabelGroup
 import net.swiftzer.semver.SemVer

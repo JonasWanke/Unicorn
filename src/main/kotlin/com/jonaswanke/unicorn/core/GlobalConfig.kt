@@ -1,4 +1,4 @@
-package com.jonaswanke.unicorn
+package com.jonaswanke.unicorn.core
 
 data class GlobalConfig(
     val gitHub: GitHubConfig? = null

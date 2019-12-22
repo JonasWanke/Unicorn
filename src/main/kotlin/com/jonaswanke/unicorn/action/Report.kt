@@ -1,7 +1,7 @@
 package com.jonaswanke.unicorn.action
 
-import com.jonaswanke.unicorn.commands.LogCollector
-import com.jonaswanke.unicorn.commands.Priority
+import com.jonaswanke.unicorn.core.LogCollector
+import com.jonaswanke.unicorn.core.Priority
 import com.jonaswanke.unicorn.utils.*
 import java.io.File
 
@@ -10,7 +10,8 @@ private const val ICON_INFO = ":information_source:"
 private const val ICON_WARNING = ":warning:"
 private const val ICON_ERROR = ":x:"
 
-class ReportLogCollector : LogCollector<LogCollector.SimpleGroup> {
+class ReportLogCollector :
+    LogCollector<LogCollector.SimpleGroup> {
     val reportItems = ReportItem.Group(LogCollector.SimpleGroup(this, Markup()))
 
     override fun log(

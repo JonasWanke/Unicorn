@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.option
 import com.jonaswanke.unicorn.api.GitHub
+import com.jonaswanke.unicorn.core.RunContext
 
 open class Login : BaseCommand() {
     private val username by argument("username").optional()

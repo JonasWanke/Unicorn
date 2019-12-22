@@ -1,8 +1,8 @@
 package com.jonaswanke.unicorn.console
 
 import com.github.ajalt.clikt.output.CliktConsole
-import com.jonaswanke.unicorn.commands.Priority
-import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.core.Priority
+import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.Markup
 import com.jonaswanke.unicorn.utils.echo
 import java.io.File

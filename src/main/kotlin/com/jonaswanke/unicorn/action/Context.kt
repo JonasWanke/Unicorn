@@ -1,8 +1,8 @@
 package com.jonaswanke.unicorn.action
 
-import com.jonaswanke.unicorn.GlobalConfig
-import com.jonaswanke.unicorn.commands.Priority
-import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.core.GlobalConfig
+import com.jonaswanke.unicorn.core.Priority
+import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.Markup
 import java.io.File
 

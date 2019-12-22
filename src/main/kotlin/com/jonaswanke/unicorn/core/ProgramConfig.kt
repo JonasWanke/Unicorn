@@ -1,4 +1,4 @@
-package com.jonaswanke.unicorn
+package com.jonaswanke.unicorn.core
 
 import net.swiftzer.semver.SemVer
 

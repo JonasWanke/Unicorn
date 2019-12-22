@@ -4,7 +4,7 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import com.jonaswanke.unicorn.commands.BaseCommand
-import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.script.parameters.UnicornParameter
 import com.jonaswanke.unicorn.utils.MarkupBuilder
 import com.jonaswanke.unicorn.utils.buildMarkup

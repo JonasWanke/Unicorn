@@ -2,10 +2,10 @@ package com.jonaswanke.unicorn.api
 
 import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
-import com.jonaswanke.unicorn.GlobalConfig
-import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.action.Action
-import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.core.GlobalConfig
+import com.jonaswanke.unicorn.core.ProjectConfig
+import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.script.promptOptional
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
 import com.jonaswanke.unicorn.utils.lazy

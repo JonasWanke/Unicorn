@@ -1,8 +1,6 @@
-package com.jonaswanke.unicorn.commands
+package com.jonaswanke.unicorn.core
 
 import com.github.ajalt.clikt.core.CliktError
-import com.jonaswanke.unicorn.GlobalConfig
-import com.jonaswanke.unicorn.ProjectConfig
 import com.jonaswanke.unicorn.utils.*
 import java.io.File
 
@@ -40,7 +38,8 @@ interface LogCollector<G : LogCollector.Group<G>> {
     fun <R> group(name: String, block: G.() -> R): R = group(name).block()
     fun <R> group(name: Markup, block: G.() -> R): R = group(name).block()
 
-    interface Group<G : Group<G>> : LogCollector<G> {
+    interface Group<G : Group<G>> :
+        LogCollector<G> {
         val parent: LogCollector<G>
         val name: Markup
 
@@ -104,12 +103,14 @@ abstract class RunContext : LogCollector<RunContext.Group> {
     )
     // endregion
 
-    override fun group(name: Markup): Group = Group(this, name)
+    override fun group(name: Markup): Group =
+        Group(this, name)
 
     class Group(
         override val parent: RunContext,
         override val name: Markup
-    ) : RunContext(), LogCollector.Group<Group> {
+    ) : RunContext(),
+        LogCollector.Group<Group> {
         override val environment by parent::environment
         override val isInteractive by parent::isInteractive
         override val globalDir by parent::globalDir

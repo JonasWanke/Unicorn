@@ -1,7 +1,7 @@
 package com.jonaswanke.unicorn.api
 
-import com.jonaswanke.unicorn.ProjectConfig
-import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.core.ProjectConfig
+import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.joined
 import com.jonaswanke.unicorn.utils.kbd
 

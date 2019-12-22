@@ -1,6 +1,6 @@
 package com.jonaswanke.unicorn.api
 
-import com.jonaswanke.unicorn.commands.RunContext
+import com.jonaswanke.unicorn.core.RunContext
 import java.io.File
 import java.util.concurrent.TimeUnit
 
