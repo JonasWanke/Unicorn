@@ -6,7 +6,6 @@ import com.jonaswanke.unicorn.core.InteractiveRunContext
 object Commands : BaseCommand() {
     init {
         subcommands(
-            Login(), Logout(),
             Create()
         )
     }

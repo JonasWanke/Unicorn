@@ -1,22 +1,25 @@
 package com.jonaswanke.unicorn.commands
 
-import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.optional
-import com.github.ajalt.clikt.parameters.options.option
 import com.jonaswanke.unicorn.api.GitHub
-import com.jonaswanke.unicorn.core.InteractiveRunContext
+import com.jonaswanke.unicorn.script.Unicorn
+import com.jonaswanke.unicorn.script.command
+import com.jonaswanke.unicorn.script.parameters.argument
+import com.jonaswanke.unicorn.script.parameters.option
+import com.jonaswanke.unicorn.script.parameters.optional
 
-open class Login : BaseCommand() {
-    private val username by argument("username").optional()
-    private val endpoint by option("-e", "--endpoint")
-
-    override fun execute(context: InteractiveRunContext) {
-        GitHub.authenticate(context, true, username = username, endpoint = endpoint)
+fun Unicorn.registerLoginLogoutCommands() {
+    command("login") {
+        run(
+            argument("username").optional(),
+            option("-e", "--endpoint")
+        ) { username, endpoint ->
+            GitHub.authenticate(this, true, username = username, endpoint = endpoint)
+        }
     }
-}
 
-open class Logout : BaseCommand() {
-    override fun execute(context: InteractiveRunContext) {
-        context.globalConfig = context.globalConfig.copy(gitHub = null)
+    command("logout") {
+        run {
+            globalConfig = globalConfig.copy(gitHub = null)
+        }
     }
 }

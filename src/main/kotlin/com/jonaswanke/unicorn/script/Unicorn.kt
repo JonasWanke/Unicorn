@@ -1,9 +1,6 @@
 package com.jonaswanke.unicorn.script
 
-import com.jonaswanke.unicorn.commands.BaseCommand
-import com.jonaswanke.unicorn.commands.Commands
-import com.jonaswanke.unicorn.commands.registerIssueCommands
-import com.jonaswanke.unicorn.commands.registerLabelCommands
+import com.jonaswanke.unicorn.commands.*
 
 @DslMarker
 annotation class UnicornMarker
@@ -11,8 +8,8 @@ annotation class UnicornMarker
 
 @UnicornMarker
 object Unicorn {
-    // region Commands
     internal fun main(argv: List<String>) {
+        registerLoginLogoutCommands()
         registerIssueCommands()
         registerLabelCommands()
         Commands.main(argv)
@@ -21,7 +18,6 @@ object Unicorn {
     internal fun addCommand(command: BaseCommand) {
         Commands.addSubcommand(command)
     }
-    // endregion
 }
 
 fun unicorn(unicornBuilder: Unicorn.() -> Unit) {
