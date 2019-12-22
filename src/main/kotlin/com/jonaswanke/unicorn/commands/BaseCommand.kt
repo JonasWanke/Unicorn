@@ -7,7 +7,6 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.jonaswanke.unicorn.console.ConsoleRunContext
-import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.utils.TextIoConsole
 import java.io.File
 
@@ -45,5 +44,5 @@ abstract class BaseCommand(
         runContext.log.i("Done!")
     }
 
-    open fun execute(context: InteractiveRunContext) {}
+    abstract fun execute(context: ConsoleRunContext)
 }

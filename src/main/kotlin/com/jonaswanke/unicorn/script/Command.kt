@@ -1,10 +1,7 @@
 package com.jonaswanke.unicorn.script
 
-import com.github.ajalt.clikt.parameters.options.convert
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.types.int
 import com.jonaswanke.unicorn.commands.BaseCommand
-import com.jonaswanke.unicorn.core.InteractiveRunContext
+import com.jonaswanke.unicorn.console.ConsoleRunContext
 import com.jonaswanke.unicorn.script.parameters.UnicornParameter
 import com.jonaswanke.unicorn.utils.MarkupBuilder
 import com.jonaswanke.unicorn.utils.buildMarkup
@@ -24,54 +21,28 @@ class UnicornCommandBuilder(
     // endregion
 
     // region Body
-    var bodyBuilder: BodyBuilder =
-        NoBodyBuilder
-
-    interface BodyBuilder {
-        fun buildCommand(name: String, aliases: List<String>, help: String): BaseCommand
+    var bodyBuilder: () -> BaseCommand = {
+        object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = false) {}
     }
 
-    object NoBodyBuilder : BodyBuilder {
-        override fun buildCommand(name: String, aliases: List<String>, help: String): BaseCommand {
-            return object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = false) {
-
+    @UnicornMarker
+    fun run(body: Command0Body) {
+        bodyBuilder = {
+            object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
+                override fun execute(context: ConsoleRunContext) = context.body()
             }
         }
     }
 
     @UnicornMarker
-    fun run(body: Command0Body) {
-        bodyBuilder = Body0Builder(body)
-    }
-
-    class Body0Builder(val body: Command0Body) :
-        BodyBuilder {
-        override fun buildCommand(name: String, aliases: List<String>, help: String): BaseCommand =
-            object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
-                val a by option("a")
-                    .convert { it.substring(1) }
-                    .int()
-                override fun execute(context: InteractiveRunContext) = context.body()
-            }
-    }
-
-
-    @UnicornMarker
     fun <P1> run(param1: UnicornParameter<P1>, body: Command1Body<P1>) {
-        bodyBuilder = Body1Builder(param1, body)
-    }
-
-    class Body1Builder<P1>(
-        val param1: UnicornParameter<P1>,
-        val body: Command1Body<P1>
-    ) : BodyBuilder {
-        override fun buildCommand(name: String, aliases: List<String>, help: String): BaseCommand =
+        bodyBuilder = {
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
                 val p1: P1 by param1.build(this)
-                override fun execute(context: InteractiveRunContext) = context.body(p1)
+                override fun execute(context: ConsoleRunContext) = context.body(p1)
             }
+        }
     }
-
 
     @UnicornMarker
     fun <P1, P2> run(
@@ -79,32 +50,61 @@ class UnicornCommandBuilder(
         param2: UnicornParameter<P2>,
         body: Command2Body<P1, P2>
     ) {
-        bodyBuilder = Body2Builder(param1, param2, body)
-    }
-
-    class Body2Builder<P1, P2>(
-        val param1: UnicornParameter<P1>,
-        val param2: UnicornParameter<P2>,
-        val body: Command2Body<P1, P2>
-    ) : BodyBuilder {
-        override fun buildCommand(name: String, aliases: List<String>, help: String): BaseCommand =
+        bodyBuilder = {
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
                 val p1: P1 by param1.build(this)
                 val p2: P2 by param2.build(this)
-                override fun execute(context: InteractiveRunContext) = context.body(p1, p2)
+                override fun execute(context: ConsoleRunContext) = context.body(p1, p2)
             }
+        }
     }
-    // endregion
 
-    fun build(): BaseCommand {
-        return bodyBuilder.buildCommand(name, aliases, help)
+    @UnicornMarker
+    fun <P1, P2, P3> run(
+        param1: UnicornParameter<P1>,
+        param2: UnicornParameter<P2>,
+        param3: UnicornParameter<P3>,
+        body: Command3Body<P1, P2, P3>
+    ) {
+        bodyBuilder = {
+            object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
+                val p1: P1 by param1.build(this)
+                val p2: P2 by param2.build(this)
+                val p3: P3 by param3.build(this)
+                override fun execute(context: ConsoleRunContext) = context.body(p1, p2, p3)
+            }
+        }
     }
+
+    @UnicornMarker
+    fun <P1, P2, P3, P4> run(
+        param1: UnicornParameter<P1>,
+        param2: UnicornParameter<P2>,
+        param3: UnicornParameter<P3>,
+        param4: UnicornParameter<P4>,
+        body: Command4Body<P1, P2, P3, P4>
+    ) {
+        bodyBuilder = {
+            object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
+                val p1: P1 by param1.build(this)
+                val p2: P2 by param2.build(this)
+                val p3: P3 by param3.build(this)
+                val p4: P4 by param4.build(this)
+                override fun execute(context: ConsoleRunContext) = context.body(p1, p2, p3, p4)
+            }
+        }
+    }
+// endregion
+
+    fun build(): BaseCommand = bodyBuilder()
 }
 
 typealias CommandBuilder = UnicornCommandBuilder.() -> Unit
-typealias Command0Body = InteractiveRunContext.() -> Unit
-typealias Command1Body<P1> = InteractiveRunContext.(P1) -> Unit
-typealias Command2Body<P1, P2> = InteractiveRunContext.(P1, P2) -> Unit
+typealias Command0Body = ConsoleRunContext.() -> Unit
+typealias Command1Body<P1> = ConsoleRunContext.(P1) -> Unit
+typealias Command2Body<P1, P2> = ConsoleRunContext.(P1, P2) -> Unit
+typealias Command3Body<P1, P2, P3> = ConsoleRunContext.(P1, P2, P3) -> Unit
+typealias Command4Body<P1, P2, P3, P4> = ConsoleRunContext.(P1, P2, P3, P4) -> Unit
 
 @UnicornMarker
 fun Unicorn.command(name: String, vararg aliases: String, commandBuilder: CommandBuilder) {
