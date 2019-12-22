@@ -31,6 +31,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable")
     implementation("org.jetbrains.kotlin:kotlin-script-util")
     implementation("org.jetbrains.kotlin:kotlin-script-runtime")
 
