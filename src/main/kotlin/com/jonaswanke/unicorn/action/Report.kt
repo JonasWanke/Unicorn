@@ -1,7 +1,7 @@
 package com.jonaswanke.unicorn.action
 
 import com.jonaswanke.unicorn.core.LogCollector
-import com.jonaswanke.unicorn.core.Priority
+import com.jonaswanke.unicorn.core.LogCollector.Priority
 import com.jonaswanke.unicorn.utils.*
 import java.io.File
 
@@ -10,14 +10,13 @@ private const val ICON_INFO = ":information_source:"
 private const val ICON_WARNING = ":warning:"
 private const val ICON_ERROR = ":x:"
 
-class ReportLogCollector :
-    LogCollector<LogCollector.SimpleGroup> {
-    val reportItems = ReportItem.Group(LogCollector.SimpleGroup(this, Markup()))
+class ReportLogCollector : LogCollector {
+    val reportItems = ReportItem.Group(LogCollector.Group(this, Markup()))
 
     override fun log(
         priority: Priority,
         markup: Markup,
-        groups: List<LogCollector.SimpleGroup>,
+        groups: List<LogCollector.Group>,
         file: File?,
         line: Int?,
         col: Int?
@@ -33,15 +32,12 @@ class ReportLogCollector :
             }
         group.children += ReportItem.Line(priority, markup)
     }
-
-    override fun group(name: Markup) = LogCollector.SimpleGroup(this, name)
-
 }
 
 sealed class ReportItem {
     abstract val totalLineCount: Int
 
-    data class Group(val group: LogCollector.SimpleGroup) : ReportItem() {
+    data class Group(val group: LogCollector.Group) : ReportItem() {
         val children: MutableList<ReportItem> = mutableListOf()
 
         override val totalLineCount: Int

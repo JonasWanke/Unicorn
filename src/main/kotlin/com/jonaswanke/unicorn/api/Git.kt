@@ -33,7 +33,7 @@ class Git(val directory: File) {
 
 
     fun checkout(context: RunContext, name: String, createBranch: Boolean = false): Ref {
-        context.i {
+        context.log.i {
             code {
                 +"git checkout"
                 if (createBranch) +" -b"
@@ -49,7 +49,7 @@ class Git(val directory: File) {
 
     // region Commits
     fun add(context: RunContext, vararg filePattern: String) {
-        context.d { code("git add ${filePattern.joinToString(" ") { "\"$it\"" }}") }
+        context.log.d { code("git add ${filePattern.joinToString(" ") { "\"$it\"" }}") }
         call(context, api.add()) {
             filePattern.forEach {
                 addFilepattern(it)
@@ -58,7 +58,7 @@ class Git(val directory: File) {
     }
 
     fun commit(context: RunContext, message: String) {
-        context.i { code { +"git commit -m \"$message\"" } }
+        context.log.i { code { +"git commit -m \"$message\"" } }
         call(context, api.commit()) {
             setMessage(message)
         }
@@ -73,26 +73,23 @@ class Git(val directory: File) {
         context: RunContext,
         name: String,
         base: String = Constants.HEAD
-    ): Ref {
-        @Suppress("NAME_SHADOWING")
-        val context = context.group("creating branch $name")
-
+    ): Ref = context.group("creating branch $name") {
         if (base != Constants.HEAD) checkout(context, base)
         val ref = checkout(context, name, createBranch = true)
         trackBranch(context, name)
         push(context)
-        return ref
+        ref
     }
     // endregion
 
     // region Remote
     fun listRemotes(context: RunContext): List<RemoteConfig> {
-        context.d { code("git remote") }
+        context.log.d { code("git remote") }
         return call(context, api.remoteList())
     }
 
     fun addRemote(context: RunContext, name: String, uri: URIish) {
-        context.i { code("git remote add $name $uri") }
+        context.log.i { code("git remote add $name $uri") }
         call(context, api.remoteAdd()) {
             setName(name)
             setUri(uri)
@@ -105,7 +102,7 @@ class Git(val directory: File) {
         remoteName: String = "${Constants.R_HEADS}$name",
         remote: String = Constants.DEFAULT_REMOTE_NAME
     ) {
-        context.i("git: track branch $name -> $remote:$remoteName")
+        context.log.i("git: track branch $name -> $remote:$remoteName")
         api.repository.config.apply {
             setString(ConfigConstants.CONFIG_BRANCH_SECTION, name, ConfigConstants.CONFIG_KEY_REMOTE, remote)
             setString(ConfigConstants.CONFIG_BRANCH_SECTION, name, ConfigConstants.CONFIG_KEY_MERGE, remoteName)
@@ -113,7 +110,7 @@ class Git(val directory: File) {
     }
 
     fun push(context: RunContext, pushAllBranches: Boolean = false, force: Boolean = false) {
-        context.i {
+        context.log.i {
             code {
                 +"git push"
                 if (pushAllBranches) +" --all"
@@ -180,13 +177,11 @@ class Git(val directory: File) {
         // region Issue
         class IssueBranch(git: Git, val issue: GHIssue) : Branch(git, git.flow.branchNameFromIssue(issue))
 
-        fun createIssueBranch(context: RunContext, issue: GHIssue): IssueBranch {
-            @Suppress("NAME_SHADOWING")
-            val context = context.group("Git Flow: create issue branch for #${issue.number}")
-
-            git.createBranch(context, branchNameFromIssue(issue), base = devBranch.name)
-            return IssueBranch(git, issue)
-        }
+        fun createIssueBranch(context: RunContext, issue: GHIssue): IssueBranch =
+            context.group("Git Flow: create issue branch for #${issue.number}") {
+                git.createBranch(context, branchNameFromIssue(issue), base = devBranch.name)
+                IssueBranch(git, issue)
+            }
 
         fun branchNameFromIssue(issue: GHIssue): String {
             return issue.title
@@ -208,16 +203,15 @@ class Git(val directory: File) {
         // region Release
         class ReleaseBranch(git: Git, val version: SemVer) : Branch(git, "$BRANCH_RELEASE_PREFIX$version")
 
-        fun createReleaseBranch(context: RunContext, version: SemVer): ReleaseBranch {
-            @Suppress("NAME_SHADOWING")
-            val context = context.group("Git Flow: create issue branch for v$version")
-            require(version > context.projectConfig.version) {
-                "version must be greater than the current version (${context.projectConfig.version}), was $version"
-            }
+        fun createReleaseBranch(context: RunContext, version: SemVer): ReleaseBranch =
+            context.group("Git Flow: create issue branch for v$version") {
+                require(version > context.projectConfig.version) {
+                    "version must be greater than the current version (${context.projectConfig.version}), was $version"
+                }
 
-            git.createBranch(context, branchNameFromRelease(version), base = devBranch.name)
-            return ReleaseBranch(git, version)
-        }
+                git.createBranch(context, branchNameFromRelease(version), base = devBranch.name)
+                ReleaseBranch(git, version)
+            }
 
         fun branchNameFromRelease(version: SemVer): String {
             return "$BRANCH_RELEASE_PREFIX$version"

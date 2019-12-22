@@ -13,7 +13,7 @@ fun execute(
     timeout: Long? = 10,
     timeoutUnit: TimeUnit = TimeUnit.SECONDS
 ): String {
-    context.i {
+    context.log.i {
         +"Executing \"${arguments.joinToString(" ")}\""
         if (directory != null) +"in directory $directory"
     }

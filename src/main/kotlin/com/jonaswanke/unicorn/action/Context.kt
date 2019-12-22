@@ -1,12 +1,17 @@
 package com.jonaswanke.unicorn.action
 
 import com.jonaswanke.unicorn.core.GlobalConfig
-import com.jonaswanke.unicorn.core.Priority
+import com.jonaswanke.unicorn.core.LogCollector
+import com.jonaswanke.unicorn.core.LogCollector.Priority
 import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.Markup
 import java.io.File
 
-class GitHubActionRunContext : RunContext() {
+class GitHubActionRunContext private constructor(
+    override val log: LogCollector
+): RunContext() {
+    constructor() : this(GitHubActionLogCollector())
+
     override val environment = Environment.GITHUB_ACTION
 
     override var globalConfig: GlobalConfig
@@ -24,10 +29,14 @@ class GitHubActionRunContext : RunContext() {
 
     override val projectDir = Action.Env.githubWorkspace
 
+    override fun copyWithGroup(group: LogCollector.Group) = GitHubActionRunContext(group)
+}
+
+class GitHubActionLogCollector : LogCollector {
     override fun log(
         priority: Priority,
         markup: Markup,
-        groups: List<Group>,
+        groups: List<LogCollector.Group>,
         file: File?,
         line: Int?,
         col: Int?

@@ -7,8 +7,8 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.jonaswanke.unicorn.console.ConsoleRunContext
-import com.jonaswanke.unicorn.core.RunContext
-import com.jonaswanke.unicorn.utils.TextIoConsoleWrapper
+import com.jonaswanke.unicorn.core.InteractiveRunContext
+import com.jonaswanke.unicorn.utils.TextIoConsole
 import java.io.File
 
 
@@ -21,7 +21,7 @@ abstract class BaseCommand(
 ) : CliktCommand(help, epilog, name, invokeWithoutSubcommand) {
     init {
         context {
-            console = TextIoConsoleWrapper
+            console = TextIoConsole
         }
     }
 
@@ -42,8 +42,8 @@ abstract class BaseCommand(
     final override fun run() {
         val runContext = ConsoleRunContext(prefix, context.console)
         execute(runContext)
-        echo("Done!")
+        runContext.log.i("Done!")
     }
 
-    open fun execute(context: RunContext) {}
+    open fun execute(context: InteractiveRunContext) {}
 }

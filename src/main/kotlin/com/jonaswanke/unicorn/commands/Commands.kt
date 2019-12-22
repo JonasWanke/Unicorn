@@ -1,7 +1,7 @@
 package com.jonaswanke.unicorn.commands
 
 import com.github.ajalt.clikt.core.subcommands
-import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.InteractiveRunContext
 
 object Commands : BaseCommand() {
     init {
@@ -11,5 +11,5 @@ object Commands : BaseCommand() {
         )
     }
 
-    override fun execute(context: RunContext) = Unit
+    override fun execute(context: InteractiveRunContext) = Unit
 }

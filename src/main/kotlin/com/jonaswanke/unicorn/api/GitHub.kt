@@ -4,13 +4,12 @@ import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.action.Action
 import com.jonaswanke.unicorn.core.GlobalConfig
+import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.core.ProjectConfig
 import com.jonaswanke.unicorn.core.RunContext
-import com.jonaswanke.unicorn.script.promptOptional
 import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
 import com.jonaswanke.unicorn.utils.lazy
 import com.jonaswanke.unicorn.utils.list
-import com.jonaswanke.unicorn.utils.prompt
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.kohsuke.github.*
@@ -53,7 +52,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
         ): GitHub = context.group("GitHub login") {
             if (!forceNew)
                 authenticateOrNull(this)?.also { return@group it }
-            if (!isInteractive) {
+            if (this !is InteractiveRunContext) {
                 val gitHub = globalConfig.gitHub
                 if (gitHub == null)
                     exit("Login failed: No login data available")
@@ -67,7 +66,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                     }
             }
 
-            i("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
+            log.i("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
             while (true) {
                 val usernameAct = username
                     ?: prompt("GitHub username")
@@ -84,10 +83,10 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                 globalConfig = globalConfig.copy(gitHub = githubConfig)
 
                 authenticateOrNull(context)?.let {
-                    i("Login successful")
+                    log.i("Login successful")
                     return@group it
                 }
-                w("Your credentials are invalid. Please try again.")
+                log.w("Your credentials are invalid. Please try again.")
             }
 
             @Suppress("UNREACHABLE_CODE")
@@ -128,13 +127,13 @@ fun String.toIssueId(context: RunContext): Int {
 fun GHIssue.assignTo(context: RunContext, user: GHUser, throwIfAlreadyAssigned: Boolean = false): List<GHUser> =
     context.group("Assign GitHub issue #$number to ${user.login}") {
         val oldAssignees = assignees
-        d("Current assignees: ${oldAssignees.joinToString { it.login }}")
+        log.d("Current assignees: ${oldAssignees.joinToString { it.login }}")
 
         if (throwIfAlreadyAssigned && (oldAssignees.size > 1 || (oldAssignees.size == 1 && oldAssignees.first() != user)))
             exit("Issue is already assigned")
 
         assignTo(user)
-        i("Successfully assigned")
+        log.i("Successfully assigned")
 
         oldAssignees
     }
@@ -251,7 +250,7 @@ fun GHIssue.getType(context: RunContext): String? {
 
     val labels = getLabels(context.projectConfig.typeLabelGroup)
     if (labels.size > 1) {
-        context.w("Multiple type labels found on issue #${number}")
+        context.log.w("Multiple type labels found on issue #${number}")
         return null
     }
     return labels.firstOrNull()?.name

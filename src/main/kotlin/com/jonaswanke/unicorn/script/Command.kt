@@ -4,7 +4,7 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import com.jonaswanke.unicorn.commands.BaseCommand
-import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.script.parameters.UnicornParameter
 import com.jonaswanke.unicorn.utils.MarkupBuilder
 import com.jonaswanke.unicorn.utils.buildMarkup
@@ -51,7 +51,7 @@ class UnicornCommandBuilder(
                 val a by option("a")
                     .convert { it.substring(1) }
                     .int()
-                override fun execute(context: RunContext) = context.body()
+                override fun execute(context: InteractiveRunContext) = context.body()
             }
     }
 
@@ -68,7 +68,7 @@ class UnicornCommandBuilder(
         override fun buildCommand(name: String, aliases: List<String>, help: String): BaseCommand =
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
                 val p1: P1 by param1.build(this)
-                override fun execute(context: RunContext) = context.body(p1)
+                override fun execute(context: InteractiveRunContext) = context.body(p1)
             }
     }
 
@@ -91,7 +91,7 @@ class UnicornCommandBuilder(
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
                 val p1: P1 by param1.build(this)
                 val p2: P2 by param2.build(this)
-                override fun execute(context: RunContext) = context.body(p1, p2)
+                override fun execute(context: InteractiveRunContext) = context.body(p1, p2)
             }
     }
     // endregion
@@ -102,9 +102,9 @@ class UnicornCommandBuilder(
 }
 
 typealias CommandBuilder = UnicornCommandBuilder.() -> Unit
-typealias Command0Body = RunContext.() -> Unit
-typealias Command1Body<P1> = RunContext.(P1) -> Unit
-typealias Command2Body<P1, P2> = RunContext.(P1, P2) -> Unit
+typealias Command0Body = InteractiveRunContext.() -> Unit
+typealias Command1Body<P1> = InteractiveRunContext.(P1) -> Unit
+typealias Command2Body<P1, P2> = InteractiveRunContext.(P1, P2) -> Unit
 
 @UnicornMarker
 fun Unicorn.command(name: String, vararg aliases: String, commandBuilder: CommandBuilder) {

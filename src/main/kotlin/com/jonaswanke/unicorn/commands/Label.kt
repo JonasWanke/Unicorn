@@ -32,7 +32,7 @@ internal fun Unicorn.registerLabelCommands() {
                     }
             ) { name, color ->
                 val label = gitHubRepo.createLabel(name.encodedLabelName, color)
-                i {
+                log.i {
                     +"Created label "
                     kbd(label.name)
                     +" with color #${label.color}"
@@ -49,7 +49,7 @@ internal fun Unicorn.registerLabelCommands() {
                 }
                 group("Syncing labels:") {
                     labels.forEach {
-                        i {
+                        log.i {
                             kbd(it.name)
                             +": ${it.description} (#${it.color})"
                         }

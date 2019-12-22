@@ -4,7 +4,7 @@ import com.github.ajalt.clikt.output.CliktConsole
 import org.beryx.textio.InputReader
 import org.beryx.textio.TextIoFactory
 
-object TextIoConsoleWrapper : CliktConsole {
+object TextIoConsole : CliktConsole {
     private val textIo = TextIoFactory.getTextIO()
     private val terminal = textIo.textTerminal
     override val lineSeparator = System.lineSeparator()

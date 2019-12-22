@@ -74,7 +74,7 @@ class ConventionalCommit(
         val invalidType = type
             .takeIf { it !in validTypes }
             ?.also {
-                context.e {
+                context.log.e {
                     +"type "
                     kbd(type)
                     +" is invalid. Allowed values are: "
@@ -88,7 +88,7 @@ class ConventionalCommit(
             .filter { it.value !in validScopes }
             .takeIf { it.isNotEmpty() }
             ?.also { invalidScopes ->
-                context.e {
+                context.log.e {
                     +if (invalidScopes.size == 1) "component " else "components "
                     joined(invalidScopes) {
                         kbd(it.value)

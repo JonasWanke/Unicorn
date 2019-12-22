@@ -11,10 +11,10 @@ import com.jonaswanke.unicorn.api.Git
 import com.jonaswanke.unicorn.api.commit
 import com.jonaswanke.unicorn.api.git
 import com.jonaswanke.unicorn.api.gitHub
+import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.core.ProgramConfig
 import com.jonaswanke.unicorn.core.ProjectConfig
-import com.jonaswanke.unicorn.core.RunContext
-import com.jonaswanke.unicorn.utils.*
+import com.jonaswanke.unicorn.utils.readConfig
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -52,7 +52,7 @@ open class Create : BaseCommand() {
             if (initInExisting) it else File(it, name!!)
         }
 
-    override fun execute(context: RunContext) {
+    override fun execute(context: InteractiveRunContext) = with(context) {
         if (initInExisting)
             confirm("Using create in an existing project is experimental. Continue?", abort = true)
 
@@ -65,14 +65,14 @@ open class Create : BaseCommand() {
             if (!prefix.isDirectory)
                 throw UsageError("The specified path is not a directory. If you want to create a new repository, please specify a name")
             try {
-                context.projectConfig
+                projectConfig
                 throw UsageError("Unicorn is already initialized in the specified directory")
             } catch (e: IOException) {
                 // Means no project config file was found - expected
             }
         }
 
-        val repo = context.gitHub.currentRepoOrNull(context)
+        val repo = gitHub.currentRepoOrNull(context)
 
         val description = description
             ?: if (initInExisting) repo?.description else null
@@ -115,7 +115,7 @@ open class Create : BaseCommand() {
 
 
         // Files
-        newLine()
+        log.newLine()
         fun createFiles() {
             echo("Creating files...")
 
@@ -133,7 +133,7 @@ open class Create : BaseCommand() {
                 type = type,
                 version = version
             )
-            context.projectConfig = config
+            projectConfig = config
 
             echo("Copying templates")
             copyTemplate(replacements, "README.md")
@@ -156,7 +156,7 @@ open class Create : BaseCommand() {
 
 
         // Travis CI
-        newLine()
+        log.newLine()
         if (!fileExists(CI_TRAVIS_CONFIG_FILE) && confirm("Setup Travis CI?", default = true) == true) {
             when (type) {
                 ProjectConfig.Type.ANDROID -> {
@@ -169,7 +169,7 @@ open class Create : BaseCommand() {
 
 
         // Git
-        newLine()
+        log.newLine()
         fun initGit(): Git {
             echo("Initializing git...")
 
@@ -208,11 +208,11 @@ open class Create : BaseCommand() {
 
             copyTemplate(replacements, "gitattributes", GIT_GITATTRIBUTES_FILE)
 
-            if (isGitRepo(prefix)) return context.git
+            if (isGitRepo(prefix)) return git
 
             return Git.init(prefix).apply {
                 add(context, ".")
-                commit(context, context.projectConfig.types.releaseCommit, description = "initial commit")
+                commit(context, projectConfig.types.releaseCommit, description = "initial commit")
 
                 checkout(context, flow.devBranch.name, createBranch = true)
             }
@@ -222,7 +222,7 @@ open class Create : BaseCommand() {
 
 
         // Github
-        newLine()
+        log.newLine()
         echo("Signing in to GitHub...")
         fun uploadToGithub(): GHRepository {
             echo("Connecting to GitHub...")
@@ -248,7 +248,7 @@ open class Create : BaseCommand() {
             ) {
                 if (it.isNullOrBlank()) null
                 else try {
-                    context.gitHub.api.getOrganization(it)
+                    gitHub.api.getOrganization(it)
                 } catch (e: IOException) {
                     throw NoSuchOption(it)
                 }
@@ -257,7 +257,7 @@ open class Create : BaseCommand() {
             val private = confirm("Should the repository be private?", default = true)
                 ?: true
             val repoBuilder = organization?.createRepository(name)
-                ?: context.gitHub.api.createRepository(name)
+                ?: gitHub.api.createRepository(name)
             val repo = try {
                 repoBuilder.init(private)
             } catch (e: HttpException) {
@@ -309,7 +309,7 @@ open class Create : BaseCommand() {
             configureGithub()
         }
 
-        newLine()
+        log.newLine()
     }
 
     data class Label(val name: String, val color: String)
