@@ -25,7 +25,7 @@ class Git(val directory: File) {
         }
     }
 
-    constructor(context: RunContext) : this(context.directory)
+    constructor(context: RunContext) : this(context.projectDir)
 
     val api by lazy { ApiGit.open(directory) }
 

@@ -20,8 +20,6 @@ abstract class RunContext {
 
     abstract val environment: Environment
 
-    open val directory: File = File(System.getProperty("user.dir"))
-
     // region Global config
     open val globalDir: File? = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile?.parentFile
     val globalConfigFile: File
