@@ -14,8 +14,10 @@ class UnicornCommandBuilder(
     val aliases: List<String>
 ) {
     // region Help
+    @UnicornMarker
     var help: String = ""
 
+    @UnicornMarker
     fun help(message: MarkupBuilder) {
         help = buildMarkup(message).toConsoleString()
     }
@@ -37,6 +39,7 @@ class UnicornCommandBuilder(
         }
     }
 
+    @UnicornMarker
     fun run(body: Command0Body) {
         bodyBuilder = Body0Builder(body)
     }
@@ -53,6 +56,7 @@ class UnicornCommandBuilder(
     }
 
 
+    @UnicornMarker
     fun <P1> run(param1: UnicornParameter<P1>, body: Command1Body<P1>) {
         bodyBuilder = Body1Builder(param1, body)
     }
@@ -69,6 +73,7 @@ class UnicornCommandBuilder(
     }
 
 
+    @UnicornMarker
     fun <P1, P2> run(
         param1: UnicornParameter<P1>,
         param2: UnicornParameter<P2>,
