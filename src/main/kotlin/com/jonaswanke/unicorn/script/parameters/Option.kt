@@ -12,6 +12,8 @@ import java.io.File
 import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import java.nio.file.Path
+import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KProperty
 
 interface UnicornOption<out T, A : OptionDelegate<T>> : UnicornParameter<T> {
     val names: List<String>
@@ -20,7 +22,10 @@ interface UnicornOption<out T, A : OptionDelegate<T>> : UnicornParameter<T> {
     val hidden: Boolean
     val envvar: String?
 
-    override fun build(command: BaseCommand): A
+    override fun provideDelegate(thisRef: BaseCommand, prop: KProperty<*>): ReadOnlyProperty<BaseCommand, T> {
+        return build(thisRef).provideDelegate(thisRef, prop)
+    }
+    fun build(command: BaseCommand): A
 }
 
 internal typealias UnicornOptionWithValues<AllT, EachT, ValueT> = UnicornOption<AllT, OptionWithValues<AllT, EachT, ValueT>>
@@ -55,7 +60,7 @@ fun option(
     override val hidden = hidden
     override val envvar = envvar
 
-    override fun build(command: BaseCommand) = command.option(*names, help)
+    override fun build(command: BaseCommand) = command.option(*names, help = help)
 }
 
 // region Transforms

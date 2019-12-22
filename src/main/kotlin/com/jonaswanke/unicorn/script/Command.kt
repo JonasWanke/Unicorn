@@ -1,7 +1,5 @@
 package com.jonaswanke.unicorn.script
 
-import com.github.ajalt.clikt.parameters.options.flag
-import com.github.ajalt.clikt.parameters.options.option
 import com.jonaswanke.unicorn.commands.BaseCommand
 import com.jonaswanke.unicorn.console.ConsoleRunContext
 import com.jonaswanke.unicorn.script.parameters.UnicornParameter
@@ -40,8 +38,7 @@ class UnicornCommandBuilder(
     fun <P1> run(param1: UnicornParameter<P1>, body: Command1Body<P1>) {
         bodyBuilder = {
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
-                val p1: P1 by param1.build(this)
-                val a by option().flag()
+                val p1: P1 by param1
                 override fun execute(context: ConsoleRunContext) = context.body(p1)
             }
         }
@@ -55,8 +52,8 @@ class UnicornCommandBuilder(
     ) {
         bodyBuilder = {
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
-                val p1: P1 by param1.build(this)
-                val p2: P2 by param2.build(this)
+                val p1: P1 by param1
+                val p2: P2 by param2
                 override fun execute(context: ConsoleRunContext) = context.body(p1, p2)
             }
         }
@@ -71,9 +68,9 @@ class UnicornCommandBuilder(
     ) {
         bodyBuilder = {
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
-                val p1: P1 by param1.build(this)
-                val p2: P2 by param2.build(this)
-                val p3: P3 by param3.build(this)
+                val p1: P1 by param1
+                val p2: P2 by param2
+                val p3: P3 by param3
                 override fun execute(context: ConsoleRunContext) = context.body(p1, p2, p3)
             }
         }
@@ -89,17 +86,32 @@ class UnicornCommandBuilder(
     ) {
         bodyBuilder = {
             object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
-                val p1: P1 by param1.build(this)
-                val p2: P2 by param2.build(this)
-                val p3: P3 by param3.build(this)
-                val p4: P4 by param4.build(this)
+                val p1: P1 by param1
+                val p2: P2 by param2
+                val p3: P3 by param3
+                val p4: P4 by param4
                 override fun execute(context: ConsoleRunContext) = context.body(p1, p2, p3, p4)
             }
         }
     }
 // endregion
 
-    fun build(): BaseCommand = bodyBuilder()
+    // region Subcommands
+    private val subcommands = mutableListOf<BaseCommand>()
+
+    fun command(name: String, vararg aliases: String, commandBuilder: CommandBuilder) {
+        val command = UnicornCommandBuilder(name, aliases.asList())
+            .apply { commandBuilder() }
+            .build()
+        subcommands += command
+    }
+    // endregion
+
+    fun build(): BaseCommand {
+        return bodyBuilder().apply {
+            subcommands.forEach { addSubcommand(it) }
+        }
+    }
 }
 
 typealias CommandBuilder = UnicornCommandBuilder.() -> Unit
@@ -115,12 +127,4 @@ fun Unicorn.command(name: String, vararg aliases: String, commandBuilder: Comman
         .apply { commandBuilder() }
         .build()
     addCommand(command)
-}
-
-@UnicornMarker
-fun BaseCommand.command(name: String, vararg aliases: String, commandBuilder: CommandBuilder) {
-    val command = UnicornCommandBuilder(name, aliases.asList())
-        .apply { commandBuilder() }
-        .build()
-    addSubcommand(command)
 }

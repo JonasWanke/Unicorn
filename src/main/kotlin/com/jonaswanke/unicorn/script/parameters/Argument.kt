@@ -11,12 +11,17 @@ import java.io.File
 import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import java.nio.file.Path
+import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KProperty
 
 interface UnicornArgument<out T, A : ArgumentDelegate<T>> : UnicornParameter<T> {
     val name: String
     val help: String
 
-    override fun build(command: BaseCommand): A
+    override fun provideDelegate(thisRef: BaseCommand, prop: KProperty<*>): ReadOnlyProperty<BaseCommand, T> {
+        return build(thisRef).provideDelegate(thisRef, prop)
+    }
+    fun build(command: BaseCommand): A
 }
 
 internal typealias UnicornProcessedArgument<AllT, ValueT> = UnicornArgument<AllT, ProcessedArgument<AllT, ValueT>>
