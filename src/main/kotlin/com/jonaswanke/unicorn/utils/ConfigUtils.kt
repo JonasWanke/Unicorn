@@ -16,7 +16,7 @@ import net.swiftzer.semver.SemVer
 import java.io.InputStream
 import java.io.OutputStream
 
-val mapper: ObjectMapper = ObjectMapper(YAMLFactory().disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER))
+internal val mapper: ObjectMapper = ObjectMapper(YAMLFactory().disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER))
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     .registerModule(
         KotlinModule(nullToEmptyCollection = true, nullToEmptyMap = true)
@@ -34,20 +34,20 @@ val mapper: ObjectMapper = ObjectMapper(YAMLFactory().disable(YAMLGenerator.Feat
     )
 
 
-inline fun <reified T> InputStream.readConfig(): T {
+internal inline fun <reified T> InputStream.readConfig(): T {
     return bufferedReader().use {
         mapper.readValue(this, T::class.java)
     }
 }
 
-fun <T> InputStream.readConfig(type: TypeReference<T>): T {
+internal fun <T> InputStream.readConfig(type: TypeReference<T>): T {
     return bufferedReader().use {
         mapper.readValue(this, type)
     }
 }
 
 
-fun <T> OutputStream.writeConfig(value: T) {
+internal fun <T> OutputStream.writeConfig(value: T) {
     return bufferedWriter().use {
         mapper.writeValue(this, value)
     }

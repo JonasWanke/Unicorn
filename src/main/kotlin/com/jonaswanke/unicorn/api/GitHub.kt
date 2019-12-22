@@ -7,11 +7,11 @@ import com.jonaswanke.unicorn.core.GlobalConfig
 import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.core.ProjectConfig
 import com.jonaswanke.unicorn.core.RunContext
-import com.jonaswanke.unicorn.utils.OAuthCredentialsProvider
 import com.jonaswanke.unicorn.utils.lazy
 import com.jonaswanke.unicorn.utils.list
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.kohsuke.github.*
 import java.awt.Desktop
 import java.io.IOException
@@ -42,6 +42,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                     GitHub(api, OAuthCredentialsProvider(config.anonymousToken ?: config.oauthToken!!))
                 }
         }
+        private class OAuthCredentialsProvider(token: String) : UsernamePasswordCredentialsProvider(token, "")
 
         fun authenticate(
             context: RunContext,
