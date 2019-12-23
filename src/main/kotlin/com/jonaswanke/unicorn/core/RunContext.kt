@@ -48,12 +48,12 @@ abstract class RunContext {
 
     fun exit(message: String): Nothing {
         log.e(message)
-        throw CliktError()
+        throw CliktError("")
     }
 
     fun exit(markupBuilder: MarkupBuilder): Nothing {
         log.e(markupBuilder)
-        throw CliktError()
+        throw CliktError("")
     }
 
     // region Logging

@@ -1,5 +1,6 @@
 package com.jonaswanke.unicorn.core
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.jonaswanke.unicorn.api.LabelGroup
 import net.swiftzer.semver.SemVer
 
@@ -19,18 +20,21 @@ data class ProjectConfig(
     ),
     val labels: Labels = Labels()
 ) {
+    @JsonIgnore
     val typeLabelGroup: LabelGroup = LabelGroup(
         labels.types.color,
         labels.types.prefix,
         labels.priorities.descriptionPrefix,
         types.list.map { it.name to it.description }
     )
+    @JsonIgnore
     val componentsLabelGroup: LabelGroup = LabelGroup(
         labels.components.color,
         labels.components.prefix,
         labels.components.descriptionPrefix,
         components.map { it.name to it.description }
     )
+    @JsonIgnore
     val priorityLabelGroup: LabelGroup = LabelGroup(
         labels.priorities.color,
         labels.priorities.prefix,

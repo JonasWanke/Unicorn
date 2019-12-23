@@ -1,5 +1,9 @@
 package com.jonaswanke.unicorn.api
 
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.action.Action
@@ -120,6 +124,67 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
 
 val RunContext.gitHub: GitHub by lazy { GitHub.authenticate(this) }
 val RunContext.gitHubRepo: GHRepository by lazy { gitHub.currentRepo(this) }
+
+// region Repository
+fun ApiGitHub.createRepository(config: GHRepositoryCreationConfig): GHRepository =
+    createRepository(config.name).create(config)
+
+fun GHOrganization.createRepository(config: GHRepositoryCreationConfig): GHRepository =
+    createRepository(config.name).create(config)
+
+private fun GHCreateRepositoryBuilder.create(config: GHRepositoryCreationConfig): GHRepository {
+    config.applyTo(this)
+    return try {
+        create()
+    } catch (e: HttpException) {
+        val error = e.message?.let { GHApiError.parse(it) } ?: throw e
+        when {
+            error.errors?.any { it.field == "name" && it.message == "name already exists on this account" } == true ->
+                throw GHRepoWithNameAlreadyExistsException(config.name)
+            error.message == "Visibility can't be private. Please upgrade your subscription to create a new private repository." ->
+                throw GHRepoCantBePrivateException()
+            else -> throw e
+        }
+    }
+}
+
+class GHRepoWithNameAlreadyExistsException(repositoryName: String) :
+    Exception("A repository called \"$repositoryName\" already exists on this account")
+
+class GHRepoCantBePrivateException :
+    Exception("Visibility can't be private. Please upgrade your subscription to create a new private repository.")
+
+data class GHRepositoryCreationConfig(
+    val name: String,
+    val description: String? = null,
+    val homepage: String? = null,
+    val private: Boolean = false,
+    val issues: Boolean = true,
+    val wiki: Boolean = true,
+    val autoInit: Boolean = false,
+    val gitignoreTemplate: String? = null,
+    val licenseTemplate: String? = null,
+    val allowMergeCommit: Boolean = true,
+    val allowSquashMerge: Boolean = true,
+    val allowRebaseMerge: Boolean = true
+) {
+    internal fun applyTo(builder: GHCreateRepositoryBuilder) {
+        builder.also {
+            it.description(description)
+            it.homepage(homepage)
+            it.private_(private)
+            it.issues(issues)
+            it.wiki(wiki)
+            it.autoInit(autoInit)
+            it.gitignoreTemplate(gitignoreTemplate)
+            it.licenseTemplate(licenseTemplate)
+            it.allowMergeCommit(allowMergeCommit)
+            it.allowSquashMerge(allowSquashMerge)
+            it.allowRebaseMerge(allowRebaseMerge)
+        }
+    }
+}
+// endregion
 
 // region Issue
 fun String.toIssueId(context: RunContext): Int {
@@ -371,5 +436,28 @@ val GHRepository.latestReleaseVersion: SemVer?
 
 fun GHRepository.createRelease(version: SemVer, tagName: String = "v$version") {
 
+}
+// endregion
+
+// region API errors
+data class GHApiError(
+    @JsonProperty("message") val message: String = "",
+    @JsonProperty("errors") val errors: List<Error>? = null,
+    @JsonProperty("documentation_url") val documentationUrl: String? = null
+) {
+    companion object {
+        fun parse(json: String): GHApiError {
+            return ObjectMapper(JsonFactory())
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .readValue(json, GHApiError::class.java)
+        }
+    }
+
+    data class Error(
+        @JsonProperty("resource") val resource: String = "",
+        @JsonProperty("field") val field: String = "",
+        @JsonProperty("code") val code: String = "",
+        @JsonProperty("message") val message: String? = null
+    )
 }
 // endregion

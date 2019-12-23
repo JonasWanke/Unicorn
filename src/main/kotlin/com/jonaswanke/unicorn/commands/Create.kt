@@ -22,7 +22,6 @@ import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.transport.URIish
 import org.kohsuke.github.GHOrganization
 import org.kohsuke.github.GHRepository
-import org.kohsuke.github.HttpException
 import java.io.File
 import java.io.IOException
 import java.time.LocalDate
@@ -143,9 +142,9 @@ private fun RunContext.createFiles(
     group("Copying templates") {
         copyTemplate(replacements, "README.md")
         copyTemplate(replacements, "licenses/Apache License 2.0.txt", "LICENSE")
-        File(".github").mkdir()
+        File(projectDir, ".github").mkdir()
         copyTemplate(replacements, "github/PULL_REQUEST_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md")
-        File(".github/ISSUE_TEMPLATE").mkdir()
+        File(projectDir, ".github/ISSUE_TEMPLATE").mkdir()
         copyTemplate(replacements, "github/ISSUE_TEMPLATE/1-bug-report.md", ".github/ISSUE_TEMPLATE/1-bug-report.md")
         copyTemplate(
             replacements,
@@ -203,34 +202,35 @@ private fun InteractiveRunContext.initGitHub() = group("Uploading project to Git
     }
 
     val private = confirm("Should the repository be private?", default = true)
-    val repoBuilder = (organization?.createRepository(projectConfig.name)
-        ?: gitHub.api.createRepository(projectConfig.name)).apply {
-        description(projectConfig.description)
-        autoInit(false)
+    val repoConfig = GHRepositoryCreationConfig(
+        name = projectConfig.name,
+        description = projectConfig.description,
+        private = private,
+        issues = true,
+        wiki = false,
+        autoInit = false,
+        allowMergeCommit = true,
+        allowSquashMerge = false,
+        allowRebaseMerge = false
+    )
 
-        issues(true)
-        wiki(false)
-
-        allowMergeCommit(true)
-        allowRebaseMerge(false)
-        allowSquashMerge(false)
-    }
-
-    fun create(private: Boolean): GHRepository = repoBuilder.run {
-        private_(private)
-        create()
+    fun create(private: Boolean): GHRepository {
+        val config = repoConfig.copy(private = private)
+        return try {
+            organization?.createRepository(config) ?: gitHub.api.createRepository(config)
+        } catch (e: GHRepoWithNameAlreadyExistsException) {
+            exit("A repository with that name already exists. Aborting")
+        }
     }
 
     val repo =
         if (!private) create(false)
         else try {
             create(true)
-        } catch (e: HttpException) {
-            if (e.message?.contains("Visibility can't be private") == true) {
-                if (!confirm("Your plan does not allow private repositories. Make it public instead?"))
-                    exit("Cancelling")
-                create(false)
-            } else throw e
+        } catch (e: GHRepoCantBePrivateException) {
+            if (!confirm("Your plan does not allow private repositories. Make it public instead?"))
+                exit("Aborting")
+            create(false)
         }
 
     log.i("Uploading")
