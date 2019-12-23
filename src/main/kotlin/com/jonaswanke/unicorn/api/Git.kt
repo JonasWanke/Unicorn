@@ -29,7 +29,7 @@ class Git(val directory: File) {
             if (!directory.isDirectory) return false
 
             return RepositoryBuilder().apply {
-                addCeilingDirectory(directory)
+                addCeilingDirectory(directory.parentFile)
                 findGitDir(directory)
             }.gitDir != null
         }
