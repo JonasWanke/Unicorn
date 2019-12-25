@@ -131,7 +131,7 @@ abstract class InteractiveRunContext : RunContext() {
             val result = try {
                 convert.invoke(value)
             } catch (err: UsageError) {
-                log.e(err.helpMessage(null))
+                log.e(err.helpMessage())
                 continue
             } ?: continue
 
@@ -186,7 +186,7 @@ abstract class InteractiveRunContext : RunContext() {
                 val result = try {
                     convert.invoke(value)
                 } catch (err: UsageError) {
-                    log.e(err.helpMessage(null))
+                    log.e(err.helpMessage())
                     continue
                 }
 
