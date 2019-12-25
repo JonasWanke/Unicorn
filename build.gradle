@@ -13,7 +13,6 @@ plugins {
 
 repositories {
     jcenter()
-    maven { url 'https://jitpack.io' }
 }
 
 
@@ -41,7 +40,7 @@ dependencies {
     implementation("net.swiftzer.semver:semver:1.1.0")
     implementation("com.github.ajalt:clikt:2.3.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
-    implementation("com.github.github-api:github-api:72d4b9bf62")
+    implementation("org.kohsuke:github-api:1.101")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.9.8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
