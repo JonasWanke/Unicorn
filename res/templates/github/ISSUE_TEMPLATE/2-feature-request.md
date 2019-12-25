@@ -15,8 +15,3 @@ Please select the component label (C: abc) this feature is related to from the r
 **Description**
 <!-- A clear and concise description of the problem or missing capability and possibly its solution -->
 
-
-<!-- Add any other context about the problem here
-**Additional context**
--->
-
