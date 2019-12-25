@@ -1,7 +1,7 @@
 package com.jonaswanke.unicorn.script
 
-import com.jonaswanke.unicorn.commands.BaseCommand
 import com.jonaswanke.unicorn.console.ConsoleRunContext
+import com.jonaswanke.unicorn.core.BaseCommand
 import com.jonaswanke.unicorn.script.parameters.UnicornParameter
 import com.jonaswanke.unicorn.utils.MarkupBuilder
 import com.jonaswanke.unicorn.utils.buildMarkup

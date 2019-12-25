@@ -1,4 +1,4 @@
-package com.jonaswanke.unicorn.commands
+package com.jonaswanke.unicorn.core
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.context
@@ -41,7 +41,9 @@ abstract class BaseCommand(
     final override fun run() {
         val runContext = ConsoleRunContext(prefix, context.console)
         execute(runContext)
-        runContext.log.i("Done!")
+
+        if (context.invokedSubcommand == null)
+            runContext.log.i("Done!")
     }
 
     open fun execute(context: ConsoleRunContext) = Unit

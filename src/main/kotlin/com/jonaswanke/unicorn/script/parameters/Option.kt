@@ -7,7 +7,7 @@ import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.*
-import com.jonaswanke.unicorn.commands.BaseCommand
+import com.jonaswanke.unicorn.core.BaseCommand
 import java.io.File
 import java.nio.file.FileSystem
 import java.nio.file.FileSystems

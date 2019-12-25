@@ -1,6 +1,7 @@
 package com.jonaswanke.unicorn.script
 
 import com.jonaswanke.unicorn.commands.*
+import com.jonaswanke.unicorn.core.BaseCommand
 
 @DslMarker
 annotation class UnicornMarker

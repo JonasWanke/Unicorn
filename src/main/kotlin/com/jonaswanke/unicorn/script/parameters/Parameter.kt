@@ -1,6 +1,6 @@
 package com.jonaswanke.unicorn.script.parameters
 
-import com.jonaswanke.unicorn.commands.BaseCommand
+import com.jonaswanke.unicorn.core.BaseCommand
 import com.jonaswanke.unicorn.script.UnicornCommandBuilder
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
