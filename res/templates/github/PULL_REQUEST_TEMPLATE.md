@@ -11,7 +11,6 @@
 **Checklist**
 <!-- Please check if your PR fulfills the following requirements: -->
 
-- [ ] Commit messages follow conventionalcommits.org
 - [ ] Tests for the changes have been added (for bug fixes / features)
 - [ ] Docs have been added / updated (for bug fixes / features)
 
@@ -28,9 +27,3 @@
 | :------------: | :------------: |
 | <screenshot 1> | <screenshot 2> |
 -->
-
-
-<!-- Optional
-**Other information**
--->
-
