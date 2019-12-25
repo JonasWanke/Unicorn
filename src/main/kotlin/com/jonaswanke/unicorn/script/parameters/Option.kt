@@ -2,7 +2,9 @@
 
 package com.jonaswanke.unicorn.script.parameters
 
+import com.github.ajalt.clikt.completion.CompletionCandidates
 import com.github.ajalt.clikt.core.BadParameterValue
+import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.options.*
@@ -15,7 +17,7 @@ import java.nio.file.Path
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-interface UnicornOption<out T, A : OptionDelegate<T>> : UnicornParameter<T> {
+interface UnicornOption<T, A : OptionDelegate<T>> : UnicornParameter<T> {
     val names: List<String>
     val help: String
     val metavar: String?
@@ -35,7 +37,7 @@ internal typealias UnicornRawOption = UnicornNullableOption<String, String>
 internal typealias UnicornFlagOption<T> = UnicornOption<T, FlagOption<T>>
 
 
-internal fun <InT, In : OptionDelegate<InT>, OutT, Out : OptionDelegate<OutT>> UnicornOption<InT, In>.buildDelegate(
+fun <InT, In : OptionDelegate<InT>, OutT, Out : OptionDelegate<OutT>> UnicornOption<InT, In>.buildDelegate(
     transform: In.() -> Out
 ): UnicornOption<OutT, Out> = object : UnicornOption<OutT, Out> {
     override val names = this@buildDelegate.names
@@ -74,8 +76,9 @@ fun option(
  *
  * Used to implement functions like [default] and [multiple].
  */
-fun <AllT, EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.transformAll(transform: CallsTransformer<EachT, AllT>) =
-    buildDelegate { transformAll(transform) }
+fun <AllT, EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.transformAll(
+    transform: CallsTransformer<EachT, AllT>
+) = buildDelegate { transformAll(transform = transform) }
 
 /**
  * If the option is not called on the command line (and is not set in an envvar), use [value] for the option.
@@ -97,14 +100,20 @@ fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.default(value: Ea
  * This must be applied after all other transforms. If the option is given on the command line, [value] will
  * not be called.
  *
- * Example:
+ * You can customize how the default is shown to the user with [defaultForHelp]. The default value
+ * is an empty string, so if you have the help formatter configured to show values, you should set
+ * this value manually.
+ *
+ * ### Example:
  *
  * ```kotlin
  * val opt: Pair<Int, Int> by option().int().pair().defaultLazy { expensiveOperation() }
  * ```
  */
-fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.defaultLazy(value: () -> EachT) =
-    buildDelegate { defaultLazy(value) }
+fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.defaultLazy(
+    defaultForHelp: String = "",
+    value: () -> EachT
+) = buildDelegate { defaultLazy(defaultForHelp, value) }
 
 /**
  * If the option is not called on the command line (and is not set in an envvar), throw a [MissingParameter].
@@ -124,16 +133,20 @@ fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.required() = buil
  *
  * If the option is never called, the list will be empty. This must be applied after all other transforms.
  *
- * Example:
+ * ### Example:
  *
  * ```kotlin
  * val opt: List<Pair<Int, Int>> by option().int().pair().multiple()
  * ```
  *
  * @param default The value to use if the option is not supplied. Defaults to an empty list.
+ * @param required If true, [default] is ignored and [MissingParameter] will be thrown if no
+ *   instances of the option are present on the command line.
  */
-fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.multiple(default: List<EachT> = emptyList()) =
-    buildDelegate { multiple(default) }
+fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.multiple(
+    default: List<EachT> = emptyList(),
+    required: Boolean = false
+) = buildDelegate { multiple(default, required) }
 
 /**
  * Make the [multiple] option return a unique set of calls
@@ -190,6 +203,45 @@ fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.triple() = buildD
 
 
 /**
+ * Change to option to take any number of values, separated by a [regex].
+ *
+ * This must be called after converting the value type, and before other transforms.
+ *
+ * ### Example:
+ *
+ * ```kotlin
+ * val opt: List<Int>? by option().int().split(Regex(","))
+ * ```
+ *
+ * Which can be called like this:
+ *
+ * ```
+ * ./program --opt 1,2,3
+ * ```
+ */
+fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.split(regex: Regex) = buildDelegate { split(regex) }
+
+/**
+ * Change to option to take any number of values, separated by a string [delimiter].
+ *
+ * This must be called after converting the value type, and before other transforms.
+ *
+ * ### Example:
+ *
+ * ```kotlin
+ * val opt: List<Int>? by option().int().split(Regex(","))
+ * ```
+ *
+ * Which can be called like this:
+ *
+ * ```
+ * ./program --opt 1,2,3
+ * ```
+ */
+fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.split(delimiter: String) =
+    buildDelegate { split(delimiter) }
+
+/**
  * Check the final argument value and raise an error if it's not valid.
  *
  * The [validator] is called with the final argument type (the output of [transformAll]), and should call
@@ -226,6 +278,32 @@ fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT?, EachT, ValueT>.va
 
 
 /**
+ * Mark this option as deprecated in the help output.
+ *
+ * By default, a tag is added to the help message and a warning is printed if the option is used.
+ *
+ * This should be called after any conversion and validation.
+ *
+ * ### Example:
+ *
+ * ```kotlin
+ * val opt by option().int().validate { require(it % 2 == 0) { "value must be even" } }
+ *    .deprecated("WARNING: --opt is deprecated, use --new-opt instead")
+ * ```
+ *
+ * @param message The message to show in the warning or error. If null, no warning is issued.
+ * @param tagName The tag to add to the help message
+ * @param tagValue An extra message to add to the tag
+ * @param error If true, when the option is invoked, a [CliktError] is raised immediately instead of issuing a warning.
+ */
+fun <AllT, EachT, ValueT> UnicornOptionWithValues<AllT, EachT, ValueT>.deprecated(
+    message: String? = "",
+    tagName: String? = "deprecated",
+    tagValue: String = "",
+    error: Boolean = false
+) = buildDelegate { deprecated(message, tagName, tagValue, error) }
+
+/**
  * Convert the option value type.
  *
  * The [conversion] is called once for each value in each invocation of the option. If any errors are thrown,
@@ -234,13 +312,18 @@ fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT?, EachT, ValueT>.va
  *
  * @param metavar The metavar for the type. Overridden by a metavar passed to [option].
  * @param envvarSplit If the value is read from an envvar, the pattern to split the value on. The default
- *   splits on whitespace.
+ *   splits on whitespace. This value is can be overridden by passing a value to the [option] function.
+ * @param completionCandidates candidates to use when completing this option in shell autocomplete
  */
 fun <T : Any> UnicornRawOption.convert(
     metavar: String = "VALUE",
     envvarSplit: Regex = Regex("\\s+"),
+    completionCandidates: CompletionCandidates? = null,
     conversion: ValueTransformer<T>
-) = buildDelegate { convert(metavar, envvarSplit, conversion) }
+) = buildDelegate {
+    if (completionCandidates != null) convert(metavar, envvarSplit, completionCandidates, conversion)
+    else convert(metavar, envvarSplit, conversion = conversion)
+}
 
 /**
  * If the option isn't given on the command line, prompt the user for manual input.
@@ -264,7 +347,9 @@ fun <T : Any> UnicornNullableOption<T, T>.prompt(
     confirmationPrompt: String = "Repeat for confirmation: ",
     promptSuffix: String = ": ",
     showDefault: Boolean = true
-) = buildDelegate { prompt(text, default, hideInput, requireConfirmation, confirmationPrompt, promptSuffix, showDefault) }
+) = buildDelegate {
+    prompt(text, default, hideInput, requireConfirmation, confirmationPrompt, promptSuffix, showDefault)
+}
 // endregion
 
 // region Flag
@@ -351,41 +436,72 @@ fun <T> UnicornNullableOption<T, T>.restrictTo(min: T? = null, max: T? = null, c
 fun <T> UnicornNullableOption<T, T>.restrictTo(range: ClosedRange<T>, clamp: Boolean = false)
         where T : Number, T : Comparable<T> = buildDelegate { restrictTo(range, clamp) }
 
-/**
- * Convert the argument based on a fixed set of values.
- *
- * Example:
- *
- * ```kotlin
- * argument().choice(mapOf("foo" to 1, "bar" to 2))
- * ```
- */
-fun <T : Any> UnicornRawOption.choice(choices: Map<String, T>): UnicornNullableOption<T, T> =
-    buildDelegate { choice(choices) }
+
+private fun mvar(choices: Iterable<String>): String {
+    return choices.joinToString("|", prefix = "[", postfix = "]")
+}
 
 /**
- * Convert the argument based on a fixed set of values.
+ * Convert the option based on a fixed set of values.
  *
- * Example:
+ * ### Example:
  *
  * ```kotlin
- * argument().choice("foo" to 1, "bar" to 2)
+ * option().choice(mapOf("foo" to 1, "bar" to 2))
  * ```
+ *
+ * @see com.github.ajalt.clikt.parameters.groups.groupChoice
  */
-fun <T : Any> UnicornRawOption.choice(vararg choices: Pair<String, T>): UnicornNullableOption<T, T> =
-    buildDelegate { choice(*choices) }
+fun <T : Any> UnicornRawOption.choice(
+    choices: Map<String, T>,
+    metavar: String = mvar(choices.keys)
+): UnicornNullableOption<T, T> = buildDelegate { choice(choices, metavar) }
 
 /**
- * Restrict the argument to a fixed set of values.
+ * Convert the option based on a fixed set of values.
  *
- * Example:
+ * ### Example:
  *
  * ```kotlin
- * argument().choice("foo", "bar")
+ * option().choice("foo" to 1, "bar" to 2)
+ * ```
+ *
+ * @see com.github.ajalt.clikt.parameters.groups.groupChoice
+ */
+fun <T : Any> UnicornRawOption.choice(
+    vararg choices: Pair<String, T>,
+    metavar: String = mvar(choices.map { it.first })
+): UnicornNullableOption<T, T> = buildDelegate { choice(*choices, metavar = metavar) }
+
+/**
+ * Restrict the option to a fixed set of values.
+ *
+ * ### Example:
+ *
+ * ```kotlin
+ * option().choice("foo", "bar")
  * ```
  */
-fun UnicornRawOption.choice(vararg choices: String): UnicornNullableOption<String, String> =
-    buildDelegate { choice(*choices) }
+fun UnicornRawOption.choice(
+    vararg choices: String,
+    metavar: String = mvar(choices.asIterable())
+): UnicornNullableOption<String, String> = buildDelegate { choice(*choices, metavar = metavar) }
+
+/**
+ * Convert the option to the values of an enum.
+ *
+ * ### Example:
+ *
+ * ```kotlin
+ * enum class Size { SMALL, LARGE }
+ * option().enum<Size>()
+ * ```
+ *
+ * @param key A block that returns the command line value to use for an enum value. The default is
+ *   the enum name.
+ */
+inline fun <reified T : Enum<T>> UnicornRawOption.enum(crossinline key: (T) -> String = { it.name }): UnicornNullableOption<T, T> =
+    buildDelegate { enum(key) }
 
 
 /**

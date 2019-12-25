@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.ajalt.clikt.core.MissingParameter
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.action.Action
 import com.jonaswanke.unicorn.core.GlobalConfig
@@ -76,10 +75,8 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
             while (true) {
                 val usernameAct = username
                     ?: prompt("GitHub username")
-                    ?: throw MissingParameter("username")
                 val tokenAct = token
                     ?: prompt("Personal access token (with repo scope)", hideInput = true)
-                    ?: throw MissingParameter("personal access token")
                 val endpointAct = endpoint
                     ?: promptOptional("Custom GitHub endpoint?")
 
