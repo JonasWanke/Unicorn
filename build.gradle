@@ -1,14 +1,14 @@
 buildscript {
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.50")
-        classpath("com.github.jengelman.gradle.plugins:shadow:5.1.0")
+        classpath("com.github.jengelman.gradle.plugins:shadow:5.2.0")
     }
 }
 
 plugins {
     id "application"
     id "org.jetbrains.kotlin.jvm" version "1.3.50"
-    id "com.github.johnrengelman.shadow" version "5.1.0"
+    id "com.github.johnrengelman.shadow" version "5.2.0"
 }
 
 repositories {
@@ -34,17 +34,17 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-script-util")
     implementation("org.jetbrains.kotlin:kotlin-script-runtime")
 
-    implementation("org.beryx:text-io:3.3.0")
-    implementation("com.squareup.okhttp3:okhttp:3.12.1")
+    implementation("org.beryx:text-io:3.4.0")
+    implementation("com.squareup.okhttp3:okhttp:3.14.4")
 
-    implementation("net.swiftzer.semver:semver:1.1.0")
+    implementation("net.swiftzer.semver:semver:1.1.1")
     implementation("com.github.ajalt:clikt:2.3.0")
-    implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:5.6.0.201912101111-r")
     implementation("org.kohsuke:github-api:1.101")
 
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.9.8")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.10.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.1")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.10.1")
 
     implementation("org.slf4j:slf4j-nop:1.7.25")
 }
