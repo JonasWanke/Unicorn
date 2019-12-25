@@ -25,6 +25,7 @@ interface UnicornOption<out T, A : OptionDelegate<T>> : UnicornParameter<T> {
     override fun provideDelegate(thisRef: BaseCommand, prop: KProperty<*>): ReadOnlyProperty<BaseCommand, T> {
         return build(thisRef).provideDelegate(thisRef, prop)
     }
+
     fun build(command: BaseCommand): A
 }
 
@@ -240,6 +241,30 @@ fun <T : Any> UnicornRawOption.convert(
     envvarSplit: Regex = Regex("\\s+"),
     conversion: ValueTransformer<T>
 ) = buildDelegate { convert(metavar, envvarSplit, conversion) }
+
+/**
+ * If the option isn't given on the command line, prompt the user for manual input.
+ *
+ * @param text The text to prompt the user with
+ * @param default The default value to use if no input is given. If null, the prompt will be repeated until
+ *   input is given.
+ * @param hideInput If true, user input will not be shown on the screen. Useful for passwords and sensitive
+ *   input.
+ * @param requireConfirmation If true, the user will be required to enter the same value twice before it is
+ *   accepted.
+ * @param confirmationPrompt If [requireConfirmation] is true, this will be used to ask for input again.
+ * @param promptSuffix Text to display directly after [text]. Defaults to ": ".
+ * @param showDefault Show [default] to the user in the prompt.
+ */
+fun <T : Any> UnicornNullableOption<T, T>.prompt(
+    text: String? = null,
+    default: String? = null,
+    hideInput: Boolean = false,
+    requireConfirmation: Boolean = false,
+    confirmationPrompt: String = "Repeat for confirmation: ",
+    promptSuffix: String = ": ",
+    showDefault: Boolean = true
+) = buildDelegate { prompt(text, default, hideInput, requireConfirmation, confirmationPrompt, promptSuffix, showDefault) }
 // endregion
 
 // region Flag
