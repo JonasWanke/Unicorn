@@ -2,6 +2,7 @@
 
 package com.jonaswanke.unicorn.script.parameters
 
+import com.github.ajalt.clikt.completion.CompletionCandidates
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.options.transformAll
@@ -21,6 +22,7 @@ interface UnicornArgument<out T, A : ArgumentDelegate<T>> : UnicornParameter<T> 
     override fun provideDelegate(thisRef: BaseCommand, prop: KProperty<*>): ReadOnlyProperty<BaseCommand, T> {
         return build(thisRef).provideDelegate(thisRef, prop)
     }
+
     fun build(command: BaseCommand): A
 }
 
@@ -161,8 +163,16 @@ fun <T : Any> UnicornProcessedArgument<T, T>.defaultLazy(value: () -> T) = build
  * The [conversion] is called once for each value given. If any errors are thrown, they are caught and a
  * [BadParameterValue] is thrown with the error message. You can call `fail` to throw a [BadParameterValue]
  * manually.
+ *
+ * @param completionCandidates candidates to use when completing this argument in shell autocomplete
  */
-fun <T : Any> UnicornRawArgument.convert(conversion: ArgValueTransformer<T>) = buildDelegate { convert(conversion) }
+fun <T : Any> UnicornRawArgument.convert(
+    completionCandidates: CompletionCandidates? = null,
+    conversion: ArgValueTransformer<T>
+) = buildDelegate {
+    if (completionCandidates != null) convert(completionCandidates, conversion)
+    else convert(conversion = conversion)
+}
 
 /**
  * Check the final argument value and raise an error if it's not valid.

@@ -39,7 +39,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:3.12.1")
 
     implementation("net.swiftzer.semver:semver:1.1.0")
-    implementation("com.github.ajalt:clikt:1.6.0")
+    implementation("com.github.ajalt:clikt:2.3.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r")
     implementation("com.github.github-api:github-api:72d4b9bf62")
 
