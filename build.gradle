@@ -23,10 +23,6 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     }
 }
 
-application {
-    mainClassName = "com.jonaswanke.unicorn.MainKt"
-}
-
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
@@ -57,26 +53,15 @@ sourceSets {
 }
 
 jar {
-    manifest {
-        attributes["Main-Class"] = "com.jonaswanke.unicorn.MainKt"
-    }
     from(configurations.compile.collect { it.isDirectory() ? it : zipTree(it) })
 }
-
 application {
-    mainClassName = "com.jonaswanke.unicorn.action.MainKt"
+    mainClassName = "com.jonaswanke.unicorn.console.MainKt"
 }
-//shadowJar {
-////    mergeServiceFiles()
-//    manifest {
-//        attributes('Main-Class': 'com.jonaswanke.unicorn.action.MainKt')
-//    }
-//}
 
-//task shadowJar2(type: Jar, dependsOn: shadowJar) {
-//    archiveName = 'foo2.jar'
-//    manifest {
-//        attributes('Main-Class': 'org.foo.Foo2')
-//    }
-//    from zipTree(shadowJar.archivePath)
-//}
+task actionShadowJar(type: Jar, dependsOn: shadowJar) {
+    manifest {
+        attributes["Main-Class"] = "com.jonaswanke.unicorn.action.MainKt"
+    }
+    from zipTree(shadowJar.archivePath)
+}
