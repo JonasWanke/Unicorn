@@ -1,6 +1,5 @@
 package com.jonaswanke.unicorn.commands
 
-import com.fasterxml.jackson.core.type.TypeReference
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.NoSuchOption
 import com.jonaswanke.unicorn.api.*
@@ -245,8 +244,7 @@ private fun RunContext.configureGithub() = group("Configuring GitHub repo") {
     log.i("Creating labels")
     gitHubRepo.listLabels().forEach { it.delete() }
 
-    javaClass.getResourceAsStream("/config/github-labels.yaml")
-        .readConfig(object : TypeReference<List<Label>>() {})
+    javaClass.getResourceAsStream("/config/github-labels.yaml").readConfig<List<Label>>()
         .forEach {
             gitHubRepo.createLabel(it.name, it.color)
         }

@@ -26,12 +26,10 @@ abstract class RunContext {
         get() = File(globalDir, CONFIG_GLOBAL_FILE)
     open var globalConfig: GlobalConfig by cached(
         initialGetter = {
-            globalConfigFile.takeIf { it.exists() }
-                ?.inputStream()
-                ?.readConfig<GlobalConfig>()
+            globalConfigFile.takeIf { it.exists() }?.readConfig()
                 ?: GlobalConfig()
         },
-        setter = { globalConfigFile.outputStream().writeConfig(it) }
+        setter = { globalConfigFile.writeConfig(it) }
     )
     // endregion
 
@@ -40,8 +38,8 @@ abstract class RunContext {
     val projectConfigFile: File
         get() = File(projectDir, CONFIG_PROJECT_FILE)
     open var projectConfig: ProjectConfig by cached(
-        initialGetter = { projectConfigFile.inputStream().readConfig<ProjectConfig>() },
-        setter = { projectConfigFile.outputStream().writeConfig(it) }
+        initialGetter = { projectConfigFile.readConfig<ProjectConfig>() },
+        setter = { projectConfigFile.writeConfig(it) }
     )
     // endregion
 

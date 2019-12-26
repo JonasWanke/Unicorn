@@ -1,54 +1,26 @@
 package com.jonaswanke.unicorn.utils
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer
-import com.fasterxml.jackson.databind.ser.std.StdSerializer
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
-import com.fasterxml.jackson.module.kotlin.KotlinModule
-import net.swiftzer.semver.SemVer
+import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.YamlConfiguration
+import kotlinx.serialization.ImplicitReflectionSerializer
+import kotlinx.serialization.serializer
+import java.io.File
 import java.io.InputStream
-import java.io.OutputStream
 
-internal val mapper: ObjectMapper = ObjectMapper(YAMLFactory().disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER))
-    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    .registerModule(
-        KotlinModule(nullToEmptyCollection = true, nullToEmptyMap = true)
-            .addSerializer(SemVer::class.java, object : StdSerializer<SemVer>(SemVer::class.java) {
-                override fun serialize(value: SemVer?, gen: JsonGenerator?, provider: SerializerProvider?) {
-                    gen?.writeString(value?.toString())
-                }
-            })
-            .addDeserializer(SemVer::class.java, object : StdDeserializer<SemVer>(SemVer::class.java) {
-                override fun deserialize(p: JsonParser?, ctxt: DeserializationContext?): SemVer {
-                    val version = p!!.codec.readValue(p, String::class.java)
-                    return SemVer.parse(version)
-                }
-            })
-    )
+private val yamlConfiguration = YamlConfiguration(strictMode = false)
+private val yaml = Yaml(configuration = yamlConfiguration)
 
 
-internal inline fun <reified T> InputStream.readConfig(): T {
-    return bufferedReader().use {
-        mapper.readValue(this, T::class.java)
-    }
-}
+@UseExperimental(ImplicitReflectionSerializer::class)
+internal inline fun <reified T : Any> File.readConfig(): T = readText().readConfig()
 
-internal fun <T> InputStream.readConfig(type: TypeReference<T>): T {
-    return bufferedReader().use {
-        mapper.readValue(this, type)
-    }
-}
+@UseExperimental(ImplicitReflectionSerializer::class)
+internal inline fun <reified T : Any> InputStream.readConfig(): T = reader().use { it.readText() }.readConfig()
+
+@UseExperimental(ImplicitReflectionSerializer::class)
+internal inline fun <reified T : Any> String.readConfig(): T = yaml.parse(T::class.serializer(), this)
 
 
-internal fun <T> OutputStream.writeConfig(value: T) {
-    return bufferedWriter().use {
-        mapper.writeValue(this, value)
-    }
-}
+@UseExperimental(ImplicitReflectionSerializer::class)
+internal inline fun <reified T : Any> File.writeConfig(value: T) =
+    writeText(yaml.stringify(T::class.serializer(), value))

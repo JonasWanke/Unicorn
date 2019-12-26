@@ -1,17 +1,14 @@
+@file:Suppress("unused")
+
 package com.jonaswanke.unicorn.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.core.JsonFactory
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.action.Action
-import com.jonaswanke.unicorn.core.GlobalConfig
-import com.jonaswanke.unicorn.core.InteractiveRunContext
-import com.jonaswanke.unicorn.core.ProjectConfig
-import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.*
 import com.jonaswanke.unicorn.utils.lazy
 import com.jonaswanke.unicorn.utils.list
+import kotlinx.serialization.Serializable
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
@@ -136,7 +133,7 @@ private fun GHCreateRepositoryBuilder.create(config: GHRepositoryCreationConfig)
     } catch (e: HttpException) {
         val error = e.message?.let { GHApiError.parse(it) } ?: throw e
         when {
-            error.errors?.any { it.field == "name" && it.message == "name already exists on this account" } == true ->
+            error.errors.any { it.field == "name" && it.message == "name already exists on this account" } ->
                 throw GHRepoWithNameAlreadyExistsException(config.name)
             error.message == "Visibility can't be private. Please upgrade your subscription to create a new private repository." ->
                 throw GHRepoCantBePrivateException()
@@ -437,24 +434,22 @@ fun GHRepository.createRelease(version: SemVer, tagName: String = "v$version") {
 // endregion
 
 // region API errors
+@Serializable
 data class GHApiError(
-    @JsonProperty("message") val message: String = "",
-    @JsonProperty("errors") val errors: List<Error>? = null,
+    val message: String = "",
+    val errors: List<Error> = emptyList(),
     @JsonProperty("documentation_url") val documentationUrl: String? = null
 ) {
     companion object {
-        fun parse(json: String): GHApiError {
-            return ObjectMapper(JsonFactory())
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .readValue(json, GHApiError::class.java)
-        }
+        fun parse(rawJson: String): GHApiError = json.parse(serializer(), rawJson)
     }
 
+    @Serializable
     data class Error(
-        @JsonProperty("resource") val resource: String = "",
-        @JsonProperty("field") val field: String = "",
-        @JsonProperty("code") val code: String = "",
-        @JsonProperty("message") val message: String? = null
+        val resource: String = "",
+        val field: String = "",
+        val code: String = "",
+        val message: String? = null
     )
 }
 // endregion

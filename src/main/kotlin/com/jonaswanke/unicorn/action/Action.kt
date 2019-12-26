@@ -1,10 +1,9 @@
 package com.jonaswanke.unicorn.action
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.core.JsonFactory
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.ajalt.clikt.core.CliktError
+import com.jonaswanke.unicorn.core.json
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.io.File
 
 
@@ -35,21 +34,19 @@ object Action {
     }
 
     fun getPayload(): WebhookPayload {
-        return ObjectMapper(JsonFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .readValue(Env.githubEventPath, WebhookPayload::class.java)
+        return json.parse(WebhookPayload.serializer(), Env.githubEventPath.readText())
     }
 
+    @Serializable
     data class WebhookPayload(
-        @JsonProperty("pull_request")
+        @SerialName("pull_request")
         val pullRequest: PullRequest? = null
     ) {
+        @Serializable
         data class PullRequest(
-            @JsonProperty("number")
             val number: Int
         )
     }
-
     // endregion
 
     // region Action -> GitHub
