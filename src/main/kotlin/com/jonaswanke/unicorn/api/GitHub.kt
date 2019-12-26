@@ -375,6 +375,17 @@ fun GHIssue.setPriority(context: RunContext, priority: Int) {
     )
 }
 
+
+fun GHRepository.createLabelIfNotExists(name: String, color: String, description: String? = null): GHLabel? {
+    return try {
+        createLabel(name, color, description ?: "")
+    } catch (e: HttpException) {
+        val error = e.message?.let { GHApiError.parse(it) } ?: throw e
+        if (error.errors.any { it.resource == "Label" && it.code == "already_exists" }) return null
+        throw e
+    }
+}
+
 data class Label(
     val name: String,
     val color: String,
@@ -382,7 +393,7 @@ data class Label(
 ) {
     fun get(repo: GHRepository): GHLabel {
         return try {
-            repo.getLabel(name.encodedLabelName).also {
+            repo.getLabel(name).also {
                 if (it.color != color)
                     it.color = color
                 if (it.description != description)
@@ -394,9 +405,6 @@ data class Label(
         }
     }
 }
-
-val String.encodedLabelName: String
-    get() = URLEncoder.encode(this, "UTF-8").replace("+", "%20")
 
 class LabelGroup(
     val color: String,
