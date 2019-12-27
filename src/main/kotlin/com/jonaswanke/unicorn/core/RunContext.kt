@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.output.TermUi
 import com.jonaswanke.unicorn.utils.*
 import java.io.File
-import java.io.IOError
 
 abstract class RunContext {
     companion object {
@@ -21,7 +20,7 @@ abstract class RunContext {
     abstract val environment: Environment
 
     // region Global config
-    open val globalDir: File? = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile?.parentFile
+    open val globalDir: File? = ProgramConfig.installationDir
     val globalConfigFile: File
         get() = File(globalDir, CONFIG_GLOBAL_FILE)
     open var globalConfig: GlobalConfig by cached(
