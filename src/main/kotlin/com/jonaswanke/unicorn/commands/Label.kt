@@ -2,6 +2,7 @@ package com.jonaswanke.unicorn.commands
 
 import com.jonaswanke.unicorn.api.createLabelIfNotExists
 import com.jonaswanke.unicorn.api.gitHubRepo
+import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*

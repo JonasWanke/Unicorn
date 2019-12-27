@@ -1,6 +1,7 @@
 package com.jonaswanke.unicorn.api
 
 import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.utils.code
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.api.GitCommand

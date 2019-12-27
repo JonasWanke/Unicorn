@@ -57,13 +57,14 @@ abstract class RunContext {
     // region Logging
     abstract val log: LogCollector
 
-    fun <R> group(name: String, block: RunContext.() -> R): R = copyWithGroup(log.group(name)).block()
-    fun <R> group(name: Markup, block: RunContext.() -> R): R = copyWithGroup(log.group(name)).block()
-    protected abstract fun copyWithGroup(group: LogCollector.Group): RunContext
+    internal abstract fun copyWithGroup(group: LogCollector.Group): RunContext
     // endregion
 }
 
 abstract class InteractiveRunContext : RunContext() {
+    abstract override fun copyWithGroup(group: LogCollector.Group): InteractiveRunContext
+
+
     fun editText(
         text: String,
         editor: String? = null,
@@ -220,3 +221,10 @@ abstract class InteractiveRunContext : RunContext() {
         showDefault: Boolean = true
     ): Boolean = TermUi.confirm(text, default, abort, promptSuffix, showDefault, TextIoConsole) ?: default
 }
+
+
+@Suppress("UNCHECKED_CAST")
+fun <C : RunContext, R> C.group(name: String, block: C.() -> R): R = (copyWithGroup(log.group(name)) as C).block()
+
+@Suppress("UNCHECKED_CAST")
+fun <C : RunContext, R> C.group(name: Markup, block: C.() -> R): R = (copyWithGroup(log.group(name)) as C).block()
