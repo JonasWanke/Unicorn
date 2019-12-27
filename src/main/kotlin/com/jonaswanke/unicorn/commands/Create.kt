@@ -3,10 +3,7 @@ package com.jonaswanke.unicorn.commands
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.NoSuchOption
 import com.jonaswanke.unicorn.api.*
-import com.jonaswanke.unicorn.core.InteractiveRunContext
-import com.jonaswanke.unicorn.core.ProgramConfig
-import com.jonaswanke.unicorn.core.ProjectConfig
-import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.*
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.argument
@@ -188,7 +185,7 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
 private fun InteractiveRunContext.initGitHub() = group("Uploading project to GitHub") {
     log.i("Creating repository")
 
-    val organization = promptOptional<GHOrganization>(
+    val organization = promptOptional<GHOrganization?>(
         "Which organization should this be uploaded to?",
         optionalText = " (Blank for no organization)"
     ) {

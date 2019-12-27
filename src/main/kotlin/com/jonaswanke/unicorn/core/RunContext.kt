@@ -173,36 +173,31 @@ abstract class InteractiveRunContext : RunContext() {
         hideInput: Boolean = false,
         requireConfirmation: Boolean = false,
         confirmationPrompt: String = "Repeat for confirmation: ",
-        convert: ((String?) -> T?)
-    ): T? {
+        convert: ((String?) -> T)
+    ): T {
         // Original source: TermUi.prompt
         val prompt = buildPrompt(text + optionalText, promptSuffix, false, null)
 
-        try {
-            while (true) {
-                val value = TextIoConsole.promptForLine(prompt, hideInput)
-                    ?.takeUnless { it.isBlank() }
-                val result = try {
-                    convert.invoke(value)
-                } catch (err: UsageError) {
-                    log.e(err.helpMessage())
-                    continue
-                }
-
-                if (!requireConfirmation) return result
-
-                var value2: String?
-                while (true) {
-                    value2 = TextIoConsole.promptForLine(confirmationPrompt, hideInput)
-                    // No need to convert the confirmation, since it is valid if it matches the
-                    // first value.
-                    if (!value2.isNullOrBlank()) break
-                }
-                if (value == value2) return result
-                log.w("Error: the two entered values do not match")
+        while (true) {
+            val value = TextIoConsole.promptForLine(prompt, hideInput)
+            val result = try {
+                convert.invoke(value)
+            } catch (err: UsageError) {
+                log.e(err.helpMessage())
+                continue
             }
-        } catch (err: IOError) {
-            return null
+
+            if (!requireConfirmation) return result
+
+            var value2: String?
+            while (true) {
+                value2 = TextIoConsole.promptForLine(confirmationPrompt, hideInput)
+                // No need to convert the confirmation, since it is valid if it matches the
+                // first value.
+                if (!value2.isNullOrBlank()) break
+            }
+            if (value == value2) return result
+            log.w("Error: the two entered values do not match")
         }
     }
 
