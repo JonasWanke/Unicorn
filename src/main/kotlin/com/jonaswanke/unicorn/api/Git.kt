@@ -69,9 +69,10 @@ class Git(val directory: File) {
     }
 
     fun commit(context: RunContext, message: String) {
-        context.log.i { code { +"git commit -m \"$message\"" } }
+        context.log.i { code { +"git commit -m \"$message\" --no-gpg-sign" } }
         call(context, api.commit()) {
             setMessage(message)
+            setSign(false)
         }
     }
     // endregion
