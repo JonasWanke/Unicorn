@@ -1,7 +1,9 @@
 package com.jonaswanke.unicorn.template
 
 import com.jonaswanke.unicorn.core.FileSerializer
+import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.ScriptingUtils
+import com.jonaswanke.unicorn.utils.italic
 import kotlinx.serialization.Serializable
 import java.io.File
 
@@ -32,8 +34,15 @@ data class TemplateConfig(
         val isTemplate: Boolean = true,
         val condition: String? = null
     ) {
-        fun evalFrom(variables: TemplateVariables): String {
+        fun evalFrom(context: RunContext, variables: TemplateVariables): String {
             return ScriptingUtils.evalInString(from, variables)
+                ?: context.exit {
+                    +"A file expansion's "
+                    italic("from")
+                    +" evaluated to "
+                    italic("null")
+                    +" (Code: \"$from\")"
+                }
         }
 
         fun evalCondition(variables: TemplateVariables): Boolean {

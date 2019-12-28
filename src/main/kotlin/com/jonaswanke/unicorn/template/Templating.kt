@@ -63,7 +63,7 @@ object Templating {
         template.config.files
             .filter { it.evalCondition(variables) }
             .forEach { expansion ->
-                val from = expansion.evalFrom(variables)
+                val from = expansion.evalFrom(context, variables)
 
                 val files =
                     if (expansion.to != null) listOf(from to File(baseDir, expansion.to))
@@ -77,7 +77,7 @@ object Templating {
                     }
                 files.forEach { (from, to) ->
                     val writer = to.writer()
-                    configuration.getTemplate(File(template.name, from).path, null, null, expansion.isTemplate)
+                    configuration.getTemplate("${template.name}/$from", null, null, expansion.isTemplate)
                         .process(variables, writer)
                 }
             }

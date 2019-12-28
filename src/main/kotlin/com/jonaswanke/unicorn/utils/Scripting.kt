@@ -4,7 +4,17 @@ import com.jonaswanke.unicorn.core.scriptEngine
 import javax.script.SimpleBindings
 
 object ScriptingUtils {
+    private val imports = listOf(
+        "com.jonaswanke.unicorn.api.*",
+        "com.jonaswanke.unicorn.core.*",
+        "com.jonaswanke.unicorn.core.ProjectConfig.*",
+        "net.swiftzer.semver.SemVer"
+    )
     private fun buildCodeWithExtractedVariables(code: String, variables: Map<String, Any?>): String = buildString {
+        imports.forEach {
+            appendln("import $it;")
+        }
+
         variables.forEach {
             append("private val ${it.key} = ")
             val value = it.value
@@ -19,6 +29,7 @@ object ScriptingUtils {
             }
             appendln(";")
         }
+
         append(code)
     }
 
@@ -29,6 +40,8 @@ object ScriptingUtils {
         return value as T
     }
 
-    fun evalInString(interpolation: String, variables: Map<String, Any?>): String =
-        eval("\"$interpolation\"", variables)
+    fun evalInString(interpolation: String, variables: Map<String, Any?>): String? {
+        return eval<String?>("\"$interpolation\"", variables)
+            .takeUnless { it == "null" }
+    }
 }

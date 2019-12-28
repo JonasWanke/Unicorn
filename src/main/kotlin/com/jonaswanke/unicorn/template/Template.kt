@@ -1,15 +1,11 @@
 package com.jonaswanke.unicorn.template
 
-import com.jonaswanke.unicorn.core.FileSerializer
 import com.jonaswanke.unicorn.core.ProgramConfig
 import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.core.group
-import com.jonaswanke.unicorn.template.config.ParameterListSerializer
-import com.jonaswanke.unicorn.utils.ScriptingUtils
 import com.jonaswanke.unicorn.utils.italic
 import com.jonaswanke.unicorn.utils.readConfig
 import kotlinx.serialization.MissingFieldException
-import kotlinx.serialization.Serializable
 import java.io.File
 
 class Template private constructor(
