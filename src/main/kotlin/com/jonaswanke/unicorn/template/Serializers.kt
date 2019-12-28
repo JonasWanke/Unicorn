@@ -8,6 +8,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.internal.LinkedHashMapSerializer
 import kotlinx.serialization.internal.NamedMapClassDescriptor
 import kotlinx.serialization.internal.SerialClassDescImpl
+import kotlinx.serialization.internal.nullable
 
 @Serializer(forClass = List::class)
 internal object ParameterListSerializer : KSerializer<List<TemplateParameter>> {
@@ -16,7 +17,7 @@ internal object ParameterListSerializer : KSerializer<List<TemplateParameter>> {
         String.serializer().descriptor,
         TemplateParameter.serializer().descriptor
     )
-    private val serializer = LinkedHashMapSerializer(String.serializer(), TemplateParameter.serializer())
+    private val serializer = LinkedHashMapSerializer(String.serializer(), TemplateParameter.serializer()).nullable
 
     override fun serialize(encoder: Encoder, obj: List<TemplateParameter>) {
         val map = obj.map { it.id to it }.toMap()
@@ -25,7 +26,8 @@ internal object ParameterListSerializer : KSerializer<List<TemplateParameter>> {
 
     override fun deserialize(decoder: Decoder): List<TemplateParameter> {
         return serializer.deserialize(decoder)
-            .map { (id, param) -> param.withId(id = id) }
+            ?.map { (id, param) -> param.withId(id = id) }
+            ?: emptyList()
     }
 }
 
