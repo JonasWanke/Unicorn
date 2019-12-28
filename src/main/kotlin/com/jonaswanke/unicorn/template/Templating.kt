@@ -2,6 +2,7 @@ package com.jonaswanke.unicorn.template
 
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.NoSuchOption
+import com.jonaswanke.unicorn.core.GlobalConfig
 import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.core.group
 import freemarker.template.Configuration
@@ -26,29 +27,29 @@ object Templating {
         context: InteractiveRunContext,
         templateName: String,
         baseDir: File = context.projectDir,
-        parameters: Map<String, Any?> = emptyMap()
+        parameters: TemplateVariables = emptyMap()
     ): Unit = applyTemplate(context, templateName, baseDir, parameters, context.buildInitialData())
 
     private fun applyTemplate(
         context: InteractiveRunContext,
         templateName: String,
         baseDir: File = context.projectDir,
-        parameters: Map<String, Any?>,
-        data: MutableMap<String, Any?>
+        parameters: TemplateVariables,
+        variables: MutableTemplateVariables
     ): Unit = context.group("Applying template $templateName") {
         val template = Template.getByName(this, templateName)
 
         // Resolve missing parameters
-        val allParameters = parameters +
-                template.config.parameters
-                    .filter { it.id !in parameters.keys }
-                    .map { it.id to it.prompt(this) }
-                    .toMap()
-        data.putAll(allParameters)
+        variables.putAll(parameters)
+        template.config.parameters
+            .filter { it.id !in parameters.keys }
+            .forEach {
+                variables[it.id] = it.prompt(this, variables)
+            }
 
         // Apply dependees
         template.config.dependsOn.forEach {
-            applyTemplate(this, it.name, File(baseDir, it.baseDir.path), data)
+            applyTemplate(this, it.name, File(baseDir, it.baseDir.path), variables)
         }
 
         // Apply own file expansions
@@ -68,23 +69,20 @@ object Templating {
             files.forEach { (from, to) ->
                 val writer = to.writer()
                 configuration.getTemplate(from, null, null, expansion.isTemplate)
-                    .process(data, writer)
+                    .process(variables, writer)
             }
         }
     }
 
     private fun InteractiveRunContext.buildInitialData(): MutableMap<String, Any?> = mutableMapOf(
-        "user" to mutableMapOf(
-            "gitHub" to globalConfig.gitHub?.let {
-                mutableMapOf(
-                    "name" to it.username
-                )
-            }
-        ),
+        "user" to UserTemplateVariable(globalConfig),
         "project" to projectConfig
     )
 
-    private fun TemplateParameter.prompt(context: InteractiveRunContext): Any? {
+    private fun TemplateParameter.prompt(
+        context: InteractiveRunContext,
+        variables: TemplateVariables
+    ): Any? {
         val text = buildString {
             append(name)
             if (help != null) {
@@ -94,19 +92,41 @@ object Templating {
             }
         }
         val convert: (String) -> Any? = {
-            when (this) {
+            val value = when (this) {
                 is TemplateParameter.StringParam -> it
                 is TemplateParameter.IntParam -> {
-                    it.toIntOrNull() ?: throw BadParameterValue("$it is not a valid integer")
+                    it.toIntOrNull() ?: throw BadParameterValue("\"$it\" is not a valid integer")
                 }
                 is TemplateParameter.EnumParam -> {
                     if (it !in values) throw NoSuchOption(it, values)
                     it
                 }
             }
+            if (validation?.invoke(value, variables) == false)
+                throw BadParameterValue("\"$it\" doesn't satisfy validation")
+            it
         }
 
+        val default = default(variables)
         return if (required) context.prompt(text, default, convert = convert)
         else context.promptOptional<Any?>(text) { it?.let { convert(it) } ?: default }
     }
+}
+
+
+typealias TemplateVariables = Map<String, Any?>
+typealias MutableTemplateVariables = MutableMap<String, Any?>
+
+data class UserTemplateVariable(
+    val gitHub: GitHub?
+) {
+    constructor(globalConfig: GlobalConfig) : this(
+        gitHub = globalConfig.gitHub?.let {
+            GitHub(it.username)
+        }
+    )
+
+    data class GitHub(
+        val username: String?
+    )
 }

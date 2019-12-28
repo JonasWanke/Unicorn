@@ -1,15 +1,13 @@
 package com.jonaswanke.unicorn.template
 
-import com.jonaswanke.unicorn.core.FileSerializer
-import com.jonaswanke.unicorn.core.ProgramConfig
-import com.jonaswanke.unicorn.core.RunContext
-import com.jonaswanke.unicorn.core.group
+import com.jonaswanke.unicorn.core.*
 import com.jonaswanke.unicorn.utils.*
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.LinkedHashMapSerializer
 import kotlinx.serialization.internal.NamedMapClassDescriptor
 import kotlinx.serialization.internal.SerialClassDescImpl
 import java.io.File
+import javax.script.SimpleBindings
 
 class Template private constructor(
     val name: String,
@@ -93,24 +91,17 @@ data class TemplateConfig(
     )
 }
 
-/*
-- user
-    - email
-    - gitHub
-        - name
-- project
-    - name
-    - description
-    - license
-*/
+typealias TemplateParamDefaultGetter = (variables: TemplateVariables) -> String?
+typealias TemplateParamValidation = (value: Any?, variables: TemplateVariables) -> Boolean
+
 @Serializable(with = TemplateParameter.Serializer::class)
 sealed class TemplateParameter {
     abstract val id: String
     abstract val name: String
     abstract val help: String?
     abstract val required: Boolean
-    abstract val default: String?
-    abstract val validation: String?
+    abstract val default: TemplateParamDefaultGetter
+    abstract val validation: TemplateParamValidation?
 
     abstract fun withId(id: String): TemplateParameter
 
@@ -120,8 +111,8 @@ sealed class TemplateParameter {
         override val name: String,
         override val help: String? = null,
         override val required: Boolean = true,
-        override val default: String? = null,
-        override val validation: String? = null
+        override val default: TemplateParamDefaultGetter = { null },
+        override val validation: TemplateParamValidation? = null
     ) : TemplateParameter() {
         companion object {
             const val TYPE = "string"
@@ -135,8 +126,8 @@ sealed class TemplateParameter {
         override val name: String,
         override val help: String? = null,
         override val required: Boolean = true,
-        override val default: String? = null,
-        override val validation: String? = null
+        override val default: TemplateParamDefaultGetter = { null },
+        override val validation: TemplateParamValidation? = null
     ) : TemplateParameter() {
         companion object {
             const val TYPE = "int"
@@ -150,8 +141,8 @@ sealed class TemplateParameter {
         override val name: String,
         override val help: String? = null,
         override val required: Boolean = true,
-        override val default: String? = null,
-        override val validation: String? = null,
+        override val default: TemplateParamDefaultGetter = { null },
+        override val validation: TemplateParamValidation? = null,
         val values: List<String>
     ) : TemplateParameter() {
         companion object {
@@ -187,8 +178,7 @@ sealed class TemplateParameter {
                 it.encodeStringElement(descriptor, 1, obj.name)
                 obj.help?.let { h -> it.encodeStringElement(descriptor, 2, h) }
                 it.encodeBooleanElement(descriptor, 3, obj.required)
-                obj.default?.let { d -> it.encodeStringElement(descriptor, 4, d) }
-                obj.validation?.let { v -> it.encodeStringElement(descriptor, 5, v) }
+                // Cannot encode default or validation as they're lambdas
                 if (obj is EnumParam) it.encodeListElement(descriptor, 6, obj.values)
                 it.endStructure(descriptor)
             }
@@ -222,14 +212,24 @@ sealed class TemplateParameter {
 
             type ?: throw MissingFieldException("type")
 
-            return when (type) {
-                StringParam.TYPE -> StringParam("", name, help, required, default, validation)
-                IntParam.TYPE -> {
-                    if (default != null)
-                        require(default.toIntOrNull() != null) { "Default value of int-type parameter is not a valid int" }
+            fun eval(code: String, variables: TemplateVariables): Any? {
+                val fullCode = ScriptingUtils.buildCodeWithExtractedVariables(code, variables)
+                return scriptEngine.eval(fullCode, SimpleBindings(variables.mapValues { it.value }))
+            }
 
-                    IntParam("", name, help, required, default, validation)
+            val defaultLambda: TemplateParamDefaultGetter = {
+                if (default == null) null
+                else eval(default, it) as String
+            }
+            val validationLambda: TemplateParamValidation? =
+                if (validation == null) null
+                else { value, variables ->
+                    eval(validation, variables + ("it" to value)) as Boolean
                 }
+
+            return when (type.toLowerCase()) {
+                StringParam.TYPE -> StringParam("", name, help, required, defaultLambda, validationLambda)
+                IntParam.TYPE -> IntParam("", name, help, required, defaultLambda, validationLambda)
                 EnumParam.TYPE -> {
                     values ?: throw MissingFieldException("type")
                     require(values.isNotEmpty()) { "At least one value must be specified for enum parameter" }
@@ -237,7 +237,7 @@ sealed class TemplateParameter {
                         .filter { (_, value) -> value.isBlank() }
                     require(emptyValues.isEmpty()) { "Enum values must not be empty; was at index ${emptyValues.first().index + 1}" }
 
-                    EnumParam("", name, help, required, default, validation, values)
+                    EnumParam("", name, help, required, defaultLambda, validationLambda, values)
                 }
                 else -> error("Unknown parameter type \"$type\"")
             }
