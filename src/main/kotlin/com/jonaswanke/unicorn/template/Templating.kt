@@ -2,7 +2,6 @@ package com.jonaswanke.unicorn.template
 
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.NoSuchOption
-import com.jonaswanke.unicorn.core.GlobalConfig
 import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.core.group
 import freemarker.template.Configuration
@@ -10,6 +9,9 @@ import freemarker.template.TemplateExceptionHandler
 import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.Paths
+
+typealias TemplateVariables = Map<String, Any?>
+typealias MutableTemplateVariables = MutableMap<String, Any?>
 
 object Templating {
     private val configuration = Configuration(Configuration.VERSION_2_3_29).apply {
@@ -82,7 +84,7 @@ object Templating {
     }
 
     private fun InteractiveRunContext.buildInitialData(): MutableMap<String, Any?> = mutableMapOf(
-        "user" to UserTemplateVariable(globalConfig),
+        "global" to globalConfig,
         "project" to projectConfig
     )
 
@@ -118,22 +120,4 @@ object Templating {
         return if (required) context.prompt(text, default, convert = convert)
         else context.promptOptional<Any?>(text) { it?.let { convert(it) } ?: default }
     }
-}
-
-
-typealias TemplateVariables = Map<String, Any?>
-typealias MutableTemplateVariables = MutableMap<String, Any?>
-
-data class UserTemplateVariable(
-    val gitHub: GitHub?
-) {
-    constructor(globalConfig: GlobalConfig) : this(
-        gitHub = globalConfig.gitHub?.let {
-            GitHub(it.username)
-        }
-    )
-
-    data class GitHub(
-        val username: String?
-    )
 }
