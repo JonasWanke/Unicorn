@@ -1,13 +1,15 @@
 package com.jonaswanke.unicorn.template
 
-import com.jonaswanke.unicorn.core.*
+import com.jonaswanke.unicorn.core.FileSerializer
+import com.jonaswanke.unicorn.core.ProgramConfig
+import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.utils.*
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.LinkedHashMapSerializer
 import kotlinx.serialization.internal.NamedMapClassDescriptor
 import kotlinx.serialization.internal.SerialClassDescImpl
 import java.io.File
-import javax.script.SimpleBindings
 
 class Template private constructor(
     val name: String,
@@ -42,8 +44,6 @@ class Template private constructor(
             Template(name, dir, config)
         }
     }
-
-    //    val configJson: TemplateConfig = json.parse(TemplateConfig.serializer(), File(dir, ".template.json").readText())
 }
 
 @Serializable
@@ -80,7 +80,11 @@ data class TemplateConfig(
         @Serializable(FileSerializer::class)
         val baseDir: File = File("."),
         val parameters: Map<String, String> = emptyMap()
-    )
+    ) {
+        fun evalParameters(variables: TemplateVariables): TemplateVariables {
+            return parameters.mapValues { (_, value) -> ScriptingUtils.evalInString(value, variables) }
+        }
+    }
 
     @Serializable
     data class FileExpansion(
@@ -88,7 +92,15 @@ data class TemplateConfig(
         val to: String? = null,
         val isTemplate: Boolean = true,
         val condition: String? = null
-    )
+    ) {
+        fun evalFrom(variables: TemplateVariables): String {
+            return ScriptingUtils.evalInString(from, variables)
+        }
+
+        fun evalCondition(variables: TemplateVariables): Boolean {
+            return condition == null || ScriptingUtils.eval(condition, variables)
+        }
+    }
 }
 
 typealias TemplateParamDefaultGetter = (variables: TemplateVariables) -> String?
@@ -212,19 +224,14 @@ sealed class TemplateParameter {
 
             type ?: throw MissingFieldException("type")
 
-            fun eval(code: String, variables: TemplateVariables): Any? {
-                val fullCode = ScriptingUtils.buildCodeWithExtractedVariables(code, variables)
-                return scriptEngine.eval(fullCode, SimpleBindings(variables.mapValues { it.value }))
-            }
-
             val defaultLambda: TemplateParamDefaultGetter = {
                 if (default == null) null
-                else eval(default, it) as String
+                else ScriptingUtils.evalInString(default, it)
             }
             val validationLambda: TemplateParamValidation? =
                 if (validation == null) null
                 else { value, variables ->
-                    eval(validation, variables + ("it" to value)) as Boolean
+                    ScriptingUtils.eval(validation, variables + ("it" to value))
                 }
 
             return when (type.toLowerCase()) {

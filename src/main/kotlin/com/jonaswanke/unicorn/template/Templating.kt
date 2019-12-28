@@ -49,29 +49,36 @@ object Templating {
 
         // Apply dependees
         template.config.dependsOn.forEach {
-            applyTemplate(this, it.name, File(baseDir, it.baseDir.path), variables)
+            applyTemplate(
+                this,
+                it.name,
+                File(baseDir, it.baseDir.path),
+                variables + it.evalParameters(variables)
+            )
         }
 
         // Apply own file expansions
-        template.config.files.forEach { expansion ->
-            // TODO: test condition
+        template.config.files
+            .filter { it.evalCondition(variables) }
+            .forEach { expansion ->
+                val from = expansion.evalFrom(variables)
 
-            val files =
-                if (expansion.to != null) listOf(expansion.from to File(baseDir, expansion.to))
-                else {
-                    val matcher = FileSystems.getDefault().getPathMatcher("glob:${expansion.from}")
-                    template.dir.walk()
-                        .map { it.relativeTo(template.dir).path }
-                        .filter { relativePath -> matcher.matches(Paths.get(relativePath)) }
-                        .map { it to File(baseDir, it.removeSuffix(".ftl")) }
-                        .toList()
+                val files =
+                    if (expansion.to != null) listOf(from to File(baseDir, expansion.to))
+                    else {
+                        val matcher = FileSystems.getDefault().getPathMatcher("glob:$from")
+                        template.dir.walk()
+                            .map { it.relativeTo(template.dir).path }
+                            .filter { relativePath -> matcher.matches(Paths.get(relativePath)) }
+                            .map { it to File(baseDir, it.removeSuffix(".ftl")) }
+                            .toList()
+                    }
+                files.forEach { (from, to) ->
+                    val writer = to.writer()
+                    configuration.getTemplate(File(template.name, from).path, null, null, expansion.isTemplate)
+                        .process(variables, writer)
                 }
-            files.forEach { (from, to) ->
-                val writer = to.writer()
-                configuration.getTemplate(from, null, null, expansion.isTemplate)
-                    .process(variables, writer)
             }
-        }
     }
 
     private fun InteractiveRunContext.buildInitialData(): MutableMap<String, Any?> = mutableMapOf(
