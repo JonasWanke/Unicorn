@@ -64,7 +64,7 @@ internal object TemplateParameterSerializer : KSerializer<TemplateParameter> {
     @Suppress("RedundantExplicitType")
     override fun deserialize(decoder: Decoder): TemplateParameter {
         val dec = decoder.beginStructure(descriptor)
-        var type: String? = null
+        var type: String = TemplateParameter.StringParam.TYPE
         var name: String = ""  // Will be replaced by ParameterListSerializer
         var help: String? = null
         var required: Boolean = true
@@ -87,8 +87,6 @@ internal object TemplateParameterSerializer : KSerializer<TemplateParameter> {
         }
         dec.endStructure(descriptor)
 
-        type ?: throw MissingFieldException("type")
-
         val defaultLambda: TemplateParameterDefaultFactory = {
             if (default == null) null
             else ScriptingUtils.evalInString(default, it)
@@ -99,23 +97,12 @@ internal object TemplateParameterSerializer : KSerializer<TemplateParameter> {
                 ScriptingUtils.eval(validation, variables + ("it" to value))
             }
 
+        // ID will be replaced by ParameterListSerializer
         return when (type.toLowerCase()) {
-            TemplateParameter.StringParam.TYPE -> TemplateParameter.StringParam(
-                "",
-                name,
-                help,
-                required,
-                defaultLambda,
-                validationLambda
-            )
-            TemplateParameter.IntParam.TYPE -> TemplateParameter.IntParam(
-                "",
-                name,
-                help,
-                required,
-                defaultLambda,
-                validationLambda
-            )
+            TemplateParameter.StringParam.TYPE ->
+                TemplateParameter.StringParam("", name, help, required, defaultLambda, validationLambda)
+            TemplateParameter.IntParam.TYPE ->
+                TemplateParameter.IntParam("", name, help, required, defaultLambda, validationLambda)
             TemplateParameter.EnumParam.TYPE -> {
                 values ?: throw MissingFieldException("type")
                 require(values.isNotEmpty()) { "At least one value must be specified for enum parameter" }
