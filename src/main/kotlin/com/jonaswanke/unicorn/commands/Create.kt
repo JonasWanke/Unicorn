@@ -4,12 +4,10 @@ import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.NoSuchOption
 import com.jonaswanke.unicorn.api.*
 import com.jonaswanke.unicorn.core.*
+import com.jonaswanke.unicorn.core.ProjectConfig.License
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
-import com.jonaswanke.unicorn.script.parameters.argument
-import com.jonaswanke.unicorn.script.parameters.convert
-import com.jonaswanke.unicorn.script.parameters.option
-import com.jonaswanke.unicorn.script.parameters.optional
+import com.jonaswanke.unicorn.script.parameters.*
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
 import com.jonaswanke.unicorn.utils.readConfig
@@ -31,9 +29,11 @@ fun Unicorn.registerCreateCommand() {
             argument("name")
                 .optional(),
             option("-d", "--desc", "--description"),
+            option("-l", "--license")
+                .choice(License.values().map { it.keyword to it }.toMap()),
             option("-v", "--version")
                 .convert { SemVer.parse(it) }
-        ) { rawName, rawDescription, rawVersion ->
+        ) { rawName, rawDescription, rawLicense, rawVersion ->
             val initInExisting = rawName == null
             if (initInExisting) confirm("Using create in an existing project is experimental. Continue?", abort = true)
             log.i {
@@ -56,6 +56,12 @@ fun Unicorn.registerCreateCommand() {
             val description = rawDescription
                 ?: if (initInExisting) repo?.description else null
                     ?: promptOptional("Provide a short description")
+            val license = rawLicense
+                ?: promptOptional<License>("Choose a license") { keyword ->
+                    License.fromKeywordOrNull(keyword)
+                        ?: throw NoSuchOption(keyword, License.values().map { it.keyword })
+                }
+                ?: License.NONE
             val version = rawVersion
                 ?: prompt<SemVer>(
                     if (initInExisting) "What's the current version of your project?"
@@ -84,6 +90,7 @@ fun Unicorn.registerCreateCommand() {
                     unicornVersion = ProgramConfig.VERSION,
                     name = name,
                     description = description,
+                    license = license,
                     version = version
                 ),
                 replacements
@@ -154,9 +161,9 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
         val gitignore = promptOptional(
             "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
         ) { input ->
-            val templates = input?.split(",")
-                ?.map { it.trim().toLowerCase() }
-            if (templates.isNullOrEmpty()) return@promptOptional null
+            val templates = input.split(",")
+                .map { it.trim().toLowerCase() }
+            if (templates.isEmpty()) return@promptOptional null
 
             try {
                 GitignoreIo.getTemplates(this, templates)
@@ -185,12 +192,11 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
 private fun InteractiveRunContext.initGitHub() = group("Uploading project to GitHub") {
     log.i("Creating repository")
 
-    val organization = promptOptional<GHOrganization?>(
+    val organization = promptOptional<GHOrganization>(
         "Which organization should this be uploaded to?",
         optionalText = " (Blank for no organization)"
     ) {
-        if (it.isNullOrBlank()) null
-        else try {
+        try {
             gitHub.api.getOrganization(it)
         } catch (e: IOException) {
             throw NoSuchOption(it)

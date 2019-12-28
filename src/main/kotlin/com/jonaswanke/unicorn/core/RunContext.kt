@@ -154,8 +154,8 @@ abstract class InteractiveRunContext : RunContext() {
         hideInput: Boolean = false,
         requireConfirmation: Boolean = false,
         confirmationPrompt: String = "Repeat for confirmation: ",
-        convert: ((String?) -> String?) = { it }
-    ): String? = promptOptional<String?>(
+        convert: ((String) -> String?) = { it }
+    ): String? = promptOptional<String>(
         text,
         optionalText,
         promptSuffix,
@@ -165,20 +165,23 @@ abstract class InteractiveRunContext : RunContext() {
         convert
     )
 
-    fun <T> promptOptional(
+    fun <T : Any> promptOptional(
         text: String,
         optionalText: String = " (optional)",
         promptSuffix: String = ": ",
         hideInput: Boolean = false,
         requireConfirmation: Boolean = false,
         confirmationPrompt: String = "Repeat for confirmation: ",
-        convert: ((String?) -> T)
-    ): T {
+        convert: ((String) -> T?)
+    ): T? {
         // Original source: TermUi.prompt
         val prompt = buildPrompt(text + optionalText, promptSuffix, false, null)
 
         while (true) {
             val value = TextIoConsole.promptForLine(prompt, hideInput)
+                .takeUnless { it.isNullOrBlank() }
+                ?: return null
+
             val result = try {
                 convert.invoke(value)
             } catch (err: UsageError) {

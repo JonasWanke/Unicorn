@@ -2,8 +2,8 @@ package com.jonaswanke.unicorn.core
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.jonaswanke.unicorn.api.LabelGroup
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
+import kotlinx.serialization.*
+import kotlinx.serialization.internal.StringDescriptor
 import net.swiftzer.semver.SemVer
 
 @Serializable
@@ -12,6 +12,7 @@ data class ProjectConfig(
     val unicornVersion: SemVer,
     val name: String,
     val description: String? = null,
+    val license: License? = null,
     @Serializable(SemVerSerializer::class)
     val version: SemVer = SemVer(0, 0, 1),
     val types: Types = Types(),
@@ -46,6 +47,37 @@ data class ProjectConfig(
         labels.priorities.descriptionPrefix,
         priorities.map { it.name to it.description }
     )
+
+    @Serializable(with = License.Serializer::class)
+    enum class License(val keyword: String) {
+        NONE("none"),
+        APACHE_2_0("apache-2.0"),
+        MIT("mit");
+
+        companion object {
+            fun fromKeywordOrNull(keyword: String): License? {
+                return values().firstOrNull { it.keyword.equals(keyword, ignoreCase = true) }
+            }
+        }
+
+        override fun toString() = keyword
+
+        @kotlinx.serialization.Serializer(forClass = License::class)
+        object Serializer : KSerializer<License> {
+            override val descriptor: SerialDescriptor = StringDescriptor
+
+            override fun serialize(encoder: Encoder, obj: License) = encoder.encodeString(obj.keyword)
+
+            override fun deserialize(decoder: Decoder): License {
+                val keyword = decoder.decodeString()
+                return fromKeywordOrNull(keyword)
+                    ?: error(
+                        "License $keyword from project config is unknown to Unicorn. " +
+                                "Known licenses: ${values().joinToString()}"
+                    )
+            }
+        }
+    }
 
     @Serializable
     data class Types(

@@ -100,7 +100,7 @@ object Templating {
                 append(")")
             }
         }
-        val convert: (String) -> Any? = {
+        val convert: (String) -> Any = {
             val value = when (this) {
                 is TemplateParameter.StringParam -> it
                 is TemplateParameter.IntParam -> {
@@ -118,6 +118,6 @@ object Templating {
 
         val default = default(variables)
         return if (required) context.prompt(text, default, convert = convert)
-        else context.promptOptional<Any?>(text) { it?.let { convert(it) } ?: default }
+        else context.promptOptional(text, convert = convert)
     }
 }
