@@ -12,6 +12,8 @@ import com.jonaswanke.unicorn.template.Templating
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
 import com.jonaswanke.unicorn.utils.readConfig
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.internal.ArrayListSerializer
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.transport.URIish
@@ -222,7 +224,8 @@ private fun RunContext.configureGithub() = group("Configuring GitHub repo") {
     log.i("Creating labels")
     gitHubRepo.listLabels().forEach { it.delete() }
 
-    javaClass.getResourceAsStream("/config/github-labels.yaml").readConfig<List<Label>>()
+    javaClass.getResourceAsStream("/config/github-labels.yaml")
+        .readConfig(ArrayListSerializer(Label.serializer()))
         .forEach {
             gitHubRepo.createLabel(it.name, it.color)
         }
@@ -242,6 +245,7 @@ private fun RunContext.configureGithub() = group("Configuring GitHub repo") {
     }
 }
 
+@Serializable
 private data class Label(val name: String, val color: String)
 
 private fun RunContext.fileExists(fileName: String): Boolean {
