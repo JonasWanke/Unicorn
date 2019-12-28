@@ -8,6 +8,7 @@ import com.jonaswanke.unicorn.core.ProjectConfig.License
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
+import com.jonaswanke.unicorn.template.Templating
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
 import com.jonaswanke.unicorn.utils.readConfig
@@ -18,10 +19,6 @@ import org.kohsuke.github.GHOrganization
 import org.kohsuke.github.GHRepository
 import java.io.File
 import java.io.IOException
-import java.time.LocalDate
-
-private const val GIT_GITIGNORE_FILE = ".gitignore"
-private const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
 
 fun Unicorn.registerCreateCommand() {
     command("create", "c") {
@@ -75,15 +72,6 @@ fun Unicorn.registerCreateCommand() {
                     }
                 }
 
-            val replacements = mapOf(
-                "NAME" to name,
-                "DESCRIPTION" to description,
-                "VERSION" to version,
-                "YEAR" to LocalDate.now().year
-            )
-                .mapKeys { (k, _) -> "%$k%" }
-                .mapValues { (_, v) -> v.toString() }
-
             createFiles(
                 initInExisting,
                 ProjectConfig(
@@ -92,8 +80,7 @@ fun Unicorn.registerCreateCommand() {
                     description = description,
                     license = license,
                     version = version
-                ),
-                replacements
+                )
             )
 
             initGit()
@@ -129,10 +116,9 @@ private fun RunContext.checkProjectDir(initInExisting: Boolean, name: String) {
     }
 }
 
-private fun RunContext.createFiles(
+private fun InteractiveRunContext.createFiles(
     initInExisting: Boolean,
-    config: ProjectConfig,
-    replacements: Replacements
+    config: ProjectConfig
 ) = group("Creating files") {
     if (!initInExisting) {
         log.i("Creating directory")
@@ -143,20 +129,14 @@ private fun RunContext.createFiles(
     projectConfig = config
 
     group("Copying templates") {
-        copyTemplate(replacements, "README.md")
-        copyTemplate(replacements, "licenses/Apache License 2.0.txt", "LICENSE")
-        File(projectDir, ".github").mkdir()
-        copyTemplate(replacements, "github/PULL_REQUEST_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md")
-        File(projectDir, ".github/ISSUE_TEMPLATE").mkdir()
-        copyTemplate(replacements, "github/ISSUE_TEMPLATE/1-bug-report.md", ".github/ISSUE_TEMPLATE/1-bug-report.md")
-        copyTemplate(
-            replacements,
-            "github/ISSUE_TEMPLATE/2-feature-request.md", ".github/ISSUE_TEMPLATE/2-feature-request.md"
-        )
+        Templating.applyTemplate(this, "base")
     }
 }
 
+private const val GIT_GITIGNORE_FILE = ".gitignore"
 private fun InteractiveRunContext.initGit() = group("Initializing git") {
+    Templating.applyTemplate(this, "git")
+
     if (!fileExists(GIT_GITIGNORE_FILE)) {
         val gitignore = promptOptional(
             "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
@@ -171,14 +151,9 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
                 throw NoSuchOption(e.templateName)
             }
         }
-        if (gitignore != null) {
-            copyRawTemplate("gitignore", GIT_GITIGNORE_FILE)
-            File(projectDir, GIT_GITIGNORE_FILE)
-                .appendText(gitignore)
-        }
+        if (gitignore != null)
+            File(projectDir, GIT_GITIGNORE_FILE).appendText(gitignore)
     }
-
-    copyRawTemplate("gitattributes", GIT_GITATTRIBUTES_FILE)
 
     if (!Git.isInitializedIn(projectDir))
         Git.init(projectDir).also {
@@ -271,38 +246,4 @@ private data class Label(val name: String, val color: String)
 
 private fun RunContext.fileExists(fileName: String): Boolean {
     return File(projectDir, fileName).exists()
-}
-
-private fun RunContext.copyRawTemplate(resource: String, file: String = resource) {
-    log.i(file)
-    val dest = File(projectDir, file)
-    if (dest.exists()) return
-
-    dest.outputStream().bufferedWriter().use { writer ->
-        javaClass.getResourceAsStream("/templates/$resource")
-            .reader()
-            .use { it.copyTo(writer) }
-    }
-}
-
-private typealias Replacements = Map<String, String>
-
-private fun RunContext.copyTemplate(replacements: Replacements, resource: String, file: String = resource) {
-    log.i(file)
-    val dest = File(projectDir, file)
-    if (dest.exists()) return
-
-    dest.outputStream().bufferedWriter().use { writer ->
-        javaClass.getResourceAsStream("/templates/$resource")
-            .reader()
-            .use {
-                it.forEachLine {
-                    var line = it
-                    for ((short, replacement) in replacements)
-                        line = line.replace(short, replacement)
-                    writer.write(line)
-                    writer.newLine()
-                }
-            }
-    }
 }
