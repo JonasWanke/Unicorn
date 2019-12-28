@@ -141,7 +141,7 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
 
     if (!fileExists(GIT_GITIGNORE_FILE)) {
         val gitignore = promptOptional(
-            "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
+            "Please enter the .gitignore-template names from www.gitignore.io to use (comma-separated)"
         ) { input ->
             val templates = input.split(",")
                 .map { it.trim().toLowerCase() }
@@ -171,7 +171,7 @@ private fun InteractiveRunContext.initGitHub() = group("Uploading project to Git
 
     val organization = promptOptional<GHOrganization>(
         "Which organization should this be uploaded to?",
-        optionalText = " (Blank for no organization)"
+        optionalText = " (Empty for no organization)"
     ) {
         try {
             gitHub.api.getOrganization(it)
