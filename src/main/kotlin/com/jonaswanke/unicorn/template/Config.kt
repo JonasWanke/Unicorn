@@ -31,7 +31,7 @@ data class TemplateConfig(
     data class FileExpansion(
         val from: String,
         val to: String? = null,
-        val isTemplate: Boolean = true,
+        val isTemplate: Boolean? = null,
         val condition: String? = null
     ) {
         fun evalFrom(context: RunContext, variables: TemplateVariables): String {

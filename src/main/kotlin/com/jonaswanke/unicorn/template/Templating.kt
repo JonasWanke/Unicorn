@@ -23,6 +23,7 @@ object Templating {
         wrapUncheckedExceptions = true
         fallbackOnNullLoopVariable = false
     }
+    private const val FTL_SUFFIX = ".ftl"
 
 
     fun applyTemplate(
@@ -75,9 +76,13 @@ object Templating {
                             .map { it to File(baseDir, it.removeSuffix(".ftl")) }
                             .toList()
                     }
-                files.forEach { (from, to) ->
+                files.forEach { (from, rawTo) ->
+                    val isTemplate = expansion.isTemplate ?: from.endsWith(FTL_SUFFIX, ignoreCase = true)
+                    val to = if (isTemplate) File(rawTo.path.removeSuffix(FTL_SUFFIX)) else rawTo
+
+                    to.parentFile.mkdirs()
                     val writer = to.writer()
-                    configuration.getTemplate("${template.name}/$from", null, null, expansion.isTemplate)
+                    configuration.getTemplate("${template.name}/$from", null, null, isTemplate)
                         .process(variables, writer)
                 }
             }
