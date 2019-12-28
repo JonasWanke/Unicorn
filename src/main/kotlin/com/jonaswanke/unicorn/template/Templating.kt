@@ -71,6 +71,7 @@ object Templating {
                     else {
                         val matcher = FileSystems.getDefault().getPathMatcher("glob:$from")
                         template.dir.walk()
+                            .filter { it.isFile }
                             .map { it.relativeTo(template.dir).path }
                             .filter { relativePath -> matcher.matches(Paths.get(relativePath)) }
                             .map { it to File(baseDir, it.removeSuffix(".ftl")) }
