@@ -1,14 +1,17 @@
 package com.jonaswanke.unicorn.commands
 
+import com.jonaswanke.unicorn.api.template
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
-import com.jonaswanke.unicorn.script.parameters.*
+import com.jonaswanke.unicorn.script.parameters.argument
+import com.jonaswanke.unicorn.script.parameters.file
+import com.jonaswanke.unicorn.script.parameters.flag
+import com.jonaswanke.unicorn.script.parameters.option
 import com.jonaswanke.unicorn.template.Template
 import com.jonaswanke.unicorn.template.Templating
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.line
 import com.jonaswanke.unicorn.utils.list
-import org.jetbrains.kotlin.utils.keysToMap
 
 internal fun Unicorn.registerTemplateCommands() {
     command("template", "t") {
@@ -36,13 +39,13 @@ internal fun Unicorn.registerTemplateCommands() {
 
             run(
                 argument("name")
-                    .choice(Template.getAllTemplateNames().keysToMap { it }),
+                    .template(),
                 option("-b", "--base-dir")
                     .file(exists = true, fileOkay = false, writable = true),
                 option("-o", "--overwrite")
                     .flag(default = false)
             ) { name, baseDir, overwrite ->
-                Templating.applyTemplate(this, name, baseDir ?: projectDir)
+                Templating.applyTemplate(this, name, baseDir ?: projectDir, overwrite)
             }
         }
     }

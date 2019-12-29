@@ -7,7 +7,9 @@ import com.jonaswanke.unicorn.core.*
 import com.jonaswanke.unicorn.core.ProjectConfig.License
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
-import com.jonaswanke.unicorn.script.parameters.*
+import com.jonaswanke.unicorn.script.parameters.argument
+import com.jonaswanke.unicorn.script.parameters.option
+import com.jonaswanke.unicorn.script.parameters.optional
 import com.jonaswanke.unicorn.template.Templating
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
@@ -29,9 +31,9 @@ fun Unicorn.registerCreateCommand() {
                 .optional(),
             option("-d", "--desc", "--description"),
             option("-l", "--license")
-                .choice(License.values().map { it.keyword to it }.toMap()),
+                .license(),
             option("-v", "--version")
-                .convert { SemVer.parse(it) }
+                .semVer()
         ) { rawName, rawDescription, rawLicense, rawVersion ->
             val initInExisting = rawName == null
             if (initInExisting) confirm("Using create in an existing project is experimental. Continue?", abort = true)
