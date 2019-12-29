@@ -4,7 +4,6 @@ import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.NoSuchOption
 import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.core.group
-import com.jonaswanke.unicorn.utils.italic
 import freemarker.template.Configuration
 import freemarker.template.TemplateExceptionHandler
 import java.io.File
@@ -31,13 +30,15 @@ object Templating {
         context: InteractiveRunContext,
         templateName: String,
         baseDir: File = context.projectDir,
+        overwriteExisting: Boolean = false,
         parameters: TemplateVariables = emptyMap()
-    ): Unit = applyTemplate(context, templateName, baseDir, parameters, context.buildInitialData())
+    ): Unit = applyTemplate(context, templateName, baseDir, overwriteExisting, parameters, context.buildInitialData())
 
     private fun applyTemplate(
         context: InteractiveRunContext,
         templateName: String,
         baseDir: File = context.projectDir,
+        overwriteExisting: Boolean = false,
         parameters: TemplateVariables,
         variables: MutableTemplateVariables
     ): Unit = context.group("Applying template $templateName") {
@@ -57,6 +58,7 @@ object Templating {
                 this,
                 it.name,
                 File(baseDir, it.baseDir.path),
+                overwriteExisting,
                 variables + it.evalParameters(variables)
             )
         }
@@ -65,7 +67,7 @@ object Templating {
         template.config.files
             .filter { it.evalCondition(variables) }
             .forEach { expansion ->
-                val from = expansion.evalFrom(context, variables)
+                val from = expansion.evalFrom(this, variables)
 
                 val files =
                     if (expansion.to != null) listOf(from to File(baseDir, expansion.to))
@@ -84,15 +86,9 @@ object Templating {
                     val to = if (isTemplate) File(rawTo.path.removeSuffix(FTL_SUFFIX)) else rawTo
 
                     to.parentFile.mkdirs()
-                    if (to.exists()) {
-                        context.log.w {
-                            +"Skipping template file "
-                            italic(from)
-                            +" as it would override "
-                            italic(to.absolutePath)
-                        }
-                        return@inner
-                    }
+                    if (!overwriteExisting && to.exists()
+                        && !confirm("Overwrite ${to.path} with template file $from?")
+                    ) return@inner
 
                     val writer = to.writer()
                     configuration.getTemplate("${template.name}/$from", null, null, isTemplate)
