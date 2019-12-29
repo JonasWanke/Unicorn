@@ -94,11 +94,12 @@ class UnicornCommandBuilder(
             }
         }
     }
-// endregion
+    // endregion
 
     // region Subcommands
     private val subcommands = mutableListOf<BaseCommand>()
 
+    @UnicornMarker
     fun command(name: String, vararg aliases: String, commandBuilder: CommandBuilder) {
         val command = UnicornCommandBuilder(name, aliases.asList())
             .apply { commandBuilder() }

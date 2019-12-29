@@ -116,6 +116,20 @@ private fun StringBuilder.consoleAppendFormattingSequence(sequence: String) {
 
 // region Inline Tags
 @MarkupTagMarker
+class LineTag(parent: MarkupTag?) : MarkupTag(parent) {
+    override fun appendToConsole(builder: StringBuilder): Unit = with(builder) {
+        appendChildrenToConsole(this)
+    }
+
+    override fun appendToMarkdown(builder: StringBuilder): Unit = with(builder) {
+        appendChildrenToMarkdown(this)
+    }
+}
+
+fun MarkupTag.line(builder: LineTag.() -> Unit = {}) = +LineTag(this).apply(builder)
+
+
+@MarkupTagMarker
 class StringTag(parent: MarkupTag?, val content: CharSequence) : MarkupTag(parent) {
     override fun appendToConsole(builder: StringBuilder): Unit = with(builder) {
         append(content)
