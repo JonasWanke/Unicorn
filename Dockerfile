@@ -2,7 +2,7 @@ FROM gradle:5.6-jdk8 as builder
 COPY --chown=gradle:gradle . /home/src
 RUN ls
 WORKDIR /home/src
-RUN gradle shadowJar
+RUN gradle actionShadowJar
 
 
 FROM openjdk:8-jre-slim

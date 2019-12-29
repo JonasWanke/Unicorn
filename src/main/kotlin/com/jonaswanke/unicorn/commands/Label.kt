@@ -1,7 +1,8 @@
 package com.jonaswanke.unicorn.commands
 
-import com.jonaswanke.unicorn.api.encodedLabelName
+import com.jonaswanke.unicorn.api.createLabelIfNotExists
 import com.jonaswanke.unicorn.api.gitHubRepo
+import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
@@ -29,9 +30,12 @@ internal fun Unicorn.registerLabelCommands() {
                         require(it.matches(COLOR_REGEX)) {
                             "color must consist of hex digits exclusively (optionally with '#' in front), $COLOR_EXAMPLES"
                         }
-                    }
-            ) { name, color ->
-                val label = gitHubRepo.createLabel(name.encodedLabelName, color)
+                    },
+                option("-d", "--description", help = "Description of the label")
+            ) { name, color, description ->
+                val label = gitHubRepo.createLabelIfNotExists(name, color, description)
+                    ?: exit("A label with that name already exists")
+
                 log.i {
                     +"Created label "
                     kbd(label.name)

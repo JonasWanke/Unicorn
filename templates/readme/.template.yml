@@ -1,0 +1,3 @@
+description: Adds a simple README containing project name and description
+files:
+  - from: README.md.ftl

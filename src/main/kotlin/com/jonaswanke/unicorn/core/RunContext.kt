@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.output.TermUi
 import com.jonaswanke.unicorn.utils.*
 import java.io.File
-import java.io.IOError
 
 abstract class RunContext {
     companion object {
@@ -21,17 +20,15 @@ abstract class RunContext {
     abstract val environment: Environment
 
     // region Global config
-    open val globalDir: File? = File(javaClass.protectionDomain.codeSource.location.toURI()).parentFile?.parentFile
+    open val globalDir: File? = ProgramConfig.installationDir
     val globalConfigFile: File
         get() = File(globalDir, CONFIG_GLOBAL_FILE)
     open var globalConfig: GlobalConfig by cached(
         initialGetter = {
-            globalConfigFile.takeIf { it.exists() }
-                ?.inputStream()
-                ?.readConfig<GlobalConfig>()
+            globalConfigFile.takeIf { it.exists() }?.readConfig()
                 ?: GlobalConfig()
         },
-        setter = { globalConfigFile.outputStream().writeConfig(it) }
+        setter = { globalConfigFile.writeConfig(it) }
     )
     // endregion
 
@@ -40,8 +37,8 @@ abstract class RunContext {
     val projectConfigFile: File
         get() = File(projectDir, CONFIG_PROJECT_FILE)
     open var projectConfig: ProjectConfig by cached(
-        initialGetter = { projectConfigFile.inputStream().readConfig<ProjectConfig>() },
-        setter = { projectConfigFile.outputStream().writeConfig(it) }
+        initialGetter = { projectConfigFile.readConfig<ProjectConfig>() },
+        setter = { projectConfigFile.writeConfig(it) }
     )
     // endregion
 
@@ -59,13 +56,14 @@ abstract class RunContext {
     // region Logging
     abstract val log: LogCollector
 
-    fun <R> group(name: String, block: RunContext.() -> R): R = copyWithGroup(log.group(name)).block()
-    fun <R> group(name: Markup, block: RunContext.() -> R): R = copyWithGroup(log.group(name)).block()
-    protected abstract fun copyWithGroup(group: LogCollector.Group): RunContext
+    internal abstract fun copyWithGroup(group: LogCollector.Group): RunContext
     // endregion
 }
 
 abstract class InteractiveRunContext : RunContext() {
+    abstract override fun copyWithGroup(group: LogCollector.Group): InteractiveRunContext
+
+
     fun editText(
         text: String,
         editor: String? = null,
@@ -156,8 +154,8 @@ abstract class InteractiveRunContext : RunContext() {
         hideInput: Boolean = false,
         requireConfirmation: Boolean = false,
         confirmationPrompt: String = "Repeat for confirmation: ",
-        convert: ((String?) -> String?) = { it }
-    ): String? = promptOptional<String?>(
+        convert: ((String) -> String?) = { it }
+    ): String? = promptOptional<String>(
         text,
         optionalText,
         promptSuffix,
@@ -167,43 +165,41 @@ abstract class InteractiveRunContext : RunContext() {
         convert
     )
 
-    fun <T> promptOptional(
+    fun <T : Any> promptOptional(
         text: String,
         optionalText: String = " (optional)",
         promptSuffix: String = ": ",
         hideInput: Boolean = false,
         requireConfirmation: Boolean = false,
         confirmationPrompt: String = "Repeat for confirmation: ",
-        convert: ((String?) -> T?)
+        convert: ((String) -> T?)
     ): T? {
         // Original source: TermUi.prompt
         val prompt = buildPrompt(text + optionalText, promptSuffix, false, null)
 
-        try {
-            while (true) {
-                val value = TextIoConsole.promptForLine(prompt, hideInput)
-                    ?.takeUnless { it.isBlank() }
-                val result = try {
-                    convert.invoke(value)
-                } catch (err: UsageError) {
-                    log.e(err.helpMessage())
-                    continue
-                }
+        while (true) {
+            val value = TextIoConsole.promptForLine(prompt, hideInput)
+                .takeUnless { it.isNullOrBlank() }
+                ?: return null
 
-                if (!requireConfirmation) return result
-
-                var value2: String?
-                while (true) {
-                    value2 = TextIoConsole.promptForLine(confirmationPrompt, hideInput)
-                    // No need to convert the confirmation, since it is valid if it matches the
-                    // first value.
-                    if (!value2.isNullOrBlank()) break
-                }
-                if (value == value2) return result
-                log.w("Error: the two entered values do not match")
+            val result = try {
+                convert.invoke(value)
+            } catch (err: UsageError) {
+                log.e(err.helpMessage())
+                continue
             }
-        } catch (err: IOError) {
-            return null
+
+            if (!requireConfirmation) return result
+
+            var value2: String?
+            while (true) {
+                value2 = TextIoConsole.promptForLine(confirmationPrompt, hideInput)
+                // No need to convert the confirmation, since it is valid if it matches the
+                // first value.
+                if (!value2.isNullOrBlank()) break
+            }
+            if (value == value2) return result
+            log.w("Error: the two entered values do not match")
         }
     }
 
@@ -222,3 +218,10 @@ abstract class InteractiveRunContext : RunContext() {
         showDefault: Boolean = true
     ): Boolean = TermUi.confirm(text, default, abort, promptSuffix, showDefault, TextIoConsole) ?: default
 }
+
+
+@Suppress("UNCHECKED_CAST")
+fun <C : RunContext, R> C.group(name: String, block: C.() -> R): R = (copyWithGroup(log.group(name)) as C).block()
+
+@Suppress("UNCHECKED_CAST")
+fun <C : RunContext, R> C.group(name: Markup, block: C.() -> R): R = (copyWithGroup(log.group(name)) as C).block()

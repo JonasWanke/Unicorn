@@ -1,0 +1,9 @@
+description: Groups common basic templates like readme, license, git and github-templates.
+parameters:
+dependsOn:
+  - name: readme
+  - name: license
+  - name: git
+  - name: github-templates
+files:
+  - from: README.md.ftl

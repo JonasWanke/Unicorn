@@ -1,6 +1,7 @@
 package com.jonaswanke.unicorn.api
 
 import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.group
 import okhttp3.OkHttpClient
 import okhttp3.Request
 

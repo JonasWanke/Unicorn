@@ -13,7 +13,8 @@ fun main(args: Array<String>) {
 
 private fun readScript() {
     System.setProperty("idea.use.native.fs.for.win", "false")
-    val scriptEngine = ScriptEngineManager().getEngineByExtension("kts")
     val file = File("./unicorn.kts")
+    if (!file.exists()) return
+
     scriptEngine.eval(file.bufferedReader())
 }

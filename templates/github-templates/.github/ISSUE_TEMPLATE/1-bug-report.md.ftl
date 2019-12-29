@@ -2,14 +2,14 @@
 name: "\U0001F41E Bug report"
 about: Create a report to help us improve
 title: ''
-labels: 'T: fix'
+labels: '${project.labels.types.prefix}${project.types.fix}'
 assignees: ''
 
 ---
 
 <!--
 Thanks for taking the time to file an issue!
-Please select the component label (C: abc) this bug is related to from the right.
+Please select the component label (${project.labels.types.prefix}abc) this bug is related to from the right.
 -->
 
 **Describe the bug**
@@ -35,6 +35,6 @@ Please select the component label (C: abc) this bug is related to from the right
 
 **Environment:**
 <!-- Please complete the following information -->
- - Device:  <!-- e.g. Samsung Galaxy S8+ -->
- - OS:  <!-- e.g. Windows 10 Home 1809 -->
- - Program/library version:  <!-- e.g. 1.0.0 -->
+- Device:  <!-- e.g. Samsung Galaxy S8+ -->
+- OS:  <!-- e.g. Windows 10 Home 1809 -->
+- Program/library version:  <!-- e.g. 1.0.0 -->

@@ -1,22 +1,22 @@
 package com.jonaswanke.unicorn.commands
 
-import com.fasterxml.jackson.core.type.TypeReference
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.NoSuchOption
 import com.jonaswanke.unicorn.api.*
-import com.jonaswanke.unicorn.core.InteractiveRunContext
-import com.jonaswanke.unicorn.core.ProgramConfig
-import com.jonaswanke.unicorn.core.ProjectConfig
-import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.*
+import com.jonaswanke.unicorn.core.ProjectConfig.License
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.argument
-import com.jonaswanke.unicorn.script.parameters.convert
 import com.jonaswanke.unicorn.script.parameters.option
 import com.jonaswanke.unicorn.script.parameters.optional
+import com.jonaswanke.unicorn.template.Template
+import com.jonaswanke.unicorn.template.Templating
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
 import com.jonaswanke.unicorn.utils.readConfig
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.internal.ArrayListSerializer
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.transport.URIish
@@ -24,10 +24,6 @@ import org.kohsuke.github.GHOrganization
 import org.kohsuke.github.GHRepository
 import java.io.File
 import java.io.IOException
-import java.time.LocalDate
-
-private const val GIT_GITIGNORE_FILE = ".gitignore"
-private const val GIT_GITATTRIBUTES_FILE = ".gitattributes"
 
 fun Unicorn.registerCreateCommand() {
     command("create", "c") {
@@ -35,9 +31,13 @@ fun Unicorn.registerCreateCommand() {
             argument("name")
                 .optional(),
             option("-d", "--desc", "--description"),
+            option("-l", "--license")
+                .license(),
             option("-v", "--version")
-                .convert { SemVer.parse(it) }
-        ) { rawName, rawDescription, rawVersion ->
+                .semVer(),
+            option("-t", "--template")
+                .template()
+        ) { rawName, rawDescription, rawLicense, rawVersion, rawTemplate ->
             val initInExisting = rawName == null
             if (initInExisting) confirm("Using create in an existing project is experimental. Continue?", abort = true)
             log.i {
@@ -60,6 +60,12 @@ fun Unicorn.registerCreateCommand() {
             val description = rawDescription
                 ?: if (initInExisting) repo?.description else null
                     ?: promptOptional("Provide a short description")
+            val license = rawLicense
+                ?: promptOptional<License>("Choose a license") { keyword ->
+                    License.fromKeywordOrNull(keyword)
+                        ?: throw NoSuchOption(keyword, License.values().map { it.keyword })
+                }
+                ?: License.NONE
             val version = rawVersion
                 ?: prompt<SemVer>(
                     if (initInExisting) "What's the current version of your project?"
@@ -73,24 +79,16 @@ fun Unicorn.registerCreateCommand() {
                     }
                 }
 
-            val replacements = mapOf(
-                "NAME" to name,
-                "DESCRIPTION" to description,
-                "VERSION" to version,
-                "YEAR" to LocalDate.now().year
-            )
-                .mapKeys { (k, _) -> "%$k%" }
-                .mapValues { (_, v) -> v.toString() }
-
             createFiles(
                 initInExisting,
                 ProjectConfig(
                     unicornVersion = ProgramConfig.VERSION,
                     name = name,
                     description = description,
+                    license = license,
                     version = version
                 ),
-                replacements
+                rawTemplate
             )
 
             initGit()
@@ -126,10 +124,10 @@ private fun RunContext.checkProjectDir(initInExisting: Boolean, name: String) {
     }
 }
 
-private fun RunContext.createFiles(
+private fun InteractiveRunContext.createFiles(
     initInExisting: Boolean,
     config: ProjectConfig,
-    replacements: Replacements
+    rawTemplate: String?
 ) = group("Creating files") {
     if (!initInExisting) {
         log.i("Creating directory")
@@ -139,28 +137,27 @@ private fun RunContext.createFiles(
     log.i("Saving project config")
     projectConfig = config
 
+    val templateName = rawTemplate
+        ?: prompt("Please choose a template", "base") {
+            if (!Template.exists(it)) throw NoSuchOption(it, Template.getAllTemplateNames())
+            it
+        }
     group("Copying templates") {
-        copyTemplate(replacements, "README.md")
-        copyTemplate(replacements, "licenses/Apache License 2.0.txt", "LICENSE")
-        File(projectDir, ".github").mkdir()
-        copyTemplate(replacements, "github/PULL_REQUEST_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md")
-        File(projectDir, ".github/ISSUE_TEMPLATE").mkdir()
-        copyTemplate(replacements, "github/ISSUE_TEMPLATE/1-bug-report.md", ".github/ISSUE_TEMPLATE/1-bug-report.md")
-        copyTemplate(
-            replacements,
-            "github/ISSUE_TEMPLATE/2-feature-request.md", ".github/ISSUE_TEMPLATE/2-feature-request.md"
-        )
+        Templating.applyTemplate(this, templateName)
     }
 }
 
+private const val GIT_GITIGNORE_FILE = ".gitignore"
 private fun InteractiveRunContext.initGit() = group("Initializing git") {
+    Templating.applyTemplate(this, "git")
+
     if (!fileExists(GIT_GITIGNORE_FILE)) {
         val gitignore = promptOptional(
-            "Please enter the .gitignore-template names from www.gitignore.io to use (separated by a comma)"
+            "Please enter the .gitignore-template names from www.gitignore.io to use (comma-separated)"
         ) { input ->
-            val templates = input?.split(",")
-                ?.map { it.trim().toLowerCase() }
-            if (templates.isNullOrEmpty()) return@promptOptional null
+            val templates = input.split(",")
+                .map { it.trim().toLowerCase() }
+            if (templates.isEmpty()) return@promptOptional null
 
             try {
                 GitignoreIo.getTemplates(this, templates)
@@ -168,14 +165,9 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
                 throw NoSuchOption(e.templateName)
             }
         }
-        if (gitignore != null) {
-            copyRawTemplate("gitignore", GIT_GITIGNORE_FILE)
-            File(projectDir, GIT_GITIGNORE_FILE)
-                .appendText(gitignore)
-        }
+        if (gitignore != null)
+            File(projectDir, GIT_GITIGNORE_FILE).appendText(gitignore)
     }
-
-    copyRawTemplate("gitattributes", GIT_GITATTRIBUTES_FILE)
 
     if (!Git.isInitializedIn(projectDir))
         Git.init(projectDir).also {
@@ -191,10 +183,9 @@ private fun InteractiveRunContext.initGitHub() = group("Uploading project to Git
 
     val organization = promptOptional<GHOrganization>(
         "Which organization should this be uploaded to?",
-        optionalText = " (Blank for no organization)"
+        optionalText = " (Empty for no organization)"
     ) {
-        if (it.isNullOrBlank()) null
-        else try {
+        try {
             gitHub.api.getOrganization(it)
         } catch (e: IOException) {
             throw NoSuchOption(it)
@@ -246,7 +237,7 @@ private fun RunContext.configureGithub() = group("Configuring GitHub repo") {
     gitHubRepo.listLabels().forEach { it.delete() }
 
     javaClass.getResourceAsStream("/config/github-labels.yaml")
-        .readConfig(object : TypeReference<List<Label>>() {})
+        .readConfig(ArrayListSerializer(Label.serializer()))
         .forEach {
             gitHubRepo.createLabel(it.name, it.color)
         }
@@ -266,42 +257,9 @@ private fun RunContext.configureGithub() = group("Configuring GitHub repo") {
     }
 }
 
+@Serializable
 private data class Label(val name: String, val color: String)
 
 private fun RunContext.fileExists(fileName: String): Boolean {
     return File(projectDir, fileName).exists()
-}
-
-private fun RunContext.copyRawTemplate(resource: String, file: String = resource) {
-    log.i(file)
-    val dest = File(projectDir, file)
-    if (dest.exists()) return
-
-    dest.outputStream().bufferedWriter().use { writer ->
-        javaClass.getResourceAsStream("/templates/$resource")
-            .reader()
-            .use { it.copyTo(writer) }
-    }
-}
-
-private typealias Replacements = Map<String, String>
-
-private fun RunContext.copyTemplate(replacements: Replacements, resource: String, file: String = resource) {
-    log.i(file)
-    val dest = File(projectDir, file)
-    if (dest.exists()) return
-
-    dest.outputStream().bufferedWriter().use { writer ->
-        javaClass.getResourceAsStream("/templates/$resource")
-            .reader()
-            .use {
-                it.forEachLine {
-                    var line = it
-                    for ((short, replacement) in replacements)
-                        line = line.replace(short, replacement)
-                    writer.write(line)
-                    writer.newLine()
-                }
-            }
-    }
 }

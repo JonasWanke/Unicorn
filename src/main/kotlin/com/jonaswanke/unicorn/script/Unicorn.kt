@@ -14,6 +14,7 @@ object Unicorn {
         registerCreateCommand()
         registerIssueCommands()
         registerLabelCommands()
+        registerTemplateCommands()
         Commands.main(argv)
     }
 
