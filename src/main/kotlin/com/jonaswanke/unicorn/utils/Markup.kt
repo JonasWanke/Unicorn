@@ -75,7 +75,7 @@ abstract class MarkupTag(val parent: MarkupTag?) {
             parents.any { it is BoldTag }.thenTake { BoldTag.CONSOLE_FORMATTING_VALUE },
             parents.any { it is CodeTag }.thenTake { CodeTag.CONSOLE_FORMATTING_VALUE }
         )
-        builder.consoleAppendFormattingSequence(formattingCodes.joinToString(";", postfix = "m"))
+        builder.consoleAppendFormattingSequence(formattingCodes.joinToString(";"))
     }
     // endregion
 
@@ -108,9 +108,11 @@ class Markup : BlockTag(null) {
 
 
 private const val ANSI_ESCAPE = "\u001B["
+private const val ANSI_ESCAPE_FORMATTING_END = "m"
 private fun StringBuilder.consoleAppendFormattingSequence(sequence: String) {
     append(ANSI_ESCAPE)
     append(sequence)
+    append(ANSI_ESCAPE_FORMATTING_END)
 }
 
 
