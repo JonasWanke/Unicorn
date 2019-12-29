@@ -1,3 +1,3 @@
-# ${project.name}
+# ${project.name}<#if project.description??>
 
-${project.description}
+${project.description}</#if>
