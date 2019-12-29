@@ -94,6 +94,27 @@ class UnicornCommandBuilder(
             }
         }
     }
+
+    @UnicornMarker
+    fun <P1, P2, P3, P4, P5> run(
+        param1: UnicornParameter<P1>,
+        param2: UnicornParameter<P2>,
+        param3: UnicornParameter<P3>,
+        param4: UnicornParameter<P4>,
+        param5: UnicornParameter<P5>,
+        body: Command5Body<P1, P2, P3, P4, P5>
+    ) {
+        bodyBuilder = {
+            object : BaseCommand(name, aliases, help, invokeWithoutSubcommand = true) {
+                val p1: P1 by param1
+                val p2: P2 by param2
+                val p3: P3 by param3
+                val p4: P4 by param4
+                val p5: P5 by param5
+                override fun execute(context: ConsoleRunContext) = context.body(p1, p2, p3, p4, p5)
+            }
+        }
+    }
     // endregion
 
     // region Subcommands
@@ -121,6 +142,7 @@ typealias Command1Body<P1> = ConsoleRunContext.(P1) -> Unit
 typealias Command2Body<P1, P2> = ConsoleRunContext.(P1, P2) -> Unit
 typealias Command3Body<P1, P2, P3> = ConsoleRunContext.(P1, P2, P3) -> Unit
 typealias Command4Body<P1, P2, P3, P4> = ConsoleRunContext.(P1, P2, P3, P4) -> Unit
+typealias Command5Body<P1, P2, P3, P4, P5> = ConsoleRunContext.(P1, P2, P3, P4, P5) -> Unit
 
 @UnicornMarker
 fun Unicorn.command(name: String, vararg aliases: String, commandBuilder: CommandBuilder) {

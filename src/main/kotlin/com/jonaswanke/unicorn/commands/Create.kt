@@ -10,6 +10,7 @@ import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.argument
 import com.jonaswanke.unicorn.script.parameters.option
 import com.jonaswanke.unicorn.script.parameters.optional
+import com.jonaswanke.unicorn.template.Template
 import com.jonaswanke.unicorn.template.Templating
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
@@ -33,8 +34,10 @@ fun Unicorn.registerCreateCommand() {
             option("-l", "--license")
                 .license(),
             option("-v", "--version")
-                .semVer()
-        ) { rawName, rawDescription, rawLicense, rawVersion ->
+                .semVer(),
+            option("-t", "--template")
+                .template()
+        ) { rawName, rawDescription, rawLicense, rawVersion, rawTemplate ->
             val initInExisting = rawName == null
             if (initInExisting) confirm("Using create in an existing project is experimental. Continue?", abort = true)
             log.i {
@@ -84,7 +87,8 @@ fun Unicorn.registerCreateCommand() {
                     description = description,
                     license = license,
                     version = version
-                )
+                ),
+                rawTemplate
             )
 
             initGit()
@@ -122,7 +126,8 @@ private fun RunContext.checkProjectDir(initInExisting: Boolean, name: String) {
 
 private fun InteractiveRunContext.createFiles(
     initInExisting: Boolean,
-    config: ProjectConfig
+    config: ProjectConfig,
+    rawTemplate: String?
 ) = group("Creating files") {
     if (!initInExisting) {
         log.i("Creating directory")
@@ -132,8 +137,13 @@ private fun InteractiveRunContext.createFiles(
     log.i("Saving project config")
     projectConfig = config
 
+    val templateName = rawTemplate
+        ?: prompt("Please choose a template", "base") {
+            if (!Template.exists(it)) throw NoSuchOption(it, Template.getAllTemplateNames())
+            it
+        }
     group("Copying templates") {
-        Templating.applyTemplate(this, "base")
+        Templating.applyTemplate(this, templateName)
     }
 }
 

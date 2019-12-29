@@ -20,6 +20,7 @@ class Template private constructor(
         val templatesDir = File(ProgramConfig.installationDir, TEMPLATES_DIR_NAME)
         fun getAllTemplateNames(): List<String> = templatesDir.listFiles()!!.map { it.name }
 
+        fun exists(name: String) = File(templatesDir, name).exists()
         fun getByName(context: RunContext, name: String): Template = context.group("Parsing template $name") {
             val dir = File(templatesDir, name)
             if (!dir.exists()) exit {
