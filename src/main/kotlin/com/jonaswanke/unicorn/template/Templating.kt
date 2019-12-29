@@ -68,9 +68,10 @@ object Templating {
             .filter { it.evalCondition(variables) }
             .forEach { expansion ->
                 val from = expansion.evalFrom(this, variables)
+                val to = expansion.evalTo(this, variables)
 
                 val files =
-                    if (expansion.to != null) listOf(from to File(baseDir, expansion.to))
+                    if (to != null) listOf(from to File(baseDir, to))
                     else {
                         val matcher = FileSystems.getDefault().getPathMatcher("glob:$from")
                         template.dir.walk()
@@ -83,14 +84,14 @@ object Templating {
 
                 files.forEach inner@{ (from, rawTo) ->
                     val isTemplate = expansion.isTemplate ?: from.endsWith(FTL_SUFFIX, ignoreCase = true)
-                    val to = if (isTemplate) File(rawTo.path.removeSuffix(FTL_SUFFIX)) else rawTo
+                    val singleTo = if (isTemplate) File(rawTo.path.removeSuffix(FTL_SUFFIX)) else rawTo
 
-                    to.parentFile.mkdirs()
-                    if (!overwriteExisting && to.exists()
-                        && !confirm("Overwrite ${to.path} with template file $from?")
+                    singleTo.parentFile.mkdirs()
+                    if (!overwriteExisting && singleTo.exists()
+                        && !confirm("Overwrite ${singleTo.path} with template file $from?")
                     ) return@inner
 
-                    val writer = to.writer()
+                    val writer = singleTo.writer()
                     configuration.getTemplate("${template.name}/$from", null, null, isTemplate)
                         .process(variables, writer)
                 }

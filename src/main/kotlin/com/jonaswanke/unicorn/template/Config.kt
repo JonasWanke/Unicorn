@@ -44,6 +44,17 @@ data class TemplateConfig(
                     +" (Code: \"$from\")"
                 }
         }
+        fun evalTo(context: RunContext, variables: TemplateVariables): String? {
+            return if (to == null) null
+            else ScriptingUtils.evalInString(to, variables)
+                ?: context.exit {
+                    +"A file expansion's "
+                    italic("to")
+                    +" evaluated to "
+                    italic("null")
+                    +" (Code: \"$to\")"
+                }
+        }
 
         fun evalCondition(variables: TemplateVariables): Boolean {
             return condition == null || ScriptingUtils.eval(condition, variables)
