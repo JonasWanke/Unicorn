@@ -12,7 +12,6 @@ import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.RepositoryBuilder
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
-import org.jetbrains.kotlin.serialization.js.DynamicTypeDeserializer.id
 import org.kohsuke.github.GHIssue
 import java.io.File
 import org.eclipse.jgit.api.Git as ApiGit
@@ -199,7 +198,7 @@ class Git(val directory: File) {
             return issue.title
                 .replace(Regex("[^a-z0-9]", RegexOption.IGNORE_CASE), "-")
                 .toLowerCase()
-                .let { "$BRANCH_ISSUE_PREFIX$id$BRANCH_NAME_SEPARATOR$it" }
+                .let { "$BRANCH_ISSUE_PREFIX${issue.number}$BRANCH_NAME_SEPARATOR$it" }
         }
 
         fun issueIdFromBranchName(name: String): Int {
