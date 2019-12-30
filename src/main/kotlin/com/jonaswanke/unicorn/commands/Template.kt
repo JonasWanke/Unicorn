@@ -8,10 +8,8 @@ import com.jonaswanke.unicorn.script.parameters.file
 import com.jonaswanke.unicorn.script.parameters.flag
 import com.jonaswanke.unicorn.script.parameters.option
 import com.jonaswanke.unicorn.template.Template
-import com.jonaswanke.unicorn.template.Templating
-import com.jonaswanke.unicorn.utils.bold
-import com.jonaswanke.unicorn.utils.line
 import com.jonaswanke.unicorn.utils.list
+import com.jonaswanke.unicorn.utils.resolveTo
 
 internal fun Unicorn.registerTemplateCommands() {
     command("template", "t") {
@@ -24,11 +22,7 @@ internal fun Unicorn.registerTemplateCommands() {
                 log.i {
                     list {
                         for (template in templates)
-                            line {
-                                bold(template.name)
-                                if (!template.config.description.isNullOrBlank())
-                                    +": ${template.config.description}"
-                            }
+                            template.name
                     }
                 }
             }
@@ -45,7 +39,9 @@ internal fun Unicorn.registerTemplateCommands() {
                 option("-o", "--overwrite")
                     .flag(default = false)
             ) { name, baseDir, overwrite ->
-                Templating.applyTemplate(this, name, baseDir ?: projectDir, overwrite)
+
+                Template.getByName(this, name)
+                    .apply(this, baseDir?.resolveTo(projectDir) ?: projectDir, overwrite)
             }
         }
     }
