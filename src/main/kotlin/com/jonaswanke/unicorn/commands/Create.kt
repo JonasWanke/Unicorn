@@ -11,7 +11,6 @@ import com.jonaswanke.unicorn.script.parameters.argument
 import com.jonaswanke.unicorn.script.parameters.option
 import com.jonaswanke.unicorn.script.parameters.optional
 import com.jonaswanke.unicorn.template.Template
-import com.jonaswanke.unicorn.template.Templating
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
 import com.jonaswanke.unicorn.utils.readConfig
@@ -143,14 +142,12 @@ private fun InteractiveRunContext.createFiles(
             it
         }
     group("Copying templates") {
-        Templating.applyTemplate(this, templateName)
+        Template.getByName(this, templateName).apply(this)
     }
 }
 
 private const val GIT_GITIGNORE_FILE = ".gitignore"
 private fun InteractiveRunContext.initGit() = group("Initializing git") {
-    Templating.applyTemplate(this, "git")
-
     if (!fileExists(GIT_GITIGNORE_FILE)) {
         val gitignore = promptOptional(
             "Please enter the .gitignore-template names from www.gitignore.io to use (comma-separated)"

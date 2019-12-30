@@ -8,40 +8,47 @@ object ScriptingUtils {
         "com.jonaswanke.unicorn.api.*",
         "com.jonaswanke.unicorn.core.*",
         "com.jonaswanke.unicorn.core.ProjectConfig.*",
+        "com.jonaswanke.unicorn.template.*",
         "net.swiftzer.semver.SemVer"
     )
-    private fun buildCodeWithExtractedVariables(code: String, variables: Map<String, Any?>): String = buildString {
-        imports.forEach {
-            appendln("import $it;")
-        }
+    const val RECEIVER_BINDING_NAME = "__receiver"
 
-        variables.forEach {
-            append("private val ${it.key} = ")
-            val value = it.value
-
-            if (value == null) append("null")
-            else {
-                append("bindings[\"${it.key}\"] as ")
-                val clazz = value::class
-                append(clazz.qualifiedName)
-                if (clazz.typeParameters.isNotEmpty()) append(
-                    clazz.typeParameters.joinToString(prefix = "<", postfix = ">") { "*" })
+    private fun buildCodeWithExtractedVariables(code: String, receiver: Any, variables: Map<String, Any?>): String =
+        buildString {
+            fun appendBinding(key: String, value: Any?) {
+                if (value == null) append("null")
+                else {
+                    append("bindings[\"${key}\"] as ")
+                    val clazz = value::class
+                    append(clazz.qualifiedName)
+                    if (clazz.typeParameters.isNotEmpty()) append(
+                        clazz.typeParameters.joinToString(prefix = "<", postfix = ">") { "*" })
+                }
             }
-            appendln(";")
+
+            imports.forEach {
+                appendln("import $it;")
+            }
+
+            variables.forEach {
+                append("private val ${it.key} = ")
+                appendBinding(it.key, it.value)
+                appendln(";")
+            }
+
+            append("with(")
+            appendBinding(RECEIVER_BINDING_NAME, receiver)
+            append("){")
+            append(code)
+            append("}")
         }
 
-        append(code)
-    }
+    fun <T> eval(code: String, receiver: Any, variables: Map<String, Any?>): T {
+        val fullCode = buildCodeWithExtractedVariables(code, receiver, variables)
+        val bindings = SimpleBindings(variables.mapValues { it.value } + (RECEIVER_BINDING_NAME to receiver))
 
-    fun <T> eval(code: String, variables: Map<String, Any?>): T {
-        val fullCode = buildCodeWithExtractedVariables(code, variables)
-        val value = scriptEngine.eval(fullCode, SimpleBindings(variables.mapValues { it.value }))
+        val value = scriptEngine.eval(fullCode, bindings)
         @Suppress("UNCHECKED_CAST")
         return value as T
-    }
-
-    fun evalInString(interpolation: String, variables: Map<String, Any?>): String? {
-        return eval<String?>("\"$interpolation\"", variables)
-            .takeUnless { it == "null" }
     }
 }

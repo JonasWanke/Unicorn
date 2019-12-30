@@ -1,3 +1,0 @@
-description: Adds default issue and PR templates used by GitHub
-files:
-  - from: .github/**

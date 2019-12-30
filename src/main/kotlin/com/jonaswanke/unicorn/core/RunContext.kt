@@ -56,7 +56,7 @@ abstract class RunContext {
     // region Logging
     abstract val log: LogCollector
 
-    internal abstract fun copyWithGroup(group: LogCollector.Group): RunContext
+    abstract fun copyWithGroup(group: LogCollector.Group): RunContext
     // endregion
 }
 
@@ -221,7 +221,9 @@ abstract class InteractiveRunContext : RunContext() {
 
 
 @Suppress("UNCHECKED_CAST")
-fun <C : RunContext, R> C.group(name: String, block: C.() -> R): R = (copyWithGroup(log.group(name)) as C).block()
+inline fun <C : RunContext, R> C.group(name: String, block: C.() -> R): R =
+    (copyWithGroup(log.group(name)) as C).block()
 
 @Suppress("UNCHECKED_CAST")
-fun <C : RunContext, R> C.group(name: Markup, block: C.() -> R): R = (copyWithGroup(log.group(name)) as C).block()
+inline fun <C : RunContext, R> C.group(name: Markup, block: C.() -> R): R =
+    (copyWithGroup(log.group(name)) as C).block()

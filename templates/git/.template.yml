@@ -1,3 +1,0 @@
-description: Adds default Git files (currently just .gitattributes)
-files:
-  - from: .gitattributes
