@@ -1,1 +1,1 @@
-copy(".gitattributes", mode = FileCopyMode.APPEND)
+copy(".gitattributes", mode = FileWriteMode.APPEND)
