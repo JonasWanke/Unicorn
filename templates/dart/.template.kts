@@ -1,4 +1,4 @@
-//applyTemplate("base")
+applyTemplate("base")
 
 fun TemplateRunContext.generate(name: String, isCodeGenerator: Boolean = false) {
     variables["project"] = projectConfig.copy(name = name)
