@@ -1,6 +1,5 @@
 package com.jonaswanke.unicorn.commands
 
-import com.jonaswanke.unicorn.api.Label
 import com.jonaswanke.unicorn.api.gitHubRepo
 import com.jonaswanke.unicorn.core.ProjectConfig
 import com.jonaswanke.unicorn.script.Unicorn
@@ -11,21 +10,22 @@ import com.jonaswanke.unicorn.utils.kbd
 import com.jonaswanke.unicorn.utils.line
 import com.jonaswanke.unicorn.utils.list
 
-fun Unicorn.registerComponentCommands() {
-    command("component") {
-        help = "Manage components - usually thematically separated parts of the project."
+fun Unicorn.registerPriorityCommands() {
+    command("priority") {
+        help = "Manage priorities"
 
         command("list", "ls") {
-            help = "List all components of this project"
+            help = "List all priorities of this project"
 
             run {
+                log.i("Priorities (least to most important):")
                 log.i {
                     list {
-                        projectConfig.components.forEach { component ->
+                        projectConfig.priorities.forEach { priority ->
                             line {
-                                bold(component.name)
-                                if (component.description != null)
-                                    +" ${component.description}"
+                                bold(priority.name)
+                                if (priority.description != null)
+                                    +" ${priority.description}"
                             }
                         }
                     }
@@ -34,41 +34,45 @@ fun Unicorn.registerComponentCommands() {
         }
 
         command("create", "c") {
-            help = "Add a component to this project"
+            help = "Add a priority to this project"
 
             run(
-                argument("name", help = "Name of the new component")
+                argument("name", help = "Name of the new priority")
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } },
                 option("-d", "--desc", "--description", help = "An optional description"),
-                option("-p", "--path", help = "Paths to e.g. detect components in PR changes (supports glob)")
-                    .multiple()
-            ) { name, description, paths ->
-                if (projectConfig.components.any { it.name == name })
-                    exit("A component called \"$name\" already exists")
+                option("-i", "--index", help = "0-based index")
+                    .int()
+                    .default(0)
+                    .validate { require(it >= 0) { "Index must be non-negative" } }
+            ) { name, description, index ->
+                if (projectConfig.priorities.any { it.name == name })
+                    exit("A priority called \"$name\" already exists")
 
-                val newComponent = ProjectConfig.Component(name, description, paths)
+                val newPriority = ProjectConfig.Priority(name, description)
                 projectConfig = projectConfig.copy(
-                    components = (projectConfig.components + newComponent).sortedBy { it.name }
+                    priorities = projectConfig.priorities.take(index)
+                            + newPriority
+                            + projectConfig.priorities.drop(index)
                 )
-                projectConfig.componentsLabelGroup[name]!!.get(gitHubRepo)
+                projectConfig.priorityLabelGroup[name]!!.get(gitHubRepo)
             }
         }
 
         command("sync", "s") {
-            help = "Synchronize one or all component(s) with its/their label(s)"
+            help = "Synchronize one or all priority(s) with its/their label(s)"
 
             run(
-                argument("name", help = "Name of the component to sync")
+                argument("name", help = "Name of the priority to sync")
                     .optional()
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } }
             ) { name ->
                 if (name != null) {
-                    if (projectConfig.components.none { it.name == name })
-                        exit("Component \"$name\" was not found")
+                    if (projectConfig.priorities.none { it.name == name })
+                        exit("Priority \"$name\" was not found")
 
-                    projectConfig.componentsLabelGroup[name]!!.get(gitHubRepo)
+                    projectConfig.priorityLabelGroup[name]!!.get(gitHubRepo)
                 } else {
-                    projectConfig.componentsLabelGroup.instances.forEach {
+                    projectConfig.priorityLabelGroup.instances.forEach {
                         log.i {
                             +"Syncing label "
                             kbd(it.name)
@@ -80,10 +84,10 @@ fun Unicorn.registerComponentCommands() {
         }
 
         command("delete", "d") {
-            help = "Delete an existing component"
+            help = "Delete an existing priority"
 
             run(
-                argument("name", help = "Name of the component to delete")
+                argument("name", help = "Name of the priority to delete")
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } },
                 option(
                     "--delete-label",
@@ -91,16 +95,16 @@ fun Unicorn.registerComponentCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (projectConfig.components.none { it.name == name })
-                    exit("Component \"$name\" was not found")
+                if (projectConfig.priorities.none { it.name == name })
+                    exit("Priority \"$name\" was not found")
 
                 val oldConfig = projectConfig
 
                 projectConfig = projectConfig.copy(
-                    components = projectConfig.components.filter { it.name != name }
+                    priorities = projectConfig.priorities.filter { it.name != name }
                 )
 
-                val oldLabel = oldConfig.componentsLabelGroup[name]!!
+                val oldLabel = oldConfig.priorityLabelGroup[name]!!
                 if (deleteLabel) oldLabel.getOrNull(gitHubRepo)?.delete()
                 else oldLabel.deprecate(gitHubRepo)
             }
