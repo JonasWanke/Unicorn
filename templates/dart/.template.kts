@@ -5,6 +5,9 @@ fun TemplateRunContext.generatePackage(
     isLibrary: Boolean = true,
     isCodeGenerator: Boolean = false
 ) {
+    if (!Dart.isPackageNameValid(name))
+        log.w("Package name \"$name\" is invalid. Use only basic Latin letters and Arabic digits: [a-z0-9_]")
+
     variables["project"] = projectConfig.copy(name = name)
     copy("pubspec.yaml.ftl")
     copy("analysis_options.yaml")
@@ -14,8 +17,13 @@ fun TemplateRunContext.generatePackage(
     else copy("lib/main.dart")
     copyDir("lib/src")
 
-    if (isLibrary && !isCodeGenerator) copyDir("example")
+    if (isLibrary) {
+        if (isCodeGenerator) copyDir("generator-example", "example")
+        else copyDir("example")
+    }
     copyDir("test")
+
+    Dart.Pub.get(this, directory = baseDir)
 }
 
 
@@ -35,7 +43,7 @@ if (confirm("Is this an application package? (No for library packages)", default
         do {
             val name = prompt("Please enter a package name")
             val hasGenerator = confirm("Shall a corresponding code generator package be generated?", default = false)
-            inSubdir("name") {
+            inSubdir(name) {
                 generatePackage(name)
             }
 
