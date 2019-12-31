@@ -38,9 +38,9 @@ object ScriptingUtils {
 
             append("with(")
             appendBinding(RECEIVER_BINDING_NAME, receiver)
-            append("){")
-            append(code)
-            append("}")
+            appendln("){")
+            appendln(code)
+            appendln("}")
         }
 
     fun <T> eval(code: String, receiver: Any, variables: Map<String, Any?>): T {

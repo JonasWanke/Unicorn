@@ -52,16 +52,42 @@ class TemplateRunContext(
             .body()
     }
 
+
+    fun write(to: String, text: String, mode: FileWriteMode = FileWriteMode.OVERWRITE) = write(File(to), text, mode)
+    @Suppress("NAME_SHADOWING")
+    fun write(to: File, text: String, mode: FileWriteMode = FileWriteMode.OVERWRITE) {
+        val to = to.normalize()
+        log.i("Writing file ${to.path}")
+        val toAbs = to.resolveTo(baseDir)
+
+        val exists = toAbs.exists()
+        when (mode) {
+            FileWriteMode.KEEP -> {
+                if (exists) {
+                    log.w("File ${to.path} already exists; skipping")
+                    return
+                }
+                toAbs.writeText(text)
+            }
+            FileWriteMode.OVERWRITE -> {
+                if (exists && !overwriteExisting && !confirm("Overwrite ${to.path}?"))
+                    return
+                toAbs.writeText(text)
+            }
+            FileWriteMode.APPEND -> toAbs.appendText(text)
+        }
+    }
+
     // region Copying
     fun copy(
         from: String,
         to: String = from,
         isTemplate: Boolean? = null,
-        mode: FileCopyMode = FileCopyMode.OVERWRITE
+        mode: FileWriteMode = FileWriteMode.OVERWRITE
     ) = copy(File(from), File(to), isTemplate, mode)
 
     @Suppress("NAME_SHADOWING")
-    fun copy(from: File, to: File = from, isTemplate: Boolean? = null, mode: FileCopyMode = FileCopyMode.OVERWRITE) {
+    fun copy(from: File, to: File = from, isTemplate: Boolean? = null, mode: FileWriteMode = FileWriteMode.OVERWRITE) {
         val from = from.normalize()
         var to = to.normalize()
         val isTemplate = isTemplate ?: from.extension == Template.FTL_EXTENSION
@@ -88,19 +114,19 @@ class TemplateRunContext(
 
         val exists = toAbs.exists()
         val writer = when (mode) {
-            FileCopyMode.KEEP -> {
+            FileWriteMode.KEEP -> {
                 if (exists) {
                     log.i("File ${to.path} already exists; skipping")
                     return
                 }
                 toAbs.writer()
             }
-            FileCopyMode.OVERWRITE -> {
+            FileWriteMode.OVERWRITE -> {
                 if (exists && !overwriteExisting && !confirm("Overwrite ${to.path} with template file ${from.path}?"))
                     return
                 toAbs.writer()
             }
-            FileCopyMode.APPEND -> FileOutputStream(toAbs, true).writer()
+            FileWriteMode.APPEND -> FileOutputStream(toAbs, true).writer()
         }
         val freemarkerTemplate = Template.freemarkerConfiguration
             .getTemplate("${template.name}/${from.path}", null, null, isTemplate)
@@ -117,11 +143,11 @@ class TemplateRunContext(
         from: String,
         to: String = from,
         isTemplate: Boolean? = null,
-        mode: FileCopyMode = FileCopyMode.OVERWRITE
+        mode: FileWriteMode = FileWriteMode.OVERWRITE
     ) = copyDir(File(from), File(to), isTemplate, mode)
 
     @Suppress("NAME_SHADOWING")
-    fun copyDir(from: File, to: File = from, isTemplate: Boolean? = null, mode: FileCopyMode = FileCopyMode.OVERWRITE) {
+    fun copyDir(from: File, to: File = from, isTemplate: Boolean? = null, mode: FileWriteMode = FileWriteMode.OVERWRITE) {
         val from = from.normalize()
         val to = to.normalize()
         group("Copying directory ${from.path} to ${to.path}") {
@@ -159,7 +185,7 @@ class TemplateRunContext(
     // endregion
 }
 
-enum class FileCopyMode {
+enum class FileWriteMode {
     KEEP,
     OVERWRITE,
     APPEND
