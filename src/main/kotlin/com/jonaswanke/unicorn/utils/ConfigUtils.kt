@@ -8,7 +8,7 @@ import kotlinx.serialization.serializer
 import java.io.File
 import java.io.InputStream
 
-private val yamlConfiguration = YamlConfiguration(encodeDefaults = false, strictMode = false)
+private val yamlConfiguration = YamlConfiguration(strictMode = false)
 private val yaml = Yaml(configuration = yamlConfiguration)
 
 

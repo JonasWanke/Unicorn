@@ -13,6 +13,7 @@ object Unicorn {
         // Core
         registerCreateCommand()
         registerComponentCommands()
+        registerPriorityCommands()
         registerTemplateCommands()
 
         // GitHub
