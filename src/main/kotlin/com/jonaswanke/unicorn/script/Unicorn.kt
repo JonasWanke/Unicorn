@@ -10,11 +10,15 @@ annotation class UnicornMarker
 @UnicornMarker
 object Unicorn {
     internal fun main(argv: List<String>) {
-        registerLoginLogoutCommands()
+        // Core
         registerCreateCommand()
+        registerTemplateCommands()
+
+        // GitHub
+        registerLoginLogoutCommands()
         registerIssueCommands()
         registerLabelCommands()
-        registerTemplateCommands()
+
         Commands.main(argv)
     }
 

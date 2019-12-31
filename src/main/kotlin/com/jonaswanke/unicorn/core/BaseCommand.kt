@@ -34,7 +34,7 @@ abstract class BaseCommand(
         subcommands += command
     }
 
-    open val prefix by option("--prefix")
+    open val prefix by option("--prefix", help = "Directory to run this command in")
         .file(exists = true, fileOkay = false)
         .default(File(System.getProperty("user.dir")))
 

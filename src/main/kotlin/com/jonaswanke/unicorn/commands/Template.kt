@@ -13,6 +13,8 @@ import com.jonaswanke.unicorn.utils.resolveTo
 
 internal fun Unicorn.registerTemplateCommands() {
     command("template", "t") {
+        help = "Manage file/project templates"
+
         command("list", "ls") {
             help = "List all available templates"
 
@@ -32,14 +34,19 @@ internal fun Unicorn.registerTemplateCommands() {
             help = "Apply a template"
 
             run(
-                argument("name")
+                argument("name", help = "Name of the template")
                     .template(),
-                option("-b", "--base-dir")
+                option(
+                    "-b", "--base-dir",
+                    help = "Base directory in which to apply the template. This defaults to and is interpreted relative to the project directory."
+                )
                     .file(exists = true, fileOkay = false, writable = true),
-                option("-o", "--overwrite")
+                option(
+                    "-o", "--overwrite",
+                    help = "Whether to automatically overwrite existing files. Defaults to false."
+                )
                     .flag(default = false)
             ) { name, baseDir, overwrite ->
-
                 Template.getByName(this, name)
                     .apply(this, baseDir?.resolveTo(projectDir) ?: projectDir, overwrite)
             }
