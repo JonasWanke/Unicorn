@@ -8,6 +8,7 @@ import com.jonaswanke.unicorn.action.Action
 import com.jonaswanke.unicorn.core.*
 import com.jonaswanke.unicorn.utils.lazy
 import com.jonaswanke.unicorn.utils.list
+import com.jonaswanke.unicorn.utils.removePrefix
 import kotlinx.serialization.Serializable
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
@@ -391,7 +392,21 @@ data class Label(
     val color: String,
     val description: String?
 ) {
+    companion object {
+        const val DEPRECATED_PREFIX = "[deprecated] "
+
+        fun deprecatedDescription(description: String?): String {
+            if (description == null) return DEPRECATED_PREFIX.trim()
+            if (description.startsWith(DEPRECATED_PREFIX)) return description
+            return DEPRECATED_PREFIX + description.removePrefix(DEPRECATED_PREFIX, ignoreCase = true)
+        }
+    }
+
     fun get(repo: GHRepository): GHLabel {
+        return getOrNull(repo) ?: repo.createLabel(name, color, description)
+    }
+
+    fun getOrNull(repo: GHRepository): GHLabel? {
         return try {
             repo.getLabel(name).also {
                 if (it.color != color)
@@ -400,9 +415,13 @@ data class Label(
                     it.description = description
             }
         } catch (e: IOException) {
-            println(e)
-            repo.createLabel(name, color, description)
+            null
         }
+    }
+
+    fun deprecate(repo: GHRepository) {
+        val label = getOrNull(repo) ?: return
+        label.description = deprecatedDescription(label.description)
     }
 }
 

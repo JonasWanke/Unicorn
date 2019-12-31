@@ -26,6 +26,8 @@ import java.io.IOException
 
 fun Unicorn.registerCreateCommand() {
     command("create", "c") {
+        help = "Create a new project"
+
         run(
             argument("name")
                 .optional(),

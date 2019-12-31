@@ -15,11 +15,13 @@ private const val COLOR_DEFAULT = "cfd3d7"
 
 internal fun Unicorn.registerLabelCommands() {
     command("label", "l") {
+        help = "Manage labels from GitHub"
+
         command("create", "c") {
             help = "Create a new label"
 
             run(
-                argument("name"),
+                argument("name", help = "Name of the new label"),
                 option("-c", "--color", help = "Color of the label (6 hex digits, optionally with '#' in front)")
                     .convert { it.removePrefix("#") }
                     .default(COLOR_DEFAULT)

@@ -9,15 +9,20 @@ import com.jonaswanke.unicorn.script.parameters.optional
 
 fun Unicorn.registerLoginLogoutCommands() {
     command("login") {
+        help = "Login to GitHub"
+
         run(
-            argument("username").optional(),
-            option("-e", "--endpoint")
+            argument("username", help = "Your GitHub username")
+                .optional(),
+            option("-e", "--endpoint", help = "Custom GitHub endpoint (when using GitHub Enterprise)")
         ) { username, endpoint ->
             GitHub.authenticate(this, true, username = username, endpoint = endpoint)
         }
     }
 
     command("logout") {
+        help = "Logout from GitHub (delete stored credentials)"
+
         run {
             globalConfig = globalConfig.copy(gitHub = null)
         }
