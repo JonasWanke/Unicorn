@@ -14,6 +14,7 @@ object Unicorn {
         registerCreateCommand()
         registerComponentCommands()
         registerPriorityCommands()
+        registerTypeCommands()
         registerTemplateCommands()
 
         // GitHub
