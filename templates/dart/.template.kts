@@ -17,7 +17,10 @@ fun TemplateRunContext.generatePackage(
     else copy("lib/main.dart")
     copyDir("lib/src")
 
-    if (isLibrary && !isCodeGenerator) copyDir("example")
+    if (isLibrary) {
+        if (isCodeGenerator) copyDir("generator-example", "example")
+        else copyDir("example")
+    }
     copyDir("test")
 
     Dart.Pub.get(this, directory = baseDir)
