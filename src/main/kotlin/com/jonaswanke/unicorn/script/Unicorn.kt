@@ -12,6 +12,7 @@ object Unicorn {
     internal fun main(argv: List<String>) {
         // Core
         registerCreateCommand()
+        registerComponentCommands()
         registerTemplateCommands()
 
         // GitHub
