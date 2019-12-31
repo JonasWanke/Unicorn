@@ -107,8 +107,8 @@ data class ProjectConfig(
     @Serializable
     data class Component(
         val name: String,
-        val paths: List<String> = emptyList(),
-        val description: String? = null
+        val description: String? = null,
+        val paths: List<String> = emptyList()
     )
 
     @Serializable
