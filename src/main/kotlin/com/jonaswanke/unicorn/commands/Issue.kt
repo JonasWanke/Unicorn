@@ -3,9 +3,7 @@ package com.jonaswanke.unicorn.commands
 import com.jonaswanke.unicorn.api.*
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
-import com.jonaswanke.unicorn.script.parameters.argument
-import com.jonaswanke.unicorn.script.parameters.convert
-import com.jonaswanke.unicorn.script.parameters.int
+import com.jonaswanke.unicorn.script.parameters.*
 
 internal fun Unicorn.registerIssueCommands() {
     command("issue", "i") {
@@ -17,10 +15,21 @@ internal fun Unicorn.registerIssueCommands() {
             run(
                 argument("id", "ID of the GitHub issue")
                     .convert { if (it.startsWith("#")) it.substring(1) else it }
-                    .int()
-            ) { id ->
+                    .int(),
+                option(
+                    "-a", "--assignee",
+                    help = "GitHub usernames of people that are working on this issue with you (added as assignees to the issue)"
+                )
+                    .multiple()
+            ) { id, assignees ->
                 val issue = gitHubRepo.getIssue(id)
-                issue.assignTo(this, gitHub.api.myself, throwIfAlreadyAssigned = true)
+
+                val assigneeAccounts = assignees.map {
+                    gitHub.api.getUserOrNull(it)
+                        ?: exit("User $it doesn't exist")
+                }
+
+                issue.assignTo(this, listOf(gitHub.api.myself) + assigneeAccounts, throwIfAlreadyAssigned = true)
 
                 git.flow.createIssueBranch(this, issue)
             }
