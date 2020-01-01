@@ -14,7 +14,7 @@ abstract class RunContext {
 
     enum class Environment {
         CONSOLE,
-        GITHUB_ACTION;
+        GITHUB_ACTION
     }
 
     abstract val environment: Environment
