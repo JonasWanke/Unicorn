@@ -305,6 +305,9 @@ fun <V : CategorizationValue> GHIssue.setLabels(
 
     val labels = (labelsToKeep + additionalLabels).toTypedArray()
     setLabels(*labels)
+
+    if (this is GHPullRequest) refresh()
+    else context.log.w("Updating issue labels is currently buggy")
 }
 
 fun <V : CategorizationValue> GHIssue.getLabels(
