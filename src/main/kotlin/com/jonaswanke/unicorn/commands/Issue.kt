@@ -32,12 +32,14 @@ internal fun Unicorn.registerIssueCommands() {
             run(
                 argument("description", "Short description of the PR (for Conventional Commit-style title)")
             ) { description ->
+                git.push(this)
+
                 val branch = git.flow.currentBranch(this, gitHub) as? Git.Flow.IssueBranch
-                    ?: throw IllegalStateException("Current branch is not an issue branch")
+                    ?: exit("Current branch \"${git.currentBranchName}\" is not an issue branch")
 
                 val issue = branch.issue
                 val title = ConventionalCommit.format(this, issue, description)
-                    ?: this.exit("Commit doesn't have a type label")
+                    ?: exit("Commit doesn't have a type label")
                 issue.openPullRequest(this, title = title)
             }
         }
