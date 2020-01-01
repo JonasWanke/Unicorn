@@ -163,14 +163,15 @@ abstract class Categorization<V : ProjectConfig.CategorizationConfig.Categorizat
 
     val resolvedValues: List<ResolvedValue<V>> by lazy { values.map { ResolvedValue(this, it) } }
 
+    operator fun contains(name: String): Boolean = getOrNull(name) != null
     operator fun get(name: String): ResolvedValue<V> {
-        return resolvedValues.first { it.name == name }
-    }
-    fun getOrNull(name: String): ResolvedValue<V>? {
-        return resolvedValues.firstOrNull { it.name == name }
+        return getOrNull(name)
+            ?: throw NoSuchOption(name, values.map { it.name })
     }
 
-    operator fun contains(name: String): Boolean = resolvedValues.any { it.name == name }
+    fun getOrNull(name: String): ResolvedValue<V>? {
+        return resolvedValues.firstOrNull { it.name == name } ?: resolvedValues.firstOrNull { it.fullName == name }
+    }
 
     data class ResolvedValue<V : ProjectConfig.CategorizationConfig.CategorizationValue>(
         val categorization: Categorization<V>,
