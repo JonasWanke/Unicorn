@@ -45,11 +45,7 @@ private fun inferLabels(context: RunContext, pr: GHPullRequest) {
     pr.getComponents(context)
         .let { pr.setComponents(context, it) }
 
-    closedIssues.mapNotNull {
-        val index = it.getPriority(context)
-        context.log.d("Closes #${it.number} with priority index $index")
-        index
-    }.max()
+    closedIssues.mapNotNull { it.getPriority(context) }.max()
         ?.let { pr.setPriority(context, it) }
 }
 

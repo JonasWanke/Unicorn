@@ -250,21 +250,20 @@ private val PR_ISSUES_REGEX =
     "(?:closed|closes|close|fixed|fixes|fix|resolved|resolves|resolve):?\\s*(#\\d+\\s*(?:,\\s*#\\d+\\s*)*)"
         .toRegex(RegexOption.IGNORE_CASE)
 val GHPullRequest.closedIssues: List<GHIssue>
-    get() = PR_ISSUES_REGEX.findAll(body)
-        .flatMap { result ->
-            result.groups[1]!!.value.splitToSequence(',')
-        }
-        .map { issueIdString ->
-            issueIdString.takeUnless { it.isBlank() }
-                ?.trim()
-                ?.removePrefix("#")
-                ?.toInt()
-        }
-        .filterNotNull()
-        .map { issueId ->
-            repository.getIssue(issueId)
-        }
-        .toList()
+    get() {
+        return PR_ISSUES_REGEX.findAll(body)
+            .flatMap { result ->
+                result.groups[1]!!.value.splitToSequence(',')
+            }
+            .mapNotNull { issueIdString ->
+                issueIdString.takeUnless { it.isBlank() }
+                    ?.trim()
+                    ?.removePrefix("#")
+                    ?.toIntOrNull()
+            }
+            .toSortedSet()
+            .map { repository.getIssue(it) }
+    }
 
 fun Glob.matches(file: GHPullRequestFileDetail): Boolean = matches(file.filename)
 
