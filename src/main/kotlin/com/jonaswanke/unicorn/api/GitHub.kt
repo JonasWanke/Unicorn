@@ -16,7 +16,6 @@ import org.eclipse.jgit.transport.CredentialsProvider
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.kohsuke.github.*
 import java.awt.Desktop
-import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
 import org.kohsuke.github.GitHub as ApiGitHub
@@ -119,6 +118,16 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
 val RunContext.gitHub: GitHub by lazy { GitHub.authenticate(this) }
 val RunContext.gitHubRepo: GHRepository by lazy { gitHub.currentRepo(this) }
 
+// region User
+fun ApiGitHub.getUserOrNull(login: String): GHUser? {
+    return try {
+        getUser(login)
+    } catch (e: GHFileNotFoundException) {
+        null
+    }
+}
+// endregion
+
 // region Repository
 fun ApiGitHub.createRepository(config: GHRepositoryCreationConfig): GHRepository =
     createRepository(config.name).create(config)
@@ -187,15 +196,15 @@ fun String.toIssueId(context: RunContext): Int {
         ?: context.exit("Couldn't parse issue id \"$trimmed\"")
 }
 
-fun GHIssue.assignTo(context: RunContext, user: GHUser, throwIfAlreadyAssigned: Boolean = false): List<GHUser> =
-    context.group("Assign GitHub issue #$number to ${user.login}") {
+fun GHIssue.assignTo(context: RunContext, users: List<GHUser>, throwIfAlreadyAssigned: Boolean = false): List<GHUser> =
+    context.group("Assign GitHub issue #$number to ${users.joinToString { it.login }}") {
         val oldAssignees = assignees
         log.d("Current assignees: ${oldAssignees.joinToString { it.login }}")
 
-        if (throwIfAlreadyAssigned && (oldAssignees.size > 1 || (oldAssignees.size == 1 && oldAssignees.first() != user)))
+        if (throwIfAlreadyAssigned && oldAssignees.isNotEmpty() && oldAssignees.toSet() != users.toSet())
             exit("Issue is already assigned")
 
-        assignTo(user)
+        setAssignees(users)
         log.i("Successfully assigned")
 
         oldAssignees
@@ -348,7 +357,7 @@ fun GHIssue.setType(context: RunContext, type: Categorization.ResolvedValue<Type
 fun GHIssue.getComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
     return if (this is GHPullRequest) {
         context.projectConfig.categorization.component.resolvedValues
-            .associateWith {component -> component.value.paths.map {Glob(it)} }
+            .associateWith { component -> component.value.paths.map { Glob(it) } }
             .filter { (_, matchers) ->
                 listFiles().any { file ->
                     matchers.any { it.matches(file) }
@@ -408,7 +417,7 @@ fun <V : CategorizationValue> Categorization.ResolvedValue<V>.getGhLabelOrNull(r
             if (it.description != fullDescription)
                 it.description = fullDescription
         }
-    } catch (e: IOException) {
+    } catch (e: GHFileNotFoundException) {
         null
     }
 }
