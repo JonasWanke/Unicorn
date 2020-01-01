@@ -67,7 +67,7 @@ class ConventionalCommit(
     fun isValid(context: RunContext): Boolean = validate(context).isValid
     fun validate(context: RunContext): ValidationResult {
         // Type
-        val validTypes = context.projectConfig.categorization.types.values.map { it.name }
+        val validTypes = context.projectConfig.categorization.type.values.map { it.name }
         val invalidType = type
             .takeIf { it !in validTypes }
             ?.also {
@@ -80,7 +80,7 @@ class ConventionalCommit(
             }
 
         // Scopes
-        val validScopes = context.projectConfig.categorization.components.values.map { it.name }
+        val validScopes = context.projectConfig.categorization.component.values.map { it.name }
         val invalidScopes = scopes.withIndex()
             .filter { it.value !in validScopes }
             .takeIf { it.isNotEmpty() }
@@ -99,7 +99,7 @@ class ConventionalCommit(
     }
 
     fun resolveType(context: RunContext): Categorization.ResolvedValue<TypeConfig.Type>? {
-        return context.projectConfig.categorization.types.getOrNull(type)
+        return context.projectConfig.categorization.type.getOrNull(type)
     }
 
     class ValidationResult(

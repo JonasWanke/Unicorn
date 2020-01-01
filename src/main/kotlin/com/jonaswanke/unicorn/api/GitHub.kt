@@ -327,13 +327,13 @@ fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfi
             ?.takeIf { it.isValid(context) }
             ?.let { return it.resolveType(context) }
 
-    val labels = getLabels(context, context.projectConfig.categorization.types)
+    val labels = getLabels(context, context.projectConfig.categorization.type)
     if (labels.size > 1) {
         context.log.w("Multiple type labels found on $issuePrString #$number")
         return null
     }
     return labels.firstOrNull()?.name?.let {
-        context.projectConfig.categorization.types.getOrNull(it)
+        context.projectConfig.categorization.type.getOrNull(it)
             ?: {
                 context.log.w("Unknown type $it on $issuePrString #$number")
                 null
@@ -342,12 +342,12 @@ fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfi
 }
 
 fun GHIssue.setType(context: RunContext, type: Categorization.ResolvedValue<TypeConfig.Type>) {
-    setLabels(context, listOf(type), context.projectConfig.categorization.types)
+    setLabels(context, listOf(type), context.projectConfig.categorization.type)
 }
 
 fun GHIssue.getComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
     return if (this is GHPullRequest) {
-        context.projectConfig.categorization.components.resolvedValues
+        context.projectConfig.categorization.component.resolvedValues
             .associateWith {component -> component.value.paths.map {Glob(it)} }
             .filter { (_, matchers) ->
                 listFiles().any { file ->
@@ -355,28 +355,28 @@ fun GHIssue.getComponents(context: RunContext): List<Categorization.ResolvedValu
                 }
             }
             .map { (component, _) -> component }
-    } else getLabels(context, context.projectConfig.categorization.components)
+    } else getLabels(context, context.projectConfig.categorization.component)
 }
 
 fun GHIssue.setComponents(
     context: RunContext,
     components: List<Categorization.ResolvedValue<ComponentConfig.Component>>
 ) {
-    setLabels(context, components, context.projectConfig.categorization.components)
+    setLabels(context, components, context.projectConfig.categorization.component)
 }
 
 fun GHIssue.getPriority(context: RunContext): Int? {
-    val labels = getLabels(context, context.projectConfig.categorization.priorities)
+    val labels = getLabels(context, context.projectConfig.categorization.priority)
     if (labels.size > 1) {
         context.log.w("Multiple priority labels found on $issuePrString #${number}")
         return null
     }
     return labels.firstOrNull()
-        ?.let { context.projectConfig.categorization.priorities.resolvedValues.indexOf(it) }
+        ?.let { context.projectConfig.categorization.priority.resolvedValues.indexOf(it) }
 }
 
 fun GHIssue.setPriority(context: RunContext, priority: Int) {
-    val priorities = context.projectConfig.categorization.priorities
+    val priorities = context.projectConfig.categorization.priority
     if (priority !in priorities.resolvedValues.indices) {
         context.log.w("Invalid priority index: $priority")
         return
