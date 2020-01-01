@@ -4,8 +4,9 @@ package com.jonaswanke.unicorn.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.ajalt.clikt.core.UsageError
-import com.jonaswanke.unicorn.action.Action
 import com.jonaswanke.unicorn.core.*
+import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.*
+import com.jonaswanke.unicorn.utils.kbd
 import com.jonaswanke.unicorn.utils.lazy
 import com.jonaswanke.unicorn.utils.list
 import com.jonaswanke.unicorn.utils.removePrefix
@@ -18,8 +19,6 @@ import java.awt.Desktop
 import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
-import java.nio.file.FileSystems
-import java.nio.file.Paths
 import org.kohsuke.github.GitHub as ApiGitHub
 
 class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
@@ -209,7 +208,7 @@ fun ConventionalCommit.Companion.format(
     description: String
 ): String? {
     val type = issue.getType(context) ?: return null
-    return format(type, issue.getComponents(context), description)
+    return format(type.name, issue.getComponents(context).map { it.name }, description)
 }
 
 fun GHIssue.openPullRequest(
@@ -261,6 +260,8 @@ val GHPullRequest.closedIssues: List<GHIssue>
         }
         .toList()
 
+fun Glob.matches(file: GHPullRequestFileDetail): Boolean = matches(file.filename)
+
 fun GHPullRequest.toCommitMessage() = buildString {
     val commit = ConventionalCommit.parse(title)
     append(commit.description)
@@ -272,108 +273,115 @@ fun GHPullRequest.toCommitMessage() = buildString {
 // endregion
 
 // region Label
-fun GHIssue.setLabels(labels: List<Label>, group: LabelGroup) {
-    labels.forEach { require(it in group) }
+private val GHIssue.issuePrString: String
+    get() = if (this is GHPullRequest) "PR" else "issue"
 
-    // Remove labels from group that are no longer wanted
-    this.labels
-        .filter { it.name.startsWith(group.prefix) }
-        .filter { existing -> labels.none { it.name == existing.name } }
+fun <V : CategorizationValue> GHIssue.setLabels(
+    context: RunContext,
+    values: List<Categorization.ResolvedValue<V>>,
+    categorization: Categorization<V>
+) = context.group("Setting ${categorization.name}-labels of $issuePrString #$number to ${values.joinToString()}") {
+    // Remove labels from categorization that are no longer wanted
+    labels
+        .filter { it.name.startsWith(categorization.labels.prefix) }
+        .filter { existing -> values.none { it.name == existing.name } }
         .takeUnless { it.isEmpty() }
         ?.let {
             removeLabels(it)
             if (this is GHPullRequest) refresh()
-            else Action.printWarning("Updating issue labels is buggy ATM")
+            else context.log.w("Updating issue labels is currently buggy")
         }
 
     // Add new labels
-    labels.map { it.get(repository) }
-        .filter { new -> this.labels.none { it.name == new.name } }
+    values.map { it.getGhLabel(repository) }
+        .filter { new -> labels.none { it.name == new.name } }
         .takeUnless { it.isEmpty() }
         ?.let {
             addLabels(it)
             if (this is GHPullRequest) refresh()
-            else Action.printWarning("Updating issue labels is buggy ATM")
+            else context.log.w("Updating issue labels is currently buggy")
         }
 }
 
-fun GHIssue.getLabels(group: LabelGroup): List<Label> =
-    labels.filter { it.name.startsWith(group.prefix) }
+fun <V : CategorizationValue> GHIssue.getLabels(
+    context: RunContext,
+    category: Categorization<V>
+): List<Categorization.ResolvedValue<V>> {
+    return labels.filter { it.name.startsWith(category.labels.prefix) }
         .mapNotNull {
-            group[it.name] ?: {
-                println("Unknown label \"${it.name}\" with known prefix \"${group.prefix}\"")
+            category.getOrNull(it.name) ?: {
+                context.log.w {
+                    +"Unknown label "
+                    kbd(it.name)
+                    +" with known prefix \"${category.labels.prefix}\""
+                }
                 null
             }()
         }
+}
 
-fun GHIssue.getType(context: RunContext): String? {
+
+fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfig.Type>? {
     if (this is GHPullRequest)
         ConventionalCommit.tryParse(title)
             ?.takeIf { it.isValid(context) }
-            ?.let { return it.type }
+            ?.let { return it.resolveType(context) }
 
-    val labels = getLabels(context.projectConfig.typeLabelGroup)
+    val labels = getLabels(context, context.projectConfig.categorization.types)
     if (labels.size > 1) {
-        context.log.w("Multiple type labels found on issue #${number}")
+        context.log.w("Multiple type labels found on $issuePrString #$number")
         return null
     }
-    return labels.firstOrNull()?.name
-        ?.removePrefix(context.projectConfig.typeLabelGroup.prefix)
-}
-
-fun GHIssue.setType(type: String, config: ProjectConfig) {
-    val label = config.typeLabelGroup[type]
-    if (label == null) {
-        println("Invalid type: $type")
-        return
+    return labels.firstOrNull()?.name?.let {
+        context.projectConfig.categorization.types.getOrNull(it)
+            ?: {
+                context.log.w("Unknown type $it on $issuePrString #$number")
+                null
+            }()
     }
-    setLabels(listOf(label), config.typeLabelGroup)
 }
 
-fun GHIssue.getComponents(context: RunContext): List<String> {
-    val labels = if (this is GHPullRequest) {
-        val fileSystem = FileSystems.getDefault()
-        context.projectConfig.components
-            .filter { component ->
-                val matchers = component.paths
-                    .map { fileSystem.getPathMatcher("glob:$it") }
+fun GHIssue.setType(context: RunContext, type: Categorization.ResolvedValue<TypeConfig.Type>) {
+    setLabels(context, listOf(type), context.projectConfig.categorization.types)
+}
+
+fun GHIssue.getComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
+    return if (this is GHPullRequest) {
+        context.projectConfig.categorization.components.resolvedValues
+            .associateWith {component -> component.value.paths.map {Glob(it)} }
+            .filter { (_, matchers) ->
                 listFiles().any { file ->
-                    matchers.any { it.matches(Paths.get(file.filename)) }
+                    matchers.any { it.matches(file) }
                 }
             }
-            .map { it.name }
-
-    } else getLabels(context.projectConfig.componentsLabelGroup)
-        .map { it.name }
-    return labels.map { it.removePrefix(context.projectConfig.labels.components.prefix) }
+            .map { (component, _) -> component }
+    } else getLabels(context, context.projectConfig.categorization.components)
 }
 
-fun GHIssue.setComponents(context: RunContext, components: List<String>) {
-    val labels = components.map { context.projectConfig.componentsLabelGroup[it] }
-        .also { labels ->
-            labels.forEachIndexed { index, label ->
-                if (label == null) println("Invalid component: ${components[index]}")
-            }
-        }
-        .filterNotNull()
-    setLabels(labels, context.projectConfig.componentsLabelGroup)
+fun GHIssue.setComponents(
+    context: RunContext,
+    components: List<Categorization.ResolvedValue<ComponentConfig.Component>>
+) {
+    setLabels(context, components, context.projectConfig.categorization.components)
 }
 
 fun GHIssue.getPriority(context: RunContext): Int? {
-    val labels = getLabels(context.projectConfig.priorityLabelGroup)
+    val labels = getLabels(context, context.projectConfig.categorization.priorities)
     if (labels.size > 1) {
-        println("Multiple priority labels found on issue #${number}")
+        context.log.w("Multiple priority labels found on $issuePrString #${number}")
         return null
     }
     return labels.firstOrNull()
-        ?.let { context.projectConfig.priorityLabelGroup.instances.indexOf(it) }
+        ?.let { context.projectConfig.categorization.priorities.resolvedValues.indexOf(it) }
 }
 
 fun GHIssue.setPriority(context: RunContext, priority: Int) {
-    setLabels(
-        listOf(context.projectConfig.priorityLabelGroup.instances[priority]),
-        context.projectConfig.priorityLabelGroup
-    )
+    val priorities = context.projectConfig.categorization.priorities
+    if (priority !in priorities.resolvedValues.indices) {
+        context.log.w("Invalid priority index: $priority")
+        return
+    }
+    setLabels(context, listOf(priorities.resolvedValues[priority]), priorities)
 }
 
 
@@ -387,63 +395,33 @@ fun GHRepository.createLabelIfNotExists(name: String, color: String, description
     }
 }
 
-data class Label(
-    val name: String,
-    val color: String,
-    val description: String?
-) {
-    companion object {
-        const val DEPRECATED_PREFIX = "[deprecated] "
 
-        fun deprecatedDescription(description: String?): String {
-            if (description == null) return DEPRECATED_PREFIX.trim()
-            if (description.startsWith(DEPRECATED_PREFIX)) return description
-            return DEPRECATED_PREFIX + description.removePrefix(DEPRECATED_PREFIX, ignoreCase = true)
+fun <V : CategorizationValue> Categorization.ResolvedValue<V>.getGhLabel(repo: GHRepository): GHLabel {
+    return getGhLabelOrNull(repo) ?: repo.createLabel(fullName, color, fullDescription)
+}
+
+fun <V : CategorizationValue> Categorization.ResolvedValue<V>.getGhLabelOrNull(repo: GHRepository): GHLabel? {
+    return try {
+        repo.getLabel(fullName).also {
+            if (it.color != color)
+                it.color = color
+            if (it.description != fullDescription)
+                it.description = fullDescription
         }
-    }
-
-    fun get(repo: GHRepository): GHLabel {
-        return getOrNull(repo) ?: repo.createLabel(name, color, description)
-    }
-
-    fun getOrNull(repo: GHRepository): GHLabel? {
-        return try {
-            repo.getLabel(name).also {
-                if (it.color != color)
-                    it.color = color
-                if (it.description != description)
-                    it.description = description
-            }
-        } catch (e: IOException) {
-            null
-        }
-    }
-
-    fun deprecate(repo: GHRepository) {
-        val label = getOrNull(repo) ?: return
-        label.description = deprecatedDescription(label.description)
+    } catch (e: IOException) {
+        null
     }
 }
 
-class LabelGroup(
-    val color: String,
-    val prefix: String,
-    val descriptionPrefix: String = "",
-    instances: List<Pair<String, String?>>
-) {
-    val instances = instances.map { (title, description) ->
-        Label(
-            prefix + title,
-            color,
-            descriptionPrefix + (description ?: title)
-        )
+private const val LABEL_DEPRECATED_PREFIX = "[deprecated] "
+fun <V : CategorizationValue> Categorization.ResolvedValue<V>.deprecate(repo: GHRepository) {
+    val label = getGhLabelOrNull(repo) ?: return
+
+    val description = when {
+        fullDescription.startsWith(LABEL_DEPRECATED_PREFIX) -> fullDescription
+        else -> LABEL_DEPRECATED_PREFIX + fullDescription.removePrefix(LABEL_DEPRECATED_PREFIX, ignoreCase = true)
     }
-
-    operator fun get(name: String) =
-        instances.firstOrNull { it.name == name } ?: instances.firstOrNull { it.name == prefix + name }
-
-    operator fun contains(label: Label) = label in instances
-    operator fun contains(label: GHLabel) = label.name.startsWith(prefix)
+    label.description = description
 }
 // endregion
 

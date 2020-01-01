@@ -1,6 +1,7 @@
 package com.jonaswanke.unicorn.api
 
-import com.jonaswanke.unicorn.core.ProjectConfig
+import com.jonaswanke.unicorn.core.Categorization
+import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.TypeConfig
 import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.joined
 import com.jonaswanke.unicorn.utils.kbd
@@ -63,14 +64,10 @@ class ConventionalCommit(
     }
 
 
-    object Type {
-        fun releaseCommit(config: ProjectConfig): String = config.types.releaseCommit
-    }
-
     fun isValid(context: RunContext): Boolean = validate(context).isValid
     fun validate(context: RunContext): ValidationResult {
         // Type
-        val validTypes = context.projectConfig.types.list.map { it.name }
+        val validTypes = context.projectConfig.categorization.types.values.map { it.name }
         val invalidType = type
             .takeIf { it !in validTypes }
             ?.also {
@@ -83,7 +80,7 @@ class ConventionalCommit(
             }
 
         // Scopes
-        val validScopes = context.projectConfig.components.map { it.name }
+        val validScopes = context.projectConfig.categorization.components.values.map { it.name }
         val invalidScopes = scopes.withIndex()
             .filter { it.value !in validScopes }
             .takeIf { it.isNotEmpty() }
@@ -99,6 +96,10 @@ class ConventionalCommit(
             }.orEmpty()
 
         return ValidationResult(invalidType, validTypes, invalidScopes, validScopes)
+    }
+
+    fun resolveType(context: RunContext): Categorization.ResolvedValue<TypeConfig.Type>? {
+        return context.projectConfig.categorization.types.getOrNull(type)
     }
 
     class ValidationResult(
@@ -120,4 +121,3 @@ class ConventionalCommit(
 fun Git.commit(context: RunContext, type: String, scopes: List<String> = emptyList(), description: String) {
     commit(context, ConventionalCommit.format(type, scopes, description))
 }
-

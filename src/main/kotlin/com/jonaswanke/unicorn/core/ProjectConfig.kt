@@ -1,7 +1,5 @@
 package com.jonaswanke.unicorn.core
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.jonaswanke.unicorn.api.LabelGroup
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.StringDescriptor
 import net.swiftzer.semver.SemVer
@@ -15,37 +13,24 @@ data class ProjectConfig(
     val license: License? = null,
     @Serializable(SemVerSerializer::class)
     val version: SemVer = SemVer(0, 0, 1),
-    val types: Types = Types(),
-    val components: List<Component> = emptyList(),
-    val priorities: List<Priority> = listOf(
-        Priority("1", "1 (Lowest)"),
-        Priority("2", "2 (Low)"),
-        Priority("3", "3 (Medium)"),
-        Priority("4", "4 (High)"),
-        Priority("5", "5 (Highest)")
-    ),
-    val labels: Labels = Labels()
+    val categorization: CategorizationConfig = CategorizationConfig()
 ) {
-    @Transient
-    val typeLabelGroup: LabelGroup = LabelGroup(
-        labels.types.color,
-        labels.types.prefix,
-        labels.types.descriptionPrefix,
-        types.list.map { it.name to it.description }
-    )
-    @Transient
-    val componentsLabelGroup: LabelGroup = LabelGroup(
-        labels.components.color,
-        labels.components.prefix,
-        labels.components.descriptionPrefix,
-        components.map { it.name to it.description }
-    )
-    @Transient
-    val priorityLabelGroup: LabelGroup = LabelGroup(
-        labels.priorities.color,
-        labels.priorities.prefix,
-        labels.priorities.descriptionPrefix,
-        priorities.map { it.name to it.description }
+    fun copyWithCategorizationValues(
+        components: List<CategorizationConfig.ComponentConfig.Component> = categorization.components.values,
+        priorities: List<CategorizationConfig.PriorityConfig.Priority> = categorization.priorities.values,
+        types: List<CategorizationConfig.TypeConfig.Type> = categorization.types.values
+    ): ProjectConfig = copy(
+        categorization = categorization.copy(
+            components = categorization.components.copy(
+                values = components.sortedBy { it.name }
+            ),
+            priorities = categorization.priorities.copy(
+                values = priorities
+            ),
+            types = categorization.types.copy(
+                values = types.sortedBy { it.name }
+            )
+        )
     )
 
     @Serializable(with = License.Serializer::class)
@@ -80,81 +65,120 @@ data class ProjectConfig(
     }
 
     @Serializable
-    data class Types(
-        val list: List<Type> = listOf(
-            Type("build", "Build changes"),
-            Type("chore", "Chores"),
-            Type("ci", "CI changes"),
-            Type("docs", "Documentation updates"),
-            Type("feat", "New Features"),
-            Type("fix", "Bugfixes"),
-            Type("perf", "Performance improvements"),
-            Type("refactor", "Refactoring")
-        ),
-        val releaseCommit: String = "chore",
-        val feature: String = "feat",
-        val fix: String = "fix"
+    data class CategorizationConfig(
+        val components: ComponentConfig = ComponentConfig(),
+        val priorities: PriorityConfig = PriorityConfig(),
+        val types: TypeConfig = TypeConfig()
     ) {
         @Serializable
-        data class Type(
-            @JsonProperty("name")
-            val name: String,
-            @JsonProperty("description")
-            val description: String? = null
-        )
+        data class TypeConfig(
+            override val values: List<Type> = listOf(
+                Type("build", "Build changes"),
+                Type("chore", "Chores"),
+                Type("ci", "CI changes"),
+                Type("docs", "Documentation updates"),
+                Type("feat", "New Features"),
+                Type("fix", "Bugfixes"),
+                Type("perf", "Performance improvements"),
+                Type("refactor", "Refactoring")
+            ),
+            override val labels: LabelConfig = LabelConfig(
+                color = "c5def5",
+                prefix = "T: ",
+                descriptionPrefix = "Type: "
+            )
+        ) : Categorization<TypeConfig.Type>() {
+            override val name = "type"
+
+            @Serializable
+            data class Type(
+                override val name: String,
+                override val description: String? = null
+            ) : CategorizationValue
+        }
+
+        @Serializable
+        data class ComponentConfig(
+            override val values: List<Component> = emptyList(),
+            override val labels: LabelConfig = LabelConfig(
+                color = "c2e0c6",
+                prefix = "C: ",
+                descriptionPrefix = "Component: "
+            )
+        ) : Categorization<ComponentConfig.Component>() {
+            override val name = "component"
+
+            @Serializable
+            data class Component(
+                override val name: String,
+                override val description: String? = null,
+                val paths: List<String> = emptyList()
+            ) : CategorizationValue
+        }
+
+        @Serializable
+        data class PriorityConfig(
+            override val values: List<Priority> = listOf(
+                Priority("1", "1 (Lowest)"),
+                Priority("2", "2 (Low)"),
+                Priority("3", "3 (Medium)"),
+                Priority("4", "4 (High)"),
+                Priority("5", "5 (Highest)")
+            ),
+            override val labels: LabelConfig = LabelConfig(
+                color = "e5b5ff",
+                prefix = "P: ",
+                descriptionPrefix = "Priority: "
+            )
+        ) : Categorization<PriorityConfig.Priority>() {
+            override val name = "priority"
+
+            @Serializable
+            data class Priority(
+                override val name: String,
+                override val description: String? = null
+            ) : CategorizationValue
+        }
+
+        interface CategorizationValue {
+            val name: String
+            val description: String?
+        }
     }
 
     @Serializable
-    data class Component(
-        val name: String,
-        val description: String? = null,
-        val paths: List<String> = emptyList()
+    data class LabelConfig(
+        val color: String = "cfd3d7",
+        val prefix: String = "",
+        val descriptionPrefix: String = ""
     )
+}
 
-    @Serializable
-    data class Priority(
-        val name: String,
-        val description: String? = null
-    )
 
-    @Serializable
-    data class Labels(
-        val components: Components = Components(),
-        val types: Types = Types(),
-        val priorities: Priorities = Priorities(),
-        val list: List<Label> = listOf(
-            Label("duplicate", "cfd3d7"),
-            Label("wontfix", "cfd3d7"),
-            Label("discussion", "d876e3"),
-            Label("question", "d876e3")
-        )
+abstract class Categorization<V : ProjectConfig.CategorizationConfig.CategorizationValue> {
+    abstract val name: String
+    abstract val values: List<V>
+    abstract val labels: ProjectConfig.LabelConfig
+
+    val resolvedValues: List<ResolvedValue<V>> by lazy { values.map { ResolvedValue(this, it) } }
+
+    operator fun get(name: String): ResolvedValue<V> {
+        return resolvedValues.first { it.name == name }
+    }
+    fun getOrNull(name: String): ResolvedValue<V>? {
+        return resolvedValues.firstOrNull { it.name == name }
+    }
+
+    operator fun contains(name: String): Boolean = resolvedValues.any { it.name == name }
+
+    data class ResolvedValue<V : ProjectConfig.CategorizationConfig.CategorizationValue>(
+        val categorization: Categorization<V>,
+        val value: V
     ) {
-        @Serializable
-        data class Components(
-            val color: String = "c2e0c6",
-            val prefix: String = "C: ",
-            val descriptionPrefix: String = "Component: "
-        )
-
-        @Serializable
-        data class Types(
-            val color: String = "c5def5",
-            val prefix: String = "T: ",
-            val descriptionPrefix: String = "Type: "
-        )
-
-        @Serializable
-        data class Priorities(
-            val color: String = "e5b5ff",
-            val prefix: String = "P: ",
-            val descriptionPrefix: String = "Priority: "
-        )
-
-        @Serializable
-        data class Label(
-            val name: String,
-            val color: String = "cfd3d7",
-            val description: String? = null
-        )
+        val name: String = value.name
+        val fullName = categorization.labels.prefix + name
+        val description: String? = value.description
+        val fullDescription: String = categorization.labels.descriptionPrefix + (description ?: name)
+        val color: String = categorization.labels.color
     }
 }

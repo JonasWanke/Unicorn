@@ -1,7 +1,10 @@
 package com.jonaswanke.unicorn.commands
 
+import com.jonaswanke.unicorn.api.deprecate
+import com.jonaswanke.unicorn.api.getGhLabel
+import com.jonaswanke.unicorn.api.getGhLabelOrNull
 import com.jonaswanke.unicorn.api.gitHubRepo
-import com.jonaswanke.unicorn.core.ProjectConfig
+import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.PriorityConfig
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
@@ -21,7 +24,7 @@ fun Unicorn.registerPriorityCommands() {
                 log.i("Priorities (least to most important):")
                 log.i {
                     list {
-                        projectConfig.priorities.forEach { priority ->
+                        projectConfig.categorization.priorities.values.forEach { priority ->
                             line {
                                 bold(priority.name)
                                 if (priority.description != null)
@@ -45,16 +48,17 @@ fun Unicorn.registerPriorityCommands() {
                     .default(0)
                     .validate { require(it >= 0) { "Index must be non-negative" } }
             ) { name, description, index ->
-                if (projectConfig.priorities.any { it.name == name })
+                if (name in projectConfig.categorization.priorities)
                     exit("A priority called \"$name\" already exists")
 
-                val newPriority = ProjectConfig.Priority(name, description)
-                projectConfig = projectConfig.copy(
-                    priorities = projectConfig.priorities.take(index)
+                val newPriority = PriorityConfig.Priority(name, description)
+                projectConfig = projectConfig.copyWithCategorizationValues(
+                    priorities = projectConfig.categorization.priorities.values.take(index)
                             + newPriority
-                            + projectConfig.priorities.drop(index)
+                            + projectConfig.categorization.priorities.values.drop(index)
                 )
-                projectConfig.priorityLabelGroup[name]!!.get(gitHubRepo)
+
+                projectConfig.categorization.priorities[name].getGhLabel(gitHubRepo)
             }
         }
 
@@ -67,17 +71,16 @@ fun Unicorn.registerPriorityCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } }
             ) { name ->
                 if (name != null) {
-                    if (projectConfig.priorities.none { it.name == name })
-                        exit("Priority \"$name\" was not found")
-
-                    projectConfig.priorityLabelGroup[name]!!.get(gitHubRepo)
+                    projectConfig.categorization.priorities.getOrNull(name)
+                        ?.getGhLabel(gitHubRepo)
+                        ?: exit("Priority \"$name\" was not found")
                 } else {
-                    projectConfig.priorityLabelGroup.instances.forEach {
+                    projectConfig.categorization.priorities.resolvedValues.forEach {
                         log.i {
                             +"Syncing label "
                             kbd(it.name)
                         }
-                        it.get(gitHubRepo)
+                        it.getGhLabel(gitHubRepo)
                     }
                 }
             }
@@ -95,17 +98,17 @@ fun Unicorn.registerPriorityCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (projectConfig.priorities.none { it.name == name })
+                if (name !in projectConfig.categorization.priorities)
                     exit("Priority \"$name\" was not found")
 
                 val oldConfig = projectConfig
 
-                projectConfig = projectConfig.copy(
-                    priorities = projectConfig.priorities.filter { it.name != name }
+                projectConfig = projectConfig.copyWithCategorizationValues(
+                    priorities = projectConfig.categorization.priorities.values.filter { it.name != name }
                 )
 
-                val oldLabel = oldConfig.priorityLabelGroup[name]!!
-                if (deleteLabel) oldLabel.getOrNull(gitHubRepo)?.delete()
+                val oldLabel = oldConfig.categorization.priorities[name]
+                if (deleteLabel) oldLabel.getGhLabelOrNull(gitHubRepo)?.delete()
                 else oldLabel.deprecate(gitHubRepo)
             }
         }

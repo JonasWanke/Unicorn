@@ -5,8 +5,6 @@ import com.jonaswanke.unicorn.api.*
 import com.jonaswanke.unicorn.core.RunContext
 import org.kohsuke.github.GHIssue
 import org.kohsuke.github.GHPullRequest
-import java.nio.file.FileSystems
-import java.nio.file.Paths
 import kotlin.system.exitProcess
 
 
@@ -41,26 +39,12 @@ private fun assignAuthors(pr: GHPullRequest) {
 private fun inferLabels(context: RunContext, pr: GHPullRequest) {
     val closedIssues = pr.closedIssues
 
-    // Type
     pr.getType(context)
-        ?.let { pr.setType(it, context.projectConfig) }
+        ?.let { pr.setType(context, it) }
 
-    // Components
-    val fileSystem = FileSystems.getDefault()
-    context.projectConfig.components
-        .associateWith { it.paths }
-        .mapValues { (_, paths) ->
-            paths.map { fileSystem.getPathMatcher("glob:$it") }
-        }
-        .filter { (_, matchers) ->
-            pr.listFiles().any { file ->
-                matchers.any { it.matches(Paths.get(file.filename)) }
-            }
-        }
-        .map { (component, _) -> component.name }
+    pr.getComponents(context)
         .let { pr.setComponents(context, it) }
 
-    // Priority
     closedIssues.mapNotNull { it.getPriority(context) }.max()
         ?.let { pr.setPriority(context, it) }
 }

@@ -171,7 +171,8 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
     if (!Git.isInitializedIn(projectDir))
         Git.init(projectDir).also {
             it.add(this, ".")
-            it.commit(this, projectConfig.types.releaseCommit, description = "initial commit")
+            // Doesn't make sense to look up the type in ProjectConfig as that was just created by us and couldn't be changed yet by the user
+            it.commit(this, "chore", description = "initial commit")
 
             it.checkout(this, it.flow.devBranch.name, createBranch = true)
         }
