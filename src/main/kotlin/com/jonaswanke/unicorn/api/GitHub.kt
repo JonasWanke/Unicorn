@@ -6,10 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.core.*
 import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.*
-import com.jonaswanke.unicorn.utils.kbd
-import com.jonaswanke.unicorn.utils.lazy
-import com.jonaswanke.unicorn.utils.list
-import com.jonaswanke.unicorn.utils.removePrefix
+import com.jonaswanke.unicorn.utils.*
 import kotlinx.serialization.Serializable
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
@@ -290,30 +287,24 @@ fun <V : CategorizationValue> GHIssue.setLabels(
     values: List<Categorization.ResolvedValue<V>>,
     categorization: Categorization<V>
 ) = context.group("Setting ${categorization.name}-labels of $issuePrNumber to ${values.joinToString { it.name }}") {
-    log.i("Setting ${categorization.name}-labels of $issuePrNumber to ${values.joinToString()}")
+    log.i("Setting ${categorization.name}-labels of $issuePrNumber to ${values.joinToString { it.name }}")
 
-    // Remove labels from categorization that are no longer wanted
-    labels
-        .filter { it.name.startsWith(categorization.labels.prefix) }
-        .filter { existing -> values.none { it.name == existing.name } }
-        .takeUnless { it.isEmpty() }
-        ?.let {
-            log.d("Removing: ${it.joinToString { it.name }}")
-            removeLabels(it)
-            if (this is GHPullRequest) refresh()
-            else context.log.w("Updating issue labels is currently buggy")
-        }
+    val labelsToKeep = labels
+        .filter { !it.name.startsWith(categorization.labels.prefix) }
+        .map { it.name }
+    log.d {
+        +"Keeping labels "
+        joined(labelsToKeep) { kbd(it) }
+    }
 
-    // Add new labels
-    values.map { it.getGhLabel(repository) }
-        .filter { new -> labels.none { it.name == new.name } }
-        .takeUnless { it.isEmpty() }
-        ?.let {
-            log.d("Adding: ${it.joinToString { it.name }}")
-            addLabels(it)
-            if (this is GHPullRequest) refresh()
-            else context.log.w("Updating issue labels is currently buggy")
-        }
+    val additionalLabels = values.map { it.fullName }
+    log.d {
+        +"Adding labels "
+        joined(additionalLabels) { kbd(it) }
+    }
+
+    val labels = (labelsToKeep + additionalLabels).toTypedArray()
+    setLabels(*labels)
 }
 
 fun <V : CategorizationValue> GHIssue.getLabels(
