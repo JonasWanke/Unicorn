@@ -1,6 +1,84 @@
----
 unicornVersion: "0.0.2"
-type: "OTHER"
 name: "Unicorn"
 description: "\U0001f984 A tool to create, work on, test and deploy projects."
+license: null
 version: "0.0.2"
+categorization:
+  component:
+    values:
+      - name: "action"
+        description: "GitHub Action related code"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/action/**"
+      - name: "api"
+        description: "DSL/Action/Template-API related code"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/api/**"
+      - name: "commands"
+        description: "Builtin commands"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/commands/**"
+      - name: "console"
+        description: "Console environment related code"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/console/**"
+      - name: "core"
+        description: "Core code"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/core/**"
+      - name: "template"
+        description: "Template-related code"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/template/**"
+      - name: "templates"
+        description: "Default templates"
+        paths:
+          - "templates/**"
+      - name: "utils"
+        description: "Utility code"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/utils/**"
+    labels:
+      color: "c2e0c6"
+      prefix: "C: "
+      descriptionPrefix: "Component: "
+  priority:
+    values:
+      - name: "0"
+        description: null
+      - name: "1"
+        description: "1 (Lowest)"
+      - name: "2"
+        description: "2 (Low)"
+      - name: "3"
+        description: "3 (Medium)"
+      - name: "4"
+        description: "4 (High)"
+      - name: "5"
+        description: "5 (Highest)"
+    label:
+      color: "e5b5ff"
+      prefix: "P: "
+      descriptionPrefix: "Priority: "
+  type:
+    values:
+      - name: "build"
+        description: "Build changes"
+      - name: "chore"
+        description: "Chores"
+      - name: "ci"
+        description: "CI changes"
+      - name: "docs"
+        description: "Documentation updates"
+      - name: "feat"
+        description: "New Features"
+      - name: "fix"
+        description: "Bugfixes"
+      - name: "perf"
+        description: "Performance improvements"
+      - name: "refactor"
+        description: "Refactoring"
+    labels:
+      color: "c5def5"
+      prefix: "T: "
+      descriptionPrefix: "Type: "
