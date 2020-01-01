@@ -290,12 +290,15 @@ fun <V : CategorizationValue> GHIssue.setLabels(
     values: List<Categorization.ResolvedValue<V>>,
     categorization: Categorization<V>
 ) = context.group("Setting ${categorization.name}-labels of $issuePrString #$number to ${values.joinToString()}") {
+    log.i("Setting ${categorization.name}-labels of $issuePrString #$number to ${values.joinToString()}")
+
     // Remove labels from categorization that are no longer wanted
     labels
         .filter { it.name.startsWith(categorization.labels.prefix) }
         .filter { existing -> values.none { it.name == existing.name } }
         .takeUnless { it.isEmpty() }
         ?.let {
+            log.i("Removing: ${it.joinToString()}")
             removeLabels(it)
             if (this is GHPullRequest) refresh()
             else context.log.w("Updating issue labels is currently buggy")
@@ -306,6 +309,7 @@ fun <V : CategorizationValue> GHIssue.setLabels(
         .filter { new -> labels.none { it.name == new.name } }
         .takeUnless { it.isEmpty() }
         ?.let {
+            log.i("Adding: ${it.joinToString()}")
             addLabels(it)
             if (this is GHPullRequest) refresh()
             else context.log.w("Updating issue labels is currently buggy")
