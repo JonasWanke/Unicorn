@@ -282,15 +282,15 @@ fun GHPullRequest.toCommitMessage() = buildString {
 // endregion
 
 // region Label
-private val GHIssue.issuePrString: String
-    get() = if (this is GHPullRequest) "PR" else "issue"
+private val GHIssue.issuePrNumber: String
+    get() = "${if (this is GHPullRequest) "PR" else "issue"} #$number"
 
 fun <V : CategorizationValue> GHIssue.setLabels(
     context: RunContext,
     values: List<Categorization.ResolvedValue<V>>,
     categorization: Categorization<V>
-) = context.group("Setting ${categorization.name}-labels of $issuePrString #$number to ${values.joinToString()}") {
-    log.i("Setting ${categorization.name}-labels of $issuePrString #$number to ${values.joinToString()}")
+) = context.group("Setting ${categorization.name}-labels of $issuePrNumber to ${values.joinToString { it.name }}") {
+    log.i("Setting ${categorization.name}-labels of $issuePrNumber to ${values.joinToString()}")
 
     // Remove labels from categorization that are no longer wanted
     labels
@@ -298,7 +298,7 @@ fun <V : CategorizationValue> GHIssue.setLabels(
         .filter { existing -> values.none { it.name == existing.name } }
         .takeUnless { it.isEmpty() }
         ?.let {
-            log.i("Removing: ${it.joinToString()}")
+            log.d("Removing: ${it.joinToString { it.name }}")
             removeLabels(it)
             if (this is GHPullRequest) refresh()
             else context.log.w("Updating issue labels is currently buggy")
@@ -309,7 +309,7 @@ fun <V : CategorizationValue> GHIssue.setLabels(
         .filter { new -> labels.none { it.name == new.name } }
         .takeUnless { it.isEmpty() }
         ?.let {
-            log.i("Adding: ${it.joinToString()}")
+            log.d("Adding: ${it.joinToString { it.name }}")
             addLabels(it)
             if (this is GHPullRequest) refresh()
             else context.log.w("Updating issue labels is currently buggy")
@@ -409,7 +409,7 @@ fun GHRepository.syncComponentLabels(context: RunContext) = context.group("Synci
 fun GHIssue.getPriority(context: RunContext): Int? {
     val labels = getLabels(context, context.projectConfig.categorization.priority)
     if (labels.size > 1) {
-        context.log.w("Multiple priority labels found on $issuePrString #${number}")
+        context.log.w("Multiple priority labels found on $issuePrNumber #${number}")
         return null
     }
     return labels.firstOrNull()
@@ -445,13 +445,13 @@ fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfi
 
     val labels = getLabels(context, context.projectConfig.categorization.type)
     if (labels.size > 1) {
-        context.log.w("Multiple type labels found on $issuePrString #$number")
+        context.log.w("Multiple type labels found on $issuePrNumber")
         return null
     }
     return labels.firstOrNull()?.name?.let {
         context.projectConfig.categorization.type.getOrNull(it)
             ?: {
-                context.log.w("Unknown type $it on $issuePrString #$number")
+                context.log.w("Unknown type $it on $issuePrNumber")
                 null
             }()
     }
