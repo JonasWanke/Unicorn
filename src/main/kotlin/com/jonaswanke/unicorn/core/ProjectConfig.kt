@@ -1,5 +1,6 @@
 package com.jonaswanke.unicorn.core
 
+import com.github.ajalt.clikt.core.NoSuchOption
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.StringDescriptor
 import net.swiftzer.semver.SemVer
@@ -16,18 +17,18 @@ data class ProjectConfig(
     val categorization: CategorizationConfig = CategorizationConfig()
 ) {
     fun copyWithCategorizationValues(
-        components: List<CategorizationConfig.ComponentConfig.Component> = categorization.components.values,
-        priorities: List<CategorizationConfig.PriorityConfig.Priority> = categorization.priorities.values,
-        types: List<CategorizationConfig.TypeConfig.Type> = categorization.types.values
+        components: List<CategorizationConfig.ComponentConfig.Component> = categorization.component.values,
+        priorities: List<CategorizationConfig.PriorityConfig.Priority> = categorization.priority.values,
+        types: List<CategorizationConfig.TypeConfig.Type> = categorization.type.values
     ): ProjectConfig = copy(
         categorization = categorization.copy(
-            components = categorization.components.copy(
+            component = categorization.component.copy(
                 values = components.sortedBy { it.name }
             ),
-            priorities = categorization.priorities.copy(
+            priority = categorization.priority.copy(
                 values = priorities
             ),
-            types = categorization.types.copy(
+            type = categorization.type.copy(
                 values = types.sortedBy { it.name }
             )
         )
@@ -66,9 +67,9 @@ data class ProjectConfig(
 
     @Serializable
     data class CategorizationConfig(
-        val components: ComponentConfig = ComponentConfig(),
-        val priorities: PriorityConfig = PriorityConfig(),
-        val types: TypeConfig = TypeConfig()
+        val component: ComponentConfig = ComponentConfig(),
+        val priority: PriorityConfig = PriorityConfig(),
+        val type: TypeConfig = TypeConfig()
     ) {
         @Serializable
         data class TypeConfig(
@@ -162,14 +163,15 @@ abstract class Categorization<V : ProjectConfig.CategorizationConfig.Categorizat
 
     val resolvedValues: List<ResolvedValue<V>> by lazy { values.map { ResolvedValue(this, it) } }
 
+    operator fun contains(name: String): Boolean = getOrNull(name) != null
     operator fun get(name: String): ResolvedValue<V> {
-        return resolvedValues.first { it.name == name }
-    }
-    fun getOrNull(name: String): ResolvedValue<V>? {
-        return resolvedValues.firstOrNull { it.name == name }
+        return getOrNull(name)
+            ?: throw NoSuchOption(name, values.map { it.name })
     }
 
-    operator fun contains(name: String): Boolean = resolvedValues.any { it.name == name }
+    fun getOrNull(name: String): ResolvedValue<V>? {
+        return resolvedValues.firstOrNull { it.name == name } ?: resolvedValues.firstOrNull { it.fullName == name }
+    }
 
     data class ResolvedValue<V : ProjectConfig.CategorizationConfig.CategorizationValue>(
         val categorization: Categorization<V>,

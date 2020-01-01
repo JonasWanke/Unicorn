@@ -23,7 +23,7 @@ fun Unicorn.registerComponentCommands() {
             run {
                 log.i {
                     list {
-                        projectConfig.categorization.components.values.forEach { component ->
+                        projectConfig.categorization.component.values.forEach { component ->
                             line {
                                 bold(component.name)
                                 if (component.description != null)
@@ -45,15 +45,15 @@ fun Unicorn.registerComponentCommands() {
                 option("-p", "--path", help = "Paths to e.g. detect components in PR changes (supports glob)")
                     .multiple()
             ) { name, description, paths ->
-                if (name in projectConfig.categorization.components)
+                if (name in projectConfig.categorization.component)
                     exit("A component called \"$name\" already exists")
 
                 val newComponent = ComponentConfig.Component(name, description, paths)
                 projectConfig = projectConfig.copyWithCategorizationValues(
-                    components = projectConfig.categorization.components.values + newComponent
+                    components = projectConfig.categorization.component.values + newComponent
                 )
 
-                projectConfig.categorization.components[name].getGhLabel(gitHubRepo)
+                projectConfig.categorization.component[name].getGhLabel(gitHubRepo)
             }
         }
 
@@ -66,11 +66,11 @@ fun Unicorn.registerComponentCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } }
             ) { name ->
                 if (name != null) {
-                    projectConfig.categorization.components.getOrNull(name)
+                    projectConfig.categorization.component.getOrNull(name)
                         ?.getGhLabel(gitHubRepo)
                         ?: exit("Component \"$name\" was not found")
                 } else {
-                    projectConfig.categorization.components.resolvedValues.forEach {
+                    projectConfig.categorization.component.resolvedValues.forEach {
                         log.i {
                             +"Syncing label "
                             kbd(it.fullName)
@@ -93,16 +93,16 @@ fun Unicorn.registerComponentCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (name !in projectConfig.categorization.components)
+                if (name !in projectConfig.categorization.component)
                     exit("Component \"$name\" was not found")
 
                 val oldConfig = projectConfig
 
                 projectConfig = projectConfig.copyWithCategorizationValues(
-                    components = projectConfig.categorization.components.values.filter { it.name != name }
+                    components = projectConfig.categorization.component.values.filter { it.name != name }
                 )
 
-                val oldLabel = oldConfig.categorization.components[name]
+                val oldLabel = oldConfig.categorization.component[name]
                 if (deleteLabel) oldLabel.getGhLabelOrNull(gitHubRepo)?.delete()
                 else oldLabel.deprecate(gitHubRepo)
             }

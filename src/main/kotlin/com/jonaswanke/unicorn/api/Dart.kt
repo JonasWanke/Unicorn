@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.jonaswanke.unicorn.api
 
 import com.jonaswanke.unicorn.core.RunContext

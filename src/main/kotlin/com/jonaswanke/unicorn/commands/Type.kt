@@ -23,7 +23,7 @@ fun Unicorn.registerTypeCommands() {
             run {
                 log.i {
                     list {
-                        projectConfig.categorization.types.values.forEach { type ->
+                        projectConfig.categorization.type.values.forEach { type ->
                             line {
                                 bold(type.name)
                                 if (type.description != null)
@@ -43,15 +43,15 @@ fun Unicorn.registerTypeCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } },
                 option("-d", "--desc", "--description", help = "An optional description")
             ) { name, description ->
-                if (name in projectConfig.categorization.types)
+                if (name in projectConfig.categorization.type)
                     exit("A type called \"$name\" already exists")
 
                 val newType = TypeConfig.Type(name, description)
                 projectConfig = projectConfig.copyWithCategorizationValues(
-                    types = projectConfig.categorization.types.values + newType
+                    types = projectConfig.categorization.type.values + newType
                 )
 
-                projectConfig.categorization.types[name].getGhLabel(gitHubRepo)
+                projectConfig.categorization.type[name].getGhLabel(gitHubRepo)
             }
         }
 
@@ -64,11 +64,11 @@ fun Unicorn.registerTypeCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } }
             ) { name ->
                 if (name != null) {
-                    projectConfig.categorization.types.getOrNull(name)
+                    projectConfig.categorization.type.getOrNull(name)
                         ?.getGhLabel(gitHubRepo)
                         ?: exit("Type \"$name\" was not found")
                 } else {
-                    projectConfig.categorization.types.resolvedValues.forEach {
+                    projectConfig.categorization.type.resolvedValues.forEach {
                         log.i {
                             +"Syncing label "
                             kbd(it.fullName)
@@ -91,16 +91,16 @@ fun Unicorn.registerTypeCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (name !in projectConfig.categorization.types)
+                if (name !in projectConfig.categorization.type)
                     exit("Type \"$name\" was not found")
 
                 val oldConfig = projectConfig
 
                 projectConfig = projectConfig.copyWithCategorizationValues(
-                    types = projectConfig.categorization.types.values.filter { it.name != name }
+                    types = projectConfig.categorization.type.values.filter { it.name != name }
                 )
 
-                val oldLabel = oldConfig.categorization.types[name]
+                val oldLabel = oldConfig.categorization.type[name]
                 if (deleteLabel) oldLabel.getGhLabelOrNull(gitHubRepo)?.delete()
                 else oldLabel.deprecate(gitHubRepo)
             }
