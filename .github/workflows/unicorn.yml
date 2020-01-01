@@ -1,0 +1,20 @@
+name: Unicorn
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - closed
+      - reopened
+      - synchronize
+
+jobs:
+  unicorn:
+    name: Unicorn
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: JonasWanke/unicorn@issue/68-use-github-actions
+        with:
+          repo-token: "${{ secrets.UNICORN_TOKEN }}"

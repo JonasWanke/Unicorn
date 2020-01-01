@@ -95,7 +95,7 @@ data class Report(
             }
             .sortedByDescending { (severity, _) -> severity }
             .mapNotNull { (severity, results) ->
-                if (results == null) return@mapNotNull null
+                if (results == null || results.children.isEmpty()) return@mapNotNull null
 
                 val totalChildCount = results.totalLineCount
                 val title = "$totalChildCount " + when (severity to (totalChildCount == 1)) {
@@ -133,8 +133,9 @@ data class Report(
         }
 
         createAllSections()
-            .map { it.build() }
-            .forEach { +it }
+            .takeIf { it.isNotEmpty() }
+            ?.forEach { +it.build() }
+            ?: +"No issues found"
 
         +SUFFIX
     }.toMarkdownString()

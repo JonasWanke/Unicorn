@@ -6,10 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.ajalt.clikt.core.UsageError
 import com.jonaswanke.unicorn.core.*
 import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.*
-import com.jonaswanke.unicorn.utils.kbd
-import com.jonaswanke.unicorn.utils.lazy
-import com.jonaswanke.unicorn.utils.list
-import com.jonaswanke.unicorn.utils.removePrefix
+import com.jonaswanke.unicorn.utils.*
 import kotlinx.serialization.Serializable
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.transport.CredentialsProvider
@@ -253,21 +250,20 @@ private val PR_ISSUES_REGEX =
     "(?:closed|closes|close|fixed|fixes|fix|resolved|resolves|resolve):?\\s*(#\\d+\\s*(?:,\\s*#\\d+\\s*)*)"
         .toRegex(RegexOption.IGNORE_CASE)
 val GHPullRequest.closedIssues: List<GHIssue>
-    get() = PR_ISSUES_REGEX.findAll(body)
-        .flatMap { result ->
-            result.groups[1]!!.value.splitToSequence(',')
-        }
-        .map { issueIdString ->
-            issueIdString.takeUnless { it.isBlank() }
-                ?.trim()
-                ?.removePrefix("#")
-                ?.toInt()
-        }
-        .filterNotNull()
-        .map { issueId ->
-            repository.getIssue(issueId)
-        }
-        .toList()
+    get() {
+        return PR_ISSUES_REGEX.findAll(body)
+            .flatMap { result ->
+                result.groups[1]!!.value.splitToSequence(',')
+            }
+            .mapNotNull { issueIdString ->
+                issueIdString.takeUnless { it.isBlank() }
+                    ?.trim()
+                    ?.removePrefix("#")
+                    ?.toIntOrNull()
+            }
+            .toSortedSet()
+            .map { repository.getIssue(it) }
+    }
 
 fun Glob.matches(file: GHPullRequestFileDetail): Boolean = matches(file.filename)
 
@@ -282,34 +278,33 @@ fun GHPullRequest.toCommitMessage() = buildString {
 // endregion
 
 // region Label
-private val GHIssue.issuePrString: String
-    get() = if (this is GHPullRequest) "PR" else "issue"
+private val GHIssue.issuePrNumber: String
+    get() = "${if (this is GHPullRequest) "PR" else "issue"} #$number"
 
 fun <V : CategorizationValue> GHIssue.setLabels(
     context: RunContext,
     values: List<Categorization.ResolvedValue<V>>,
     categorization: Categorization<V>
-) = context.group("Setting ${categorization.name}-labels of $issuePrString #$number to ${values.joinToString()}") {
-    // Remove labels from categorization that are no longer wanted
-    labels
-        .filter { it.name.startsWith(categorization.labels.prefix) }
-        .filter { existing -> values.none { it.name == existing.name } }
-        .takeUnless { it.isEmpty() }
-        ?.let {
-            removeLabels(it)
-            if (this is GHPullRequest) refresh()
-            else context.log.w("Updating issue labels is currently buggy")
-        }
+) = context.group("Setting ${categorization.name}-label(s) of $issuePrNumber to ${values.joinToString { it.name }}") {
+    val upToDateInstance = if (this is GHPullRequest) repository.getPullRequest(number) else repository.getIssue(number)
+    val labelsToKeep = upToDateInstance.labels
+        .filter { !it.name.startsWith(categorization.labels.prefix) }
+        .map { it.name }
+    log.d {
+        +"Keeping labels "
+        joined(labelsToKeep) { kbd(it) }
+    }
 
-    // Add new labels
-    values.map { it.getGhLabel(repository) }
-        .filter { new -> labels.none { it.name == new.name } }
-        .takeUnless { it.isEmpty() }
-        ?.let {
-            addLabels(it)
-            if (this is GHPullRequest) refresh()
-            else context.log.w("Updating issue labels is currently buggy")
-        }
+    val additionalLabels = values.map { it.fullName }
+    log.d {
+        +"Adding labels "
+        joined(additionalLabels) { kbd(it) }
+    }
+
+    val labels = (labelsToKeep + additionalLabels).toTypedArray()
+    setLabels(*labels)
+
+    if (this is GHPullRequest) refresh()
 }
 
 fun <V : CategorizationValue> GHIssue.getLabels(
@@ -405,7 +400,7 @@ fun GHRepository.syncComponentLabels(context: RunContext) = context.group("Synci
 fun GHIssue.getPriority(context: RunContext): Int? {
     val labels = getLabels(context, context.projectConfig.categorization.priority)
     if (labels.size > 1) {
-        context.log.w("Multiple priority labels found on $issuePrString #${number}")
+        context.log.w("Multiple priority labels found on $issuePrNumber #${number}")
         return null
     }
     return labels.firstOrNull()
@@ -441,13 +436,13 @@ fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfi
 
     val labels = getLabels(context, context.projectConfig.categorization.type)
     if (labels.size > 1) {
-        context.log.w("Multiple type labels found on $issuePrString #$number")
+        context.log.w("Multiple type labels found on $issuePrNumber")
         return null
     }
     return labels.firstOrNull()?.name?.let {
         context.projectConfig.categorization.type.getOrNull(it)
             ?: {
-                context.log.w("Unknown type $it on $issuePrString #$number")
+                context.log.w("Unknown type $it on $issuePrNumber")
                 null
             }()
     }
