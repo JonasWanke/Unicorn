@@ -8,5 +8,5 @@ RUN gradle actionShadowJar
 FROM openjdk:8-jre-slim
 
 WORKDIR /
-COPY --from=builder /home/src/build/libs/unicorn-all.jar /
-ENTRYPOINT ["java", "-jar", "/unicorn-all.jar"]
+COPY --from=builder /home/src/build/libs/unicorn.jar /
+ENTRYPOINT ["java", "-jar", "/unicorn.jar"]
