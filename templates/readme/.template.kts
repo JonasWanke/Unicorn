@@ -1,0 +1,1 @@
+copy("README.md.ftl")

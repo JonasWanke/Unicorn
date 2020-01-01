@@ -1,23 +1,30 @@
 package com.jonaswanke.unicorn.commands
 
-import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.optional
-import com.github.ajalt.clikt.parameters.options.option
-import kotlin.contracts.ExperimentalContracts
+import com.jonaswanke.unicorn.api.GitHub
+import com.jonaswanke.unicorn.script.Unicorn
+import com.jonaswanke.unicorn.script.command
+import com.jonaswanke.unicorn.script.parameters.argument
+import com.jonaswanke.unicorn.script.parameters.option
+import com.jonaswanke.unicorn.script.parameters.optional
 
-@ExperimentalContracts
-open class Login : BaseCommand() {
-    private val username by argument("username").optional()
-    private val endpoint by option("-e", "--endpoint")
+fun Unicorn.registerLoginLogoutCommands() {
+    command("login") {
+        help = "Login to GitHub"
 
-    override fun run() {
-        githubAuthenticate(true, username = username, endpoint = endpoint)
+        run(
+            argument("username", help = "Your GitHub username")
+                .optional(),
+            option("-e", "--endpoint", help = "Custom GitHub endpoint (when using GitHub Enterprise)")
+        ) { username, endpoint ->
+            GitHub.authenticate(this, true, username = username, endpoint = endpoint)
+        }
     }
-}
 
-@ExperimentalContracts
-open class Logout : BaseCommand() {
-    override fun run() {
-        globalConfig = globalConfig.copy(github = null)
+    command("logout") {
+        help = "Logout from GitHub (delete stored credentials)"
+
+        run {
+            globalConfig = globalConfig.copy(gitHub = null)
+        }
     }
 }
