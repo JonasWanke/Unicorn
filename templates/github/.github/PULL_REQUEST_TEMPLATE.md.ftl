@@ -2,7 +2,7 @@
 
 <!--
 - The name of this PR should follow conventionalcommits.org.
-- When not using Unicorn to create PRs, please manually select a type (${project.labels.types.prefix}abc) and a component (${project.labels.components.prefix}abc) label
+- When not using Unicorn to create PRs, please manually select a type (${project.categorization.type.labels.prefix}abc) and a component (${project.categorization.component.labels.prefix}abc) label
   from the right. Add the breaking label (PR: BREAKING) if applicable.
 - Please enter the corresponding issue ID in the placeholder above.
 -->

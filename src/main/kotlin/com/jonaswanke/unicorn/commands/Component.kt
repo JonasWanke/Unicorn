@@ -1,15 +1,11 @@
 package com.jonaswanke.unicorn.commands
 
-import com.jonaswanke.unicorn.api.deprecate
-import com.jonaswanke.unicorn.api.getGhLabel
-import com.jonaswanke.unicorn.api.getGhLabelOrNull
-import com.jonaswanke.unicorn.api.gitHubRepo
+import com.jonaswanke.unicorn.api.*
 import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.ComponentConfig
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
 import com.jonaswanke.unicorn.utils.bold
-import com.jonaswanke.unicorn.utils.kbd
 import com.jonaswanke.unicorn.utils.line
 import com.jonaswanke.unicorn.utils.list
 
@@ -69,15 +65,7 @@ fun Unicorn.registerComponentCommands() {
                     projectConfig.categorization.component.getOrNull(name)
                         ?.getGhLabel(gitHubRepo)
                         ?: exit("Component \"$name\" was not found")
-                } else {
-                    projectConfig.categorization.component.resolvedValues.forEach {
-                        log.i {
-                            +"Syncing label "
-                            kbd(it.fullName)
-                        }
-                        it.getGhLabel(gitHubRepo)
-                    }
-                }
+                } else gitHubRepo.syncComponentLabels(this)
             }
         }
 

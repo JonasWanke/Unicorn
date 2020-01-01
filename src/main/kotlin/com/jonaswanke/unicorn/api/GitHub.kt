@@ -329,71 +329,6 @@ fun <V : CategorizationValue> GHIssue.getLabels(
         }
 }
 
-
-fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfig.Type>? {
-    if (this is GHPullRequest)
-        ConventionalCommit.tryParse(title)
-            ?.takeIf { it.isValid(context) }
-            ?.let { return it.resolveType(context) }
-
-    val labels = getLabels(context, context.projectConfig.categorization.type)
-    if (labels.size > 1) {
-        context.log.w("Multiple type labels found on $issuePrString #$number")
-        return null
-    }
-    return labels.firstOrNull()?.name?.let {
-        context.projectConfig.categorization.type.getOrNull(it)
-            ?: {
-                context.log.w("Unknown type $it on $issuePrString #$number")
-                null
-            }()
-    }
-}
-
-fun GHIssue.setType(context: RunContext, type: Categorization.ResolvedValue<TypeConfig.Type>) {
-    setLabels(context, listOf(type), context.projectConfig.categorization.type)
-}
-
-fun GHIssue.getComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
-    return if (this is GHPullRequest) {
-        context.projectConfig.categorization.component.resolvedValues
-            .associateWith { component -> component.value.paths.map { Glob(it) } }
-            .filter { (_, matchers) ->
-                listFiles().any { file ->
-                    matchers.any { it.matches(file) }
-                }
-            }
-            .map { (component, _) -> component }
-    } else getLabels(context, context.projectConfig.categorization.component)
-}
-
-fun GHIssue.setComponents(
-    context: RunContext,
-    components: List<Categorization.ResolvedValue<ComponentConfig.Component>>
-) {
-    setLabels(context, components, context.projectConfig.categorization.component)
-}
-
-fun GHIssue.getPriority(context: RunContext): Int? {
-    val labels = getLabels(context, context.projectConfig.categorization.priority)
-    if (labels.size > 1) {
-        context.log.w("Multiple priority labels found on $issuePrString #${number}")
-        return null
-    }
-    return labels.firstOrNull()
-        ?.let { context.projectConfig.categorization.priority.resolvedValues.indexOf(it) }
-}
-
-fun GHIssue.setPriority(context: RunContext, priority: Int) {
-    val priorities = context.projectConfig.categorization.priority
-    if (priority !in priorities.resolvedValues.indices) {
-        context.log.w("Invalid priority index: $priority")
-        return
-    }
-    setLabels(context, listOf(priorities.resolvedValues[priority]), priorities)
-}
-
-
 fun GHRepository.createLabelIfNotExists(name: String, color: String, description: String? = null): GHLabel? {
     return try {
         createLabel(name, color, description ?: "")
@@ -404,7 +339,7 @@ fun GHRepository.createLabelIfNotExists(name: String, color: String, description
     }
 }
 
-
+// region Categorization
 fun <V : CategorizationValue> Categorization.ResolvedValue<V>.getGhLabel(repo: GHRepository): GHLabel {
     return getGhLabelOrNull(repo) ?: repo.createLabel(fullName, color, fullDescription)
 }
@@ -432,6 +367,106 @@ fun <V : CategorizationValue> Categorization.ResolvedValue<V>.deprecate(repo: GH
     }
     label.description = description
 }
+// endregion
+
+// region Component
+fun GHIssue.getComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
+    return if (this is GHPullRequest) {
+        context.projectConfig.categorization.component.resolvedValues
+            .associateWith { component -> component.value.paths.map { Glob(it) } }
+            .filter { (_, matchers) ->
+                listFiles().any { file ->
+                    matchers.any { it.matches(file) }
+                }
+            }
+            .map { (component, _) -> component }
+    } else getLabels(context, context.projectConfig.categorization.component)
+}
+
+fun GHIssue.setComponents(
+    context: RunContext,
+    components: List<Categorization.ResolvedValue<ComponentConfig.Component>>
+) {
+    setLabels(context, components, context.projectConfig.categorization.component)
+}
+
+fun GHRepository.syncComponentLabels(context: RunContext) = context.group("Syncing component labels") {
+    projectConfig.categorization.component.resolvedValues.forEach {
+        log.i {
+            +"Syncing label "
+            kbd(it.fullName)
+        }
+        it.getGhLabel(this@syncComponentLabels)
+    }
+}
+// endregion
+
+// region Priority
+fun GHIssue.getPriority(context: RunContext): Int? {
+    val labels = getLabels(context, context.projectConfig.categorization.priority)
+    if (labels.size > 1) {
+        context.log.w("Multiple priority labels found on $issuePrString #${number}")
+        return null
+    }
+    return labels.firstOrNull()
+        ?.let { context.projectConfig.categorization.priority.resolvedValues.indexOf(it) }
+}
+
+fun GHIssue.setPriority(context: RunContext, priority: Int) {
+    val priorities = context.projectConfig.categorization.priority
+    if (priority !in priorities.resolvedValues.indices) {
+        context.log.w("Invalid priority index: $priority")
+        return
+    }
+    setLabels(context, listOf(priorities.resolvedValues[priority]), priorities)
+}
+
+fun GHRepository.syncPriorityLabels(context: RunContext) = context.group("Syncing priority labels") {
+    projectConfig.categorization.priority.resolvedValues.forEach {
+        log.i {
+            +"Syncing label "
+            kbd(it.fullName)
+        }
+        it.getGhLabel(this@syncPriorityLabels)
+    }
+}
+// endregion
+
+// region Type
+fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfig.Type>? {
+    if (this is GHPullRequest)
+        ConventionalCommit.tryParse(title)
+            ?.takeIf { it.isValid(context) }
+            ?.let { return it.resolveType(context) }
+
+    val labels = getLabels(context, context.projectConfig.categorization.type)
+    if (labels.size > 1) {
+        context.log.w("Multiple type labels found on $issuePrString #$number")
+        return null
+    }
+    return labels.firstOrNull()?.name?.let {
+        context.projectConfig.categorization.type.getOrNull(it)
+            ?: {
+                context.log.w("Unknown type $it on $issuePrString #$number")
+                null
+            }()
+    }
+}
+
+fun GHIssue.setType(context: RunContext, type: Categorization.ResolvedValue<TypeConfig.Type>) {
+    setLabels(context, listOf(type), context.projectConfig.categorization.type)
+}
+
+fun GHRepository.syncTypeLabels(context: RunContext) = context.group("Syncing type labels") {
+    projectConfig.categorization.type.resolvedValues.forEach {
+        log.i {
+            +"Syncing label "
+            kbd(it.fullName)
+        }
+        it.getGhLabel(this@syncTypeLabels)
+    }
+}
+// endregion
 // endregion
 
 // region Release

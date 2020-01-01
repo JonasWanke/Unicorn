@@ -2,14 +2,14 @@
 name: "\U0001F41E Bug report"
 about: Create a report to help us improve
 title: ''
-labels: '${project.labels.types.prefix}${project.types.fix}'
+labels: '${project.categorization.type.labels.prefix}fix'
 assignees: ''
 
 ---
 
 <!--
 Thanks for taking the time to file an issue!
-Please select the component label (${project.labels.types.prefix}abc) this bug is related to from the right.
+Please select the component label (${project.categorization.component.labels.prefix}abc) this bug is related to from the right (if applicable).
 -->
 
 **Describe the bug**
