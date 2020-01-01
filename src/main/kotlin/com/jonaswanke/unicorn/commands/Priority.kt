@@ -1,15 +1,11 @@
 package com.jonaswanke.unicorn.commands
 
-import com.jonaswanke.unicorn.api.deprecate
-import com.jonaswanke.unicorn.api.getGhLabel
-import com.jonaswanke.unicorn.api.getGhLabelOrNull
-import com.jonaswanke.unicorn.api.gitHubRepo
+import com.jonaswanke.unicorn.api.*
 import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.PriorityConfig
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
 import com.jonaswanke.unicorn.utils.bold
-import com.jonaswanke.unicorn.utils.kbd
 import com.jonaswanke.unicorn.utils.line
 import com.jonaswanke.unicorn.utils.list
 
@@ -74,15 +70,7 @@ fun Unicorn.registerPriorityCommands() {
                     projectConfig.categorization.priority.getOrNull(name)
                         ?.getGhLabel(gitHubRepo)
                         ?: exit("Priority \"$name\" was not found")
-                } else {
-                    projectConfig.categorization.priority.resolvedValues.forEach {
-                        log.i {
-                            +"Syncing label "
-                            kbd(it.name)
-                        }
-                        it.getGhLabel(gitHubRepo)
-                    }
-                }
+                } else gitHubRepo.syncPriorityLabels(this)
             }
         }
 

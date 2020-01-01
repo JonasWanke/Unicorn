@@ -4,6 +4,7 @@ copyDir(".github")
 val COLOR_GRAY = "cfd3d7"
 val COLOR_PURPLE = "d876e3"
 val COLOR_RED = "ff1744"
+
 data class Label(
     val name: String,
     val description: String? = null,
@@ -22,3 +23,7 @@ val labels = listOf(
 labels.forEach {
     gitHubRepo.createLabel(it.name, it.color, it.description)
 }
+
+gitHubRepo.syncComponentLabels(this)
+gitHubRepo.syncPriorityLabels(this)
+gitHubRepo.syncTypeLabels(this)
