@@ -82,6 +82,7 @@ distributions {
 }
 
 task actionShadowJar(type: Jar, dependsOn: shadowJar) {
+    archiveName = "unicorn-action.jar"
     manifest {
         attributes["Main-Class"] = "com.jonaswanke.unicorn.action.MainKt"
     }
