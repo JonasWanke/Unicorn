@@ -1,6 +1,6 @@
-name: 'Unicorn'
+name: 'Unicorn Action'
 author: 'Jonas Wanke <contact@wanke.dev>'
-description: 'Check your PRs with Unicorn'
+description: 'Check your PRs with 🦄 Unicorn'
 inputs:
   repo-token:
     description: 'The GITHUB_TOKEN secret'
