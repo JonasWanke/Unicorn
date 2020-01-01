@@ -1,8 +1,8 @@
-unicornVersion: "0.0.2"
+unicornVersion: "0.1.0"
 name: "Unicorn"
 description: "\U0001f984 A tool to create, work on, test and deploy projects."
 license: null
-version: "0.0.2"
+version: "0.1.0"
 categorization:
   component:
     values:
