@@ -13,9 +13,6 @@ import com.jonaswanke.unicorn.script.parameters.optional
 import com.jonaswanke.unicorn.template.Template
 import com.jonaswanke.unicorn.utils.bold
 import com.jonaswanke.unicorn.utils.italic
-import com.jonaswanke.unicorn.utils.readConfig
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.internal.ArrayListSerializer
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.transport.URIish
@@ -80,24 +77,26 @@ fun Unicorn.registerCreateCommand() {
                     }
                 }
 
-            createFiles(
-                initInExisting,
-                ProjectConfig(
-                    unicornVersion = ProgramConfig.VERSION,
-                    name = name,
-                    description = description,
-                    license = license,
-                    version = version
-                ),
-                rawTemplate
+            if (!initInExisting) {
+                log.i("Creating directory")
+                projectDir.mkdirs()
+            }
+
+            log.i("Saving project config")
+            projectConfig = ProjectConfig(
+                unicornVersion = ProgramConfig.VERSION,
+                name = name,
+                description = description,
+                license = license,
+                version = version
             )
 
             initGit()
+            if (repo == null) initGitHub()
 
-            if (repo == null) {
-                initGitHub()
-                configureGithub()
-            }
+            applyTemplate(rawTemplate)
+
+            upload()
         }
     }
 }
@@ -125,32 +124,9 @@ private fun RunContext.checkProjectDir(initInExisting: Boolean, name: String) {
     }
 }
 
-private fun InteractiveRunContext.createFiles(
-    initInExisting: Boolean,
-    config: ProjectConfig,
-    rawTemplate: String?
-) = group("Creating files") {
-    if (!initInExisting) {
-        log.i("Creating directory")
-        projectDir.mkdirs()
-    }
-
-    log.i("Saving project config")
-    projectConfig = config
-
-    val templateName = rawTemplate
-        ?: prompt("Please choose a template", "base") {
-            if (!Template.exists(it)) throw NoSuchOption(it, Template.getAllTemplateNames())
-            it
-        }
-    group("Copying templates") {
-        Template.getByName(this, templateName).apply(this)
-    }
-}
-
 private const val GIT_GITIGNORE_FILE = ".gitignore"
 private fun InteractiveRunContext.initGit() = group("Initializing git") {
-    if (!fileExists(GIT_GITIGNORE_FILE)) {
+    if (!File(projectDir, GIT_GITIGNORE_FILE).exists()) {
         val gitignore = promptOptional(
             "Please enter the .gitignore-template names from www.gitignore.io to use (comma-separated)"
         ) { input ->
@@ -169,16 +145,14 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
     }
 
     if (!Git.isInitializedIn(projectDir))
-        Git.init(projectDir).also {
-            it.add(this, ".")
-            // Doesn't make sense to look up the type in ProjectConfig as that was just created by us and couldn't be changed yet by the user
-            it.commit(this, "chore", description = "initial commit")
-
-            it.checkout(this, it.flow.devBranch.name, createBranch = true)
-        }
+        Git.init(projectDir)
 }
 
-private fun InteractiveRunContext.initGitHub() = group("Uploading project to GitHub") {
+fun RunContext.a() = group("") {
+    data class A(val a: String)
+}
+
+private fun InteractiveRunContext.initGitHub() = group("Configuring GitHub") {
     log.i("Creating repository")
 
     val organization = promptOptional<GHOrganization>(
@@ -224,29 +198,37 @@ private fun InteractiveRunContext.initGitHub() = group("Uploading project to Git
             create(false)
         }
 
-    log.i("Uploading")
+    log.i("Deleting default labels")
+    repo.listLabels().forEach { it.delete() }
+
     git.addRemote(this, Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
     git.trackBranch(this, git.flow.masterBranch.name)
     git.trackBranch(this, git.flow.devBranch.name)
-    git.push(this, pushAllBranches = true, force = true)
 }
 
-private fun RunContext.configureGithub() = group("Configuring GitHub repo") {
-    // Labels
-    log.i("Creating labels")
-    gitHubRepo.listLabels().forEach { it.delete() }
 
-    javaClass.getResourceAsStream("/config/github-labels.yaml")
-        .readConfig(ArrayListSerializer(Label.serializer()))
-        .forEach {
-            gitHubRepo.createLabel(it.name, it.color)
+private fun InteractiveRunContext.applyTemplate(rawTemplate: String?) = group("Applying template") {
+    val templateName = rawTemplate
+        ?: prompt("Please choose a template", "base") {
+            if (!Template.exists(it)) throw NoSuchOption(it, Template.getAllTemplateNames())
+            it
         }
+    Template.getByName(this, templateName).apply(this)
+}
 
-    // Default branch
+
+private fun RunContext.upload() = group("Commit and upload") {
+    git.add(this, ".")
+    // Doesn't make sense to look up the type in ProjectConfig as that was just created by us and couldn't be changed yet by the user
+    git.commit(this, "chore", description = "initial commit")
+
+    git.checkout(this, git.flow.devBranch.name, createBranch = true)
+    git.push(this, pushAllBranches = true, force = true)
+
+
     log.i("Setting ${git.flow.devBranch.name} as default branch")
     gitHubRepo.defaultBranch = git.flow.devBranch.name
 
-    // Branch protection
     log.i("Setting up branch protection")
     gitHubRepo.apply {
         for (branch in listOf(getBranch(git.flow.masterBranch.name), getBranch(git.flow.devBranch.name)))
@@ -255,11 +237,4 @@ private fun RunContext.configureGithub() = group("Configuring GitHub repo") {
                 .includeAdmins(false)
                 .enable()
     }
-}
-
-@Serializable
-private data class Label(val name: String, val color: String)
-
-private fun RunContext.fileExists(fileName: String): Boolean {
-    return File(projectDir, fileName).exists()
 }

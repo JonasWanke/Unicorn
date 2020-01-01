@@ -1,1 +1,0 @@
-copyDir(".github")
