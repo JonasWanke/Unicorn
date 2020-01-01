@@ -1,8 +1,10 @@
 package com.jonaswanke.unicorn.commands
 
-import com.jonaswanke.unicorn.api.Label
+import com.jonaswanke.unicorn.api.deprecate
+import com.jonaswanke.unicorn.api.getGhLabel
+import com.jonaswanke.unicorn.api.getGhLabelOrNull
 import com.jonaswanke.unicorn.api.gitHubRepo
-import com.jonaswanke.unicorn.core.ProjectConfig
+import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.ComponentConfig
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
@@ -21,7 +23,7 @@ fun Unicorn.registerComponentCommands() {
             run {
                 log.i {
                     list {
-                        projectConfig.components.forEach { component ->
+                        projectConfig.categorization.components.values.forEach { component ->
                             line {
                                 bold(component.name)
                                 if (component.description != null)
@@ -43,14 +45,15 @@ fun Unicorn.registerComponentCommands() {
                 option("-p", "--path", help = "Paths to e.g. detect components in PR changes (supports glob)")
                     .multiple()
             ) { name, description, paths ->
-                if (projectConfig.components.any { it.name == name })
+                if (name in projectConfig.categorization.components)
                     exit("A component called \"$name\" already exists")
 
-                val newComponent = ProjectConfig.Component(name, description, paths)
-                projectConfig = projectConfig.copy(
-                    components = (projectConfig.components + newComponent).sortedBy { it.name }
+                val newComponent = ComponentConfig.Component(name, description, paths)
+                projectConfig = projectConfig.copyWithCategorizationValues(
+                    components = projectConfig.categorization.components.values + newComponent
                 )
-                projectConfig.componentsLabelGroup[name]!!.get(gitHubRepo)
+
+                projectConfig.categorization.components[name].getGhLabel(gitHubRepo)
             }
         }
 
@@ -63,17 +66,16 @@ fun Unicorn.registerComponentCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } }
             ) { name ->
                 if (name != null) {
-                    if (projectConfig.components.none { it.name == name })
-                        exit("Component \"$name\" was not found")
-
-                    projectConfig.componentsLabelGroup[name]!!.get(gitHubRepo)
+                    projectConfig.categorization.components.getOrNull(name)
+                        ?.getGhLabel(gitHubRepo)
+                        ?: exit("Component \"$name\" was not found")
                 } else {
-                    projectConfig.componentsLabelGroup.instances.forEach {
+                    projectConfig.categorization.components.resolvedValues.forEach {
                         log.i {
                             +"Syncing label "
-                            kbd(it.name)
+                            kbd(it.fullName)
                         }
-                        it.get(gitHubRepo)
+                        it.getGhLabel(gitHubRepo)
                     }
                 }
             }
@@ -91,17 +93,17 @@ fun Unicorn.registerComponentCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (projectConfig.components.none { it.name == name })
+                if (name !in projectConfig.categorization.components)
                     exit("Component \"$name\" was not found")
 
                 val oldConfig = projectConfig
 
-                projectConfig = projectConfig.copy(
-                    components = projectConfig.components.filter { it.name != name }
+                projectConfig = projectConfig.copyWithCategorizationValues(
+                    components = projectConfig.categorization.components.values.filter { it.name != name }
                 )
 
-                val oldLabel = oldConfig.componentsLabelGroup[name]!!
-                if (deleteLabel) oldLabel.getOrNull(gitHubRepo)?.delete()
+                val oldLabel = oldConfig.categorization.components[name]
+                if (deleteLabel) oldLabel.getGhLabelOrNull(gitHubRepo)?.delete()
                 else oldLabel.deprecate(gitHubRepo)
             }
         }

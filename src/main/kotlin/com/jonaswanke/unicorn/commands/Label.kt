@@ -2,7 +2,6 @@ package com.jonaswanke.unicorn.commands
 
 import com.jonaswanke.unicorn.api.createLabelIfNotExists
 import com.jonaswanke.unicorn.api.gitHubRepo
-import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
@@ -42,25 +41,6 @@ internal fun Unicorn.registerLabelCommands() {
                     +"Created label "
                     kbd(label.name)
                     +" with color #${label.color}"
-                }
-            }
-        }
-
-        command("sync", "s") {
-            help = "Creates all missing type, component and priority labels"
-
-            run {
-                val labels = with(projectConfig) {
-                    typeLabelGroup.instances + componentsLabelGroup.instances + priorityLabelGroup.instances
-                }
-                group("Syncing labels:") {
-                    labels.forEach {
-                        log.i {
-                            kbd(it.name)
-                            +": ${it.description} (#${it.color})"
-                        }
-                        it.get(gitHubRepo)
-                    }
                 }
             }
         }

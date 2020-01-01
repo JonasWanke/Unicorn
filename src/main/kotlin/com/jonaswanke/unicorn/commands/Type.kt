@@ -1,7 +1,10 @@
 package com.jonaswanke.unicorn.commands
 
+import com.jonaswanke.unicorn.api.deprecate
+import com.jonaswanke.unicorn.api.getGhLabel
+import com.jonaswanke.unicorn.api.getGhLabelOrNull
 import com.jonaswanke.unicorn.api.gitHubRepo
-import com.jonaswanke.unicorn.core.ProjectConfig
+import com.jonaswanke.unicorn.core.ProjectConfig.CategorizationConfig.TypeConfig
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.*
@@ -20,7 +23,7 @@ fun Unicorn.registerTypeCommands() {
             run {
                 log.i {
                     list {
-                        projectConfig.types.list.forEach { type ->
+                        projectConfig.categorization.types.values.forEach { type ->
                             line {
                                 bold(type.name)
                                 if (type.description != null)
@@ -40,16 +43,15 @@ fun Unicorn.registerTypeCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } },
                 option("-d", "--desc", "--description", help = "An optional description")
             ) { name, description ->
-                if (projectConfig.types.list.any { it.name == name })
+                if (name in projectConfig.categorization.types)
                     exit("A type called \"$name\" already exists")
 
-                val newType = ProjectConfig.Types.Type(name, description)
-                projectConfig = projectConfig.copy(
-                    types = projectConfig.types.copy(
-                        list = (projectConfig.types.list + newType).sortedBy { it.name }
-                    )
+                val newType = TypeConfig.Type(name, description)
+                projectConfig = projectConfig.copyWithCategorizationValues(
+                    types = projectConfig.categorization.types.values + newType
                 )
-                projectConfig.typeLabelGroup[name]!!.get(gitHubRepo)
+
+                projectConfig.categorization.types[name].getGhLabel(gitHubRepo)
             }
         }
 
@@ -62,17 +64,16 @@ fun Unicorn.registerTypeCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } }
             ) { name ->
                 if (name != null) {
-                    if (projectConfig.types.list.none { it.name == name })
-                        exit("Type \"$name\" was not found")
-
-                    projectConfig.typeLabelGroup[name]!!.get(gitHubRepo)
+                    projectConfig.categorization.types.getOrNull(name)
+                        ?.getGhLabel(gitHubRepo)
+                        ?: exit("Type \"$name\" was not found")
                 } else {
-                    projectConfig.typeLabelGroup.instances.forEach {
+                    projectConfig.categorization.types.resolvedValues.forEach {
                         log.i {
                             +"Syncing label "
-                            kbd(it.name)
+                            kbd(it.fullName)
                         }
-                        it.get(gitHubRepo)
+                        it.getGhLabel(gitHubRepo)
                     }
                 }
             }
@@ -90,19 +91,17 @@ fun Unicorn.registerTypeCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (projectConfig.types.list.none { it.name == name })
+                if (name !in projectConfig.categorization.types)
                     exit("Type \"$name\" was not found")
 
                 val oldConfig = projectConfig
 
-                projectConfig = projectConfig.copy(
-                    types = projectConfig.types.copy(
-                        list = projectConfig.types.list.filter { it.name != name }
-                    )
+                projectConfig = projectConfig.copyWithCategorizationValues(
+                    types = projectConfig.categorization.types.values.filter { it.name != name }
                 )
 
-                val oldLabel = oldConfig.typeLabelGroup[name]!!
-                if (deleteLabel) oldLabel.getOrNull(gitHubRepo)?.delete()
+                val oldLabel = oldConfig.categorization.types[name]
+                if (deleteLabel) oldLabel.getGhLabelOrNull(gitHubRepo)?.delete()
                 else oldLabel.deprecate(gitHubRepo)
             }
         }
