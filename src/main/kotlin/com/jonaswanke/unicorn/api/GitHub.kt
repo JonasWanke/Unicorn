@@ -286,10 +286,9 @@ fun <V : CategorizationValue> GHIssue.setLabels(
     context: RunContext,
     values: List<Categorization.ResolvedValue<V>>,
     categorization: Categorization<V>
-) = context.group("Setting ${categorization.name}-labels of $issuePrNumber to ${values.joinToString { it.name }}") {
-    log.i("Setting ${categorization.name}-labels of $issuePrNumber to ${values.joinToString { it.name }}")
-
-    val labelsToKeep = labels
+) = context.group("Setting ${categorization.name}-label(s) of $issuePrNumber to ${values.joinToString { it.name }}") {
+    val upToDateInstance = if (this is GHPullRequest) repository.getPullRequest(number) else repository.getIssue(number)
+    val labelsToKeep = upToDateInstance.labels
         .filter { !it.name.startsWith(categorization.labels.prefix) }
         .map { it.name }
     log.d {
@@ -307,7 +306,6 @@ fun <V : CategorizationValue> GHIssue.setLabels(
     setLabels(*labels)
 
     if (this is GHPullRequest) refresh()
-    else context.log.w("Updating issue labels is currently buggy")
 }
 
 fun <V : CategorizationValue> GHIssue.getLabels(
