@@ -1,6 +1,22 @@
-copyDir(".github")
+// Templates
+copyDir(".github/ISSUE_TEMPLATE")
+copy(".github/PULL_REQUEST_TEMPLATE.md.ftl")
 
 
+// Sponsors
+val generateFunding = confirm("Generate FUNDING.yaml to display repo sponsor possibilities?", default = false)
+if (generateFunding) {
+    variables["gitHubSponsorsAccount"] = gitHubRepo.owner.login
+    copy(".github/FUNDING.yml.ftl")
+    log.i {
+        bold("NOTE:")
+        +" In order to display a \"Sponsor\"-button, you need to manually activate \"Sponsorships\" in " +
+                "the repository settings."
+    }
+}
+
+
+// Labels
 val COLOR_GRAY = "cfd3d7"
 val COLOR_PURPLE = "d876e3"
 val COLOR_RED = "ff1744"
