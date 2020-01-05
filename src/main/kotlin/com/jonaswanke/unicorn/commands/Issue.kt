@@ -20,8 +20,13 @@ internal fun Unicorn.registerIssueCommands() {
                     "-a", "--assignee",
                     help = "GitHub usernames of people that are working on this issue with you (added as assignees to the issue)"
                 )
-                    .multiple()
-            ) { id, assignees ->
+                    .multiple(),
+                option(
+                    "-i", "--allow-issue-base",
+                    help = "Allow branching the new branch off of an issue branch"
+                )
+                    .flag()
+            ) { id, assignees, allowIssueBase ->
                 val issue = gitHubRepo.getIssue(id)
 
                 val assigneeAccounts = assignees.map {
@@ -31,7 +36,10 @@ internal fun Unicorn.registerIssueCommands() {
 
                 issue.assignTo(this, listOf(gitHub.api.myself) + assigneeAccounts, throwIfAlreadyAssigned = true)
 
-                git.flow.createIssueBranch(this, issue)
+                git.flow.createIssueBranch(
+                    this, issue,
+                    allowIssueBase = if (allowIssueBase) true else null
+                )
             }
         }
 
@@ -43,7 +51,7 @@ internal fun Unicorn.registerIssueCommands() {
             ) { description ->
                 git.push(this)
 
-                val branch = git.flow.currentBranch(this, gitHub) as? Git.Flow.IssueBranch
+                val branch = git.flow.currentBranch(this) as? Git.Flow.IssueBranch
                     ?: exit("Current branch \"${git.currentBranchName}\" is not an issue branch")
 
                 val issue = branch.issue

@@ -1,8 +1,10 @@
 package com.jonaswanke.unicorn.api
 
+import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.utils.code
+import com.jonaswanke.unicorn.utils.italic
 import net.swiftzer.semver.SemVer
 import org.eclipse.jgit.api.GitCommand
 import org.eclipse.jgit.api.TransportCommand
@@ -13,6 +15,7 @@ import org.eclipse.jgit.lib.RepositoryBuilder
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
 import org.kohsuke.github.GHIssue
+import org.kohsuke.github.GHRepository
 import java.io.File
 import org.eclipse.jgit.api.Git as ApiGit
 
@@ -150,7 +153,6 @@ class Git(val directory: File) {
     class Flow(val git: Git) {
         companion object {
             private const val BRANCH_MASTER_NAME = "master"
-            private const val BRANCH_DEV_NAME = "dev"
             const val BRANCH_ISSUE_PREFIX = "issue/"
             const val BRANCH_RELEASE_PREFIX = "release/"
             const val BRANCH_HOTFIX_PREFIX = "hotfix/"
@@ -162,21 +164,18 @@ class Git(val directory: File) {
 
         val masterBranch = MasterBranch(git)
 
-        class DevBranch(git: Git) : Branch(git, BRANCH_DEV_NAME)
 
-        val devBranch = Branch(git, BRANCH_DEV_NAME)
-
-        fun currentBranch(context: RunContext, gitHub: GitHub): Branch {
+        fun currentBranch(context: RunContext, gitHubRepo: GHRepository = context.gitHubRepo): Branch {
             val name = git.currentBranchName
             return when {
                 name == BRANCH_MASTER_NAME -> masterBranch
-                name == BRANCH_DEV_NAME -> devBranch
-                name.startsWith(BRANCH_ISSUE_PREFIX) -> issueIdFromBranchName(name)
-                    .let { gitHub.currentRepo(context).getIssue(it) }
-                    .let { IssueBranch(git, it) }
+                name.startsWith(BRANCH_ISSUE_PREFIX) -> IssueBranch(
+                    git,
+                    gitHubRepo.getIssue(issueIdFromBranchName(name))
+                )
                 name.startsWith(BRANCH_RELEASE_PREFIX) -> ReleaseBranch(git, releaseVersionFromBranchName(name))
                 name.startsWith(BRANCH_ISSUE_PREFIX) -> HotfixBranch(git, hotfixVersionFromBranchName(name))
-                else -> devBranch
+                else -> masterBranch
             }
         }
 
@@ -188,11 +187,36 @@ class Git(val directory: File) {
         // region Issue
         class IssueBranch(git: Git, val issue: GHIssue) : Branch(git, git.flow.branchNameFromIssue(issue))
 
-        fun createIssueBranch(context: RunContext, issue: GHIssue): IssueBranch =
-            context.group("Git Flow: create issue branch for #${issue.number}") {
-                git.createBranch(context, branchNameFromIssue(issue), base = devBranch.name)
-                IssueBranch(git, issue)
+        fun createIssueBranch(
+            context: RunContext,
+            issue: GHIssue,
+            gitHubRepo: GHRepository = context.gitHubRepo,
+            allowIssueBase: Boolean? = null
+        ): IssueBranch = context.group("Git Flow: create issue branch for #${issue.number}") {
+            val current = currentBranch(context, gitHubRepo)
+            val base = when {
+                current is MasterBranch -> current
+                current is IssueBranch && allowIssueBase == true -> current
+                current is IssueBranch && allowIssueBase == null && this is InteractiveRunContext -> {
+                    if (confirm("Base new branch on branch for issue #${current.issue.number}: ${current.issue.title}? (No for master branch)"))
+                        current
+                    else masterBranch
+                }
+                current is IssueBranch -> exit {
+                    +"You're already on an issue branch ("
+                    italic(current.name)
+                    +") and basing this new issue branch on an old issue branch was not explicitly allowed."
+                }
+                else -> exit {
+                    +"Current branch "
+                    italic(current.name)
+                    +" is neither $BRANCH_MASTER_NAME nor an issue branch and hence cannot be used as the base for a new issue branch."
+                }
             }
+
+            git.createBranch(context, branchNameFromIssue(issue), base = base.name)
+            IssueBranch(git, issue)
+        }
 
         fun branchNameFromIssue(issue: GHIssue): String {
             return issue.title
@@ -220,7 +244,7 @@ class Git(val directory: File) {
                     "version must be greater than the current version (${context.projectConfig.version}), was $version"
                 }
 
-                git.createBranch(context, branchNameFromRelease(version), base = devBranch.name)
+                git.createBranch(context, branchNameFromRelease(version), base = masterBranch.name)
                 ReleaseBranch(git, version)
             }
 
