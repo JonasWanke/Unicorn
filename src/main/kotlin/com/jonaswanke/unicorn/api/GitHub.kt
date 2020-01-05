@@ -223,7 +223,7 @@ fun GHIssue.openPullRequest(
     git: Git = context.git,
     assignees: List<String> = listOf(GitHub.authenticate(context).api.myself.login),
     labels: List<String> = getLabels().map { it.name },
-    milestone: String? = this.milestone.title,
+    milestone: String? = this.milestone?.title,
     base: String? = null
 ) {
     fun String.encode() = URLEncoder.encode(this, "UTF-8")
