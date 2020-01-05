@@ -51,7 +51,7 @@ internal fun Unicorn.registerIssueCommands() {
             ) { description ->
                 git.push(this)
 
-                val branch = git.flow.currentBranch(this, gitHub) as? Git.Flow.IssueBranch
+                val branch = git.flow.currentBranch(this) as? Git.Flow.IssueBranch
                     ?: exit("Current branch \"${git.currentBranchName}\" is not an issue branch")
 
                 val issue = branch.issue

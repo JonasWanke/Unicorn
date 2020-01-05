@@ -148,10 +148,6 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
         Git.init(projectDir)
 }
 
-fun RunContext.a() = group("") {
-    data class A(val a: String)
-}
-
 private fun InteractiveRunContext.initGitHub() = group("Configuring GitHub") {
     log.i("Creating repository")
 
@@ -203,7 +199,6 @@ private fun InteractiveRunContext.initGitHub() = group("Configuring GitHub") {
 
     git.addRemote(this, Constants.DEFAULT_REMOTE_NAME, URIish(repo.httpTransportUrl))
     git.trackBranch(this, git.flow.masterBranch.name)
-    git.trackBranch(this, git.flow.devBranch.name)
 }
 
 
@@ -222,19 +217,17 @@ private fun RunContext.upload() = group("Commit and upload") {
     // Doesn't make sense to look up the type in ProjectConfig as that was just created by us and couldn't be changed yet by the user
     git.commit(this, "chore", description = "initial commit")
 
-    git.checkout(this, git.flow.devBranch.name, createBranch = true)
+    git.checkout(this, git.flow.masterBranch.name, createBranch = true)
     git.push(this, pushAllBranches = true, force = true)
 
 
-    log.i("Setting ${git.flow.devBranch.name} as default branch")
-    gitHubRepo.defaultBranch = git.flow.devBranch.name
+    log.i("Setting ${git.flow.masterBranch.name} as default branch")
+    gitHubRepo.defaultBranch = git.flow.masterBranch.name
 
     log.i("Setting up branch protection")
-    gitHubRepo.apply {
-        for (branch in listOf(getBranch(git.flow.masterBranch.name), getBranch(git.flow.devBranch.name)))
-            branch.enableProtection()
-                .requiredReviewers(1)
-                .includeAdmins(false)
-                .enable()
-    }
+    gitHubRepo.getBranch(git.flow.masterBranch.name)
+        .enableProtection()
+        .requiredReviewers(1)
+        .includeAdmins(false)
+        .enable()
 }
