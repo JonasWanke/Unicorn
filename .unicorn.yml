@@ -26,8 +26,12 @@ categorization:
         description: "Core code"
         paths:
           - "src/main/kotlin/com/jonaswanke/unicorn/core/**"
+      - name: "script"
+        description: "Script DSL"
+        paths:
+          - "src/main/kotlin/com/jonaswanke/unicorn/script/**"
       - name: "template"
-        description: "Template-related code"
+        description: "Template evaluation"
         paths:
           - "src/main/kotlin/com/jonaswanke/unicorn/template/**"
       - name: "templates"
