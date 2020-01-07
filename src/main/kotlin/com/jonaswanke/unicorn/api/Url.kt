@@ -2,8 +2,17 @@ package com.jonaswanke.unicorn.api
 
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.jonaswanke.unicorn.core.InteractiveRunContext
+import com.jonaswanke.unicorn.script.parameters.*
 import java.net.MalformedURLException
 import java.net.URL
+
+fun String.parseUrlOrNull(): URL? {
+    return try {
+        URL(this)
+    } catch (e: MalformedURLException) {
+        null
+    }
+}
 
 fun InteractiveRunContext.promptUrl(
     text: String,
@@ -17,6 +26,9 @@ fun InteractiveRunContext.promptOptionalUrl(
     optionalText: String = " (optional)",
     promptSuffix: String = ": "
 ): URL? = promptOptional(text, optionalText, promptSuffix, convert = ::parseUrlOrThrow)
+
+fun UnicornRawArgument.url(): UnicornProcessedArgument<URL, URL> = convert { parseUrlOrThrow(it) }
+fun UnicornRawOption.url(): UnicornNullableOption<URL, URL> = convert { parseUrlOrThrow(it) }
 
 private fun parseUrlOrThrow(raw: String): URL {
     val url = raw.trim()
