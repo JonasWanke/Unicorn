@@ -29,13 +29,15 @@ fun Unicorn.registerCreateCommand() {
             argument("name")
                 .optional(),
             option("-d", "--desc", "--description"),
+            option("-h", "--homepage")
+                .url(),
             option("-l", "--license")
                 .license(),
             option("-v", "--version")
                 .semVer(),
             option("-t", "--template")
                 .template()
-        ) { rawName, rawDescription, rawLicense, rawVersion, rawTemplate ->
+        ) { rawName, rawDescription, rawHomepage, rawLicense, rawVersion, rawTemplate ->
             val initInExisting = rawName == null
             if (initInExisting) confirm("Using create in an existing project is experimental. Continue?", abort = true)
             log.i {
@@ -58,6 +60,9 @@ fun Unicorn.registerCreateCommand() {
             val description = rawDescription
                 ?: if (initInExisting) repo?.description else null
                     ?: promptOptional("Provide a short description")
+            val homepage = rawDescription
+                ?: if (initInExisting) repo?.homepage?.parseUrlOrNull() else null
+                    ?: promptOptional("What's the homepage of your project?")
             val license = rawLicense
                 ?: promptOptional<License>("Choose a license") { keyword ->
                     License.fromKeywordOrNull(keyword)
@@ -87,6 +92,7 @@ fun Unicorn.registerCreateCommand() {
                 unicornVersion = ProgramConfig.VERSION,
                 name = name,
                 description = description,
+                homepage = homepage,
                 license = license,
                 version = version
             )
@@ -166,6 +172,7 @@ private fun InteractiveRunContext.initGitHub() = group("Configuring GitHub") {
     val repoConfig = GHRepositoryCreationConfig(
         name = projectConfig.name,
         description = projectConfig.description,
+        homepage = projectConfig.homepage,
         private = private,
         issues = true,
         wiki = false,
