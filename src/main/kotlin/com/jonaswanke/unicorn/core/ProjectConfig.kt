@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.core.NoSuchOption
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.StringDescriptor
 import net.swiftzer.semver.SemVer
+import java.net.URL
 
 @Serializable
 data class ProjectConfig(
@@ -11,6 +12,8 @@ data class ProjectConfig(
     val unicornVersion: SemVer,
     val name: String,
     val description: String? = null,
+    @Serializable(UrlSerializer::class)
+    val homepage: URL? = null,
     val license: License? = null,
     @Serializable(SemVerSerializer::class)
     val version: SemVer = SemVer(0, 0, 1),
