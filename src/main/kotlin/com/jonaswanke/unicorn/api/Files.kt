@@ -1,6 +1,11 @@
 package com.jonaswanke.unicorn.api
 
 import com.jonaswanke.unicorn.core.RunContext
+import com.jonaswanke.unicorn.core.group
+import com.jonaswanke.unicorn.utils.buildMarkup
+import com.jonaswanke.unicorn.utils.h2
+import com.jonaswanke.unicorn.utils.link
+import com.jonaswanke.unicorn.utils.newLine
 import net.swiftzer.semver.SemVer
 import java.io.BufferedWriter
 import java.io.File
@@ -8,126 +13,54 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 object Files {
-    val MARKER_REGEX = "%1\$s\\s*\\[MARKER (%2\$s)\\]\\s*%3\$s"
+    fun replaceRegex(context: RunContext, file: File, regex: Regex, replacement: String) =
+        context.group("Replacing \"$regex\" in file ${file.path} with $replacement") {
+
+        }
 
     object Changelog {
         const val FILENAME = "CHANGELOG.md"
-        val file = File(FILENAME)
-        val MARKER_NEW_RELEASE = "newRelease"
+        val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd")
 
-        val DATE_FORMAT = SimpleDateFormat("yyyy-mm-dd")
+        fun file(context: RunContext): File = context.projectDir.resolve(FILENAME)
 
-        /*
-        fun formatDescription(
-            prefixComment: String? = null,
-            messages: List<ConventionalCommit> = emptyList(),
-            suffixComment: String? = null,
-            config: ProjectConfig = Unicorn.projectConfig
-        ) = buildString {
-            if (!prefixComment.isNullOrBlank()) {
-                append(prefixComment)
-                repeat(2) { newLine() }
-            }
+        fun addRelease(context: RunContext, version: SemVer, title: String, changesText: String) {
+            val oldVersion = context.gitHubRepo.latestReleaseInclPrerelease
 
-            val typeOrder = config.types.list.withIndex().associate { (index, type) -> type to index }
-            if (messages.isNotEmpty()) {
-                messages.groupBy { it.type }
-                    .toList()
-                    .sortedBy { typeOrder[it] }
-                    .forEach { (type, commits) ->
-                        append("### ")
-                        append(it
-                            when (type) {
-                                ConventionalCommit.Type.CHORE -> "Chore"
-                                ConventionalCommit.Type.BUILD -> "Build system changes"
-                                ConventionalCommit.Type.DOCS -> "Documentation"
-                                ConventionalCommit.Type.FEAT -> "New Features"
-                                ConventionalCommit.Type.FIX -> "Bug Fixes"
-                                ConventionalCommit.Type.PERF -> "Performance"
-                                ConventionalCommit.Type.REFACTOR -> "Refactor"
-                                ConventionalCommit.Type.UI -> "UI"
-                            }
-                        )
-                        newLine()
-                        newLine()
-                        commits
-                            .sortedWith(nullsFirst(compareBy { it.scopes.firstOrNull() }))
-                            .forEach { commit ->
-                                append("- ")
-                                if (commit.scopes.isNotEmpty()) {
-                                    append("**")
-                                    commit.scopes.joinToString()
-                                    append(":** ")
-                                }
-                                append(commit.description)
-                            }
-                    }
-            }
-
-            if (!suffixComment.isNullOrBlank()) {
-                repeat(2) { newLine() }
-                append(suffixComment)
-            }
-        }
-        */
-
-        fun addRelease(
-            context: RunContext,
-            version: SemVer,
-            name: String? = null,
-            date: Date = Date(),
-            description: String = ""
-        ) {
-            file.insert(MARKER_REGEX.format("<!--", MARKER_NEW_RELEASE, "-->").toRegex(RegexOption.IGNORE_CASE)) {
-                writeLine("<a name=\"$version\"></a>")
-                writeLine(buildString {
-                    val fullName = if (name == null) version.toString() else "$version $name"
-                    append("## ")
-                    val gitHub = GitHub.authenticateOrNull(context)
-                    if (gitHub != null) {
-                        append("[")
-                        append(fullName)
-                        append("](")
-                        append(gitHub.currentRepo(context).htmlUrl)
-                        append("/compare/${context.projectConfig.version}...$version")
-                        append(")")
-                    }
-                    append(" - ")
-                    append(DATE_FORMAT.format(date))
-                })
-
-                if (description.isNotBlank()) {
-                    repeat(2) { newLine() }
-                    writeLine(description)
+            val entry = buildMarkup {
+                h2 {
+                    val compareUrl = "${context.gitHubRepo.htmlUrl}/compare/v$oldVersion...v$version"
+                    link(compareUrl, title)
+                    +" – "
+                    +DATE_FORMAT.format(Date())
                 }
+                newLine()
 
-                repeat(3) { newLine() }
+                +changesText
+            }.toMarkdownString()
+
+            val marker = "<!--\\s*newRelease\\s*-->".toRegex(RegexOption.IGNORE_CASE)
+            file(context).transformLines { line ->
+                writeLine(line)
+
+                if (marker.find(line) != null) {
+                    writeLine("<a name=\"$version\"></a>")
+                    writeLine(entry)
+                }
             }
         }
     }
 }
 
 
-fun File.insert(marker: Regex, keepMarker: Boolean = true, writer: BufferedWriter.(MatchResult) -> Unit) {
-    val tempFile = generateSequence(Triple(0, "${name}_temp", File("${name}_temp"))) { (index, base, file) ->
-        if (file.exists()) null
-        else {
-            val nextIndex = index + 1
-            Triple(nextIndex, base, File("$base$nextIndex"))
-        }
-    }.last()
-        .let { (_, _, file) -> file }
+fun File.transformLines(transform: BufferedWriter.(line: String) -> Unit) {
+    val tempFile = createTempFile(suffix = ".$extension")
 
     val bufferedWriter = tempFile.bufferedWriter()
     forEachLine { line ->
-        val result = marker.find(line)
-        if (result != null) {
-            if (keepMarker)
-                bufferedWriter.write(line)
-            bufferedWriter.writer(result)
-        } else
-            bufferedWriter.writeLine(line)
+        bufferedWriter.transform(line)
     }
+    tempFile.copyTo(this, overwrite = true)
 }
 
 fun BufferedWriter.writeLine(line: String) {

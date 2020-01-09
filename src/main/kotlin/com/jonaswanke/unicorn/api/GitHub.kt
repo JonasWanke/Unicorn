@@ -266,6 +266,9 @@ val GHPullRequest.closedIssues: List<GHIssue>
             .map { repository.getIssue(it) }
     }
 
+val GHPullRequest.isBreaking: Boolean
+    get() = labels.any { it.name.contains("breaking", ignoreCase = true) }
+
 fun Glob.matches(file: GHPullRequestFileDetail): Boolean = matches(file.filename)
 
 fun GHPullRequest.toCommitMessage() = buildString {
@@ -466,16 +469,27 @@ fun GHRepository.syncTypeLabels(context: RunContext) = context.group("Syncing ty
 // endregion
 
 // region Release
-class GHReleaseBuilder {
+val GHRepository.latestReleaseInclPrerelease: GHRelease?
+    get() = listReleases().firstOrNull()
 
+private val COMMIT_MESSAGE_MERGE_PR = "Merge pull request #(?<id>[0-9]+).*".toRegex(RegexOption.IGNORE_CASE)
+
+fun GHRepository.getMergedPrsSinceLastRelease(context: RunContext): List<GHPullRequest> {
+    val latestRelease = latestReleaseInclPrerelease
+    val commits =
+        if (latestRelease == null) context.git.allCommits(context)
+        else context.git.commitsSinceTag(context, latestRelease.tagName)
+
+    return commits.asSequence()
+        .map { it.shortMessage }
+        .mapNotNull { COMMIT_MESSAGE_MERGE_PR.matchEntire(it)?.groups?.get("id")?.value }
+        .map { it.toInt() }
+        .map { getPullRequest(it) }
+        .toList()
 }
 
 val GHRepository.latestReleaseVersion: SemVer?
     get() = latestRelease?.tagName?.removePrefix("v")?.let { SemVer.parseOrNull(it) }
-
-fun GHRepository.createRelease(version: SemVer, tagName: String = "v$version") {
-
-}
 // endregion
 
 // region API errors

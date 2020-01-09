@@ -76,9 +76,8 @@ abstract class InteractiveRunContext : RunContext() {
         text: String,
         editor: String? = null,
         env: Map<String, String> = emptyMap(),
-        requireSave: Boolean = false,
         extension: String = ".txt"
-    ): String? = TermUi.editText(text, editor, env, requireSave, extension)
+    ): String = TermUi.editText(text, editor, env, true, extension)!!
 
     fun editFile(
         filename: String,

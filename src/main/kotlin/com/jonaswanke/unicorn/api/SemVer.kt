@@ -5,6 +5,23 @@ import com.jonaswanke.unicorn.core.InteractiveRunContext
 import com.jonaswanke.unicorn.script.parameters.*
 import net.swiftzer.semver.SemVer
 
+val SemVer.isInitialDevelopment: Boolean
+    get() = major == 0
+
+val SemVer.nextMajor: SemVer
+    get() = SemVer(major + 1)
+val SemVer.nextMinor: SemVer
+    get() = SemVer(major, minor + 1)
+val SemVer.nextPatch: SemVer
+    get() = SemVer(major, minor, patch + 1)
+
+val SemVer.nextBreaking: SemVer
+    get() = if (isInitialDevelopment) nextMinor else nextMajor
+val SemVer.nextFeature: SemVer
+    get() = if (isInitialDevelopment) nextPatch else nextMinor
+val SemVer.nextFix: SemVer
+    get() = nextPatch
+
 fun SemVer.Companion.parseOrNull(version: String): SemVer? {
     return try {
         parse(version)

@@ -12,6 +12,7 @@ import org.eclipse.jgit.lib.ConfigConstants
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.RepositoryBuilder
+import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
 import org.kohsuke.github.GHIssue
@@ -75,6 +76,21 @@ class Git(val directory: File) {
         call(context, api.commit()) {
             setMessage(message)
             setSign(false)
+        }
+    }
+
+    fun allCommits(context: RunContext): Iterable<RevCommit> {
+        return call(context, api.log()) {
+            all()
+        }
+    }
+
+    fun commitsSinceTag(context: RunContext, startTag: String): Iterable<RevCommit> {
+        return call(context, api.log()) {
+            addRange(
+                api.repository.resolve("refs/tags/$startTag"),
+                api.repository.resolve(Constants.HEAD)
+            )
         }
     }
     // endregion
@@ -239,12 +255,12 @@ class Git(val directory: File) {
         class ReleaseBranch(git: Git, val version: SemVer) : Branch(git, "$BRANCH_RELEASE_PREFIX$version")
 
         fun createReleaseBranch(context: RunContext, version: SemVer): ReleaseBranch =
-            context.group("Git Flow: create issue branch for v$version") {
-                require(version > context.projectConfig.version) {
-                    "version must be greater than the current version (${context.projectConfig.version}), was $version"
-                }
+            context.group("Git Flow: create release branch for v$version") {
+                val currentBranch = currentBranch(context)
+                if (currentBranch !is MasterBranch)
+                    exit("Cannot create release branch from non-master branch \"$currentBranch\"")
 
-                git.createBranch(context, branchNameFromRelease(version), base = masterBranch.name)
+                git.createBranch(context, branchNameFromRelease(version))
                 ReleaseBranch(git, version)
             }
 
