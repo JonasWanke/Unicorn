@@ -48,8 +48,6 @@ categorization:
       descriptionPrefix: "Component: "
   priority:
     values:
-      - name: "0"
-        description: null
       - name: "1"
         description: "1 (Lowest)"
       - name: "2"
@@ -60,7 +58,7 @@ categorization:
         description: "4 (High)"
       - name: "5"
         description: "5 (Highest)"
-    label:
+    labels:
       color: "e5b5ff"
       prefix: "P: "
       descriptionPrefix: "Priority: "

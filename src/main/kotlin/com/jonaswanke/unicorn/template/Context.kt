@@ -128,8 +128,10 @@ class TemplateRunContext(
             }
             FileWriteMode.APPEND -> FileOutputStream(toAbs, true).writer()
         }
-        val freemarkerTemplate = Template.freemarkerConfiguration
-            .getTemplate("${template.name}/${from.path}", null, null, isTemplate)
+
+        val config = Template.freemarkerConfiguration
+        config.setDirectoryForTemplateLoading(template.dir)
+        val freemarkerTemplate = config.getTemplate(from.path, null, null, isTemplate)
 
         try {
             freemarkerTemplate.process(variables, writer)
@@ -147,7 +149,12 @@ class TemplateRunContext(
     ) = copyDir(File(from), File(to), isTemplate, mode)
 
     @Suppress("NAME_SHADOWING")
-    fun copyDir(from: File, to: File = from, isTemplate: Boolean? = null, mode: FileWriteMode = FileWriteMode.OVERWRITE) {
+    fun copyDir(
+        from: File,
+        to: File = from,
+        isTemplate: Boolean? = null,
+        mode: FileWriteMode = FileWriteMode.OVERWRITE
+    ) {
         val from = from.normalize()
         val to = to.normalize()
         group("Copying directory ${from.path} to ${to.path}") {

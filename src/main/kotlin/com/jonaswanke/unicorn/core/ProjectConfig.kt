@@ -160,6 +160,7 @@ data class ProjectConfig(
 
 
 abstract class Categorization<V : ProjectConfig.CategorizationConfig.CategorizationValue> {
+    @Transient
     abstract val name: String
     abstract val values: List<V>
     abstract val labels: ProjectConfig.LabelConfig

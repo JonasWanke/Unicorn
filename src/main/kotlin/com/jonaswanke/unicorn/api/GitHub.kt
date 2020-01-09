@@ -14,6 +14,7 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.kohsuke.github.*
 import java.awt.Desktop
 import java.net.URI
+import java.net.URL
 import java.net.URLEncoder
 import org.kohsuke.github.GitHub as ApiGitHub
 
@@ -157,7 +158,7 @@ class GHRepoCantBePrivateException :
 data class GHRepositoryCreationConfig(
     val name: String,
     val description: String? = null,
-    val homepage: String? = null,
+    val homepage: URL? = null,
     val private: Boolean = false,
     val issues: Boolean = true,
     val wiki: Boolean = true,
