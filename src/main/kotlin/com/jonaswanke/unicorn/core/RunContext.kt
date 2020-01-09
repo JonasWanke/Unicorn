@@ -10,6 +10,7 @@ abstract class RunContext {
     companion object {
         const val CONFIG_GLOBAL_FILE = "config.yml"
         const val CONFIG_PROJECT_FILE = ".unicorn.yml"
+        const val CONFIG_PROJECT_UNICORN_DIR = ".unicorn"
     }
 
     enum class Environment {
@@ -22,7 +23,7 @@ abstract class RunContext {
     // region Global config
     open val globalDir: File? = ProgramConfig.installationDir
     val globalConfigFile: File
-        get() = File(globalDir, CONFIG_GLOBAL_FILE)
+        get() = globalDir!!.resolve(CONFIG_GLOBAL_FILE)
     open var globalConfig: GlobalConfig by cached(
         initialGetter = {
             globalConfigFile.takeIf { it.exists() }?.readConfig()
@@ -34,8 +35,15 @@ abstract class RunContext {
 
     // region Project config
     abstract val projectDir: File
+    open val projectUnicornDir: File
+        get() = projectDir.resolve(CONFIG_PROJECT_UNICORN_DIR)
     val projectConfigFile: File
-        get() = File(projectDir, CONFIG_PROJECT_FILE)
+        get() {
+            return listOf(
+                projectDir.resolve(CONFIG_PROJECT_FILE),
+                projectUnicornDir.resolve(CONFIG_PROJECT_FILE)
+            ).first { it.exists() }
+        }
     open var projectConfig: ProjectConfig by cached(
         initialGetter = { projectConfigFile.readConfig<ProjectConfig>() },
         setter = { projectConfigFile.writeConfig(it) }

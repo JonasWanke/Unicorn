@@ -23,9 +23,9 @@ class Template private constructor(
         fun getTemplateDirs(context: RunContext): List<File> {
             return listOfNotNull(
                 ProgramConfig.installationDir,
-                File(context.projectDir, ".unicorn")
+                context.projectUnicornDir
             )
-                .map { File(it, TEMPLATES_DIR_NAME) }
+                .map { it.resolve(TEMPLATES_DIR_NAME) }
                 .filter { it.exists() }
         }
 
@@ -52,11 +52,11 @@ class Template private constructor(
 
         fun getByNameOrNull(context: RunContext, name: String): Template? = context.group("Parsing template $name") {
             val dir = getTemplateDirs(context)
-                .map { File(it, name) }
+                .map { it.resolve(name) }
                 .firstOrNull { it.exists() }
                 ?: return@group null
 
-            val scriptFile = File(dir, SCRIPT_NAME)
+            val scriptFile = dir.resolve(SCRIPT_NAME)
             if (!scriptFile.exists()) exit {
                 +"Script file "
                 italic(scriptFile.absolutePath)
