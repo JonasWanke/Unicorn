@@ -34,7 +34,6 @@ fun Unicorn.registerCreateCommand() {
             option("-v", "--version")
                 .semVer(),
             option("-t", "--template")
-                .template()
         ) { rawName, rawDescription, rawLicense, rawVersion, rawTemplate ->
             val initInExisting = rawName == null
             if (initInExisting) confirm("Using create in an existing project is experimental. Continue?", abort = true)
@@ -205,7 +204,7 @@ private fun InteractiveRunContext.initGitHub() = group("Configuring GitHub") {
 private fun InteractiveRunContext.applyTemplate(rawTemplate: String?) = group("Applying template") {
     val templateName = rawTemplate
         ?: prompt("Please choose a template", "base") {
-            if (!Template.exists(it)) throw NoSuchOption(it, Template.getAllTemplateNames())
+            if (!Template.exists(this, it)) throw NoSuchOption(it, Template.getTemplateNames(this))
             it
         }
     Template.getByName(this, templateName).apply(this)

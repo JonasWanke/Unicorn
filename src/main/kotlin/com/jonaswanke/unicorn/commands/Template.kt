@@ -1,6 +1,5 @@
 package com.jonaswanke.unicorn.commands
 
-import com.jonaswanke.unicorn.api.template
 import com.jonaswanke.unicorn.script.Unicorn
 import com.jonaswanke.unicorn.script.command
 import com.jonaswanke.unicorn.script.parameters.argument
@@ -19,7 +18,7 @@ internal fun Unicorn.registerTemplateCommands() {
             help = "List all available templates"
 
             run {
-                val templates = Template.getAllTemplateNames()
+                val templates = Template.getTemplateNames(this)
                     .map { Template.getByName(this, it) }
                 log.i {
                     list {
@@ -34,8 +33,7 @@ internal fun Unicorn.registerTemplateCommands() {
             help = "Apply a template"
 
             run(
-                argument("name", help = "Name of the template")
-                    .template(),
+                argument("name", help = "Name of the template"),
                 option(
                     "-b", "--base-dir",
                     help = "Base directory in which to apply the template. This defaults to and is interpreted relative to the project directory."

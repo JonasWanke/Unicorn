@@ -10,10 +10,3 @@ fun UnicornRawArgument.license(): UnicornProcessedArgument<ProjectConfig.License
 
 fun UnicornRawOption.license(): UnicornNullableOption<ProjectConfig.License, ProjectConfig.License> =
     choice(ProjectConfig.License.values().map { it.keyword to it }.toMap())
-
-
-fun UnicornRawArgument.template(): UnicornProcessedArgument<String, String> =
-    choice(Template.getAllTemplateNames().keysToMap { it })
-
-fun UnicornRawOption.template(): UnicornNullableOption<String, String> =
-    choice(Template.getAllTemplateNames().keysToMap { it })
