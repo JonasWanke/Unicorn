@@ -10,9 +10,7 @@ import kotlin.system.exitProcess
 
 fun main() {
     val context = GitHubActionRunContext()
-
-    val gh = GitHub.authenticate(context)
-    val repo = gh.api.getRepository(Action.Env.githubRepository)
+    val repo = context.gitHub.api.getRepository(Action.Env.githubRepository)
 
     val payload = Action.getPayload()
     payload.pullRequest ?: throwError("Unicorn currently only supports events of type pull_request")
@@ -40,10 +38,16 @@ private fun assignAuthor(pr: GHPullRequest) {
 private fun inferLabels(context: RunContext, pr: GHPullRequest) {
     val closedIssues = pr.closedIssues
 
-    pr.getType(context)
-        ?.let { pr.setType(context, it) }
+    if (pr.getType(context) == null) {
+        val type = closedIssues
+            .mapNotNull { it.getType(context) }
+            .toSet()
+            .singleOrNull()
+        if (type != null)
+            pr.setType(context, type)
+    }
 
-    pr.getComponents(context)
+    pr.inferComponents(context)
         .let { pr.setComponents(context, it) }
 
     closedIssues.mapNotNull { it.getPriority(context) }.max()
