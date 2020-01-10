@@ -77,14 +77,12 @@ data class ProjectConfig(
         @Serializable
         data class TypeConfig(
             override val values: List<Type> = listOf(
-                Type("build", "Build changes"),
-                Type("chore", "Chores"),
-                Type("ci", "CI changes"),
-                Type("docs", "Documentation updates"),
-                Type("feat", "New Features"),
-                Type("fix", "Bugfixes"),
-                Type("perf", "Performance improvements"),
-                Type("refactor", "Refactoring")
+                Type("feat", ":tada: New Features"),
+                Type("change", "⚡ Changes"),
+                Type("fix", ":bug: Bug Fixes"),
+                Type("docs", ":scroll: Documentation updates"),
+                Type("refactor", ":building_construction: Refactoring"),
+                Type("build", ":package: Build & CI")
             ),
             override val labels: LabelConfig = LabelConfig(
                 color = "c5def5",
