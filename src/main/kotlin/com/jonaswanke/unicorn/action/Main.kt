@@ -19,7 +19,7 @@ fun main() {
 
     val pr = repo.getPullRequest(payload.pullRequest.number)
 
-    assignAuthors(pr)
+    assignAuthor(pr)
     inferLabels(context, pr)
 
     val reportCollector = ReportLogCollector()
@@ -31,9 +31,10 @@ fun main() {
     if (report.severity == Report.Severity.ERROR) exitProcess(1)
 }
 
-private fun assignAuthors(pr: GHPullRequest) {
-    pr.listCommits().map { it.commit.author }
-        .let { pr.addAssignees() }
+private fun assignAuthor(pr: GHPullRequest) {
+    // It doesn't seem possible yet to get GitHub accounts of all commit authors, hence we only assign the person who
+    // opened this PR for now.
+    pr.addAssignees(pr.user)
 }
 
 private fun inferLabels(context: RunContext, pr: GHPullRequest) {
