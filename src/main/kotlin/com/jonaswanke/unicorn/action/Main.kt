@@ -10,16 +10,14 @@ import kotlin.system.exitProcess
 
 fun main() {
     val context = GitHubActionRunContext()
-
-    val gh = GitHub.authenticate(context)
-    val repo = gh.api.getRepository(Action.Env.githubRepository)
+    val repo = context.gitHub.api.getRepository(Action.Env.githubRepository)
 
     val payload = Action.getPayload()
     payload.pullRequest ?: throwError("Unicorn currently only supports events of type pull_request")
 
     val pr = repo.getPullRequest(payload.pullRequest.number)
 
-    assignAuthors(pr)
+    assignAuthor(pr)
     inferLabels(context, pr)
 
     val reportCollector = ReportLogCollector()
@@ -31,18 +29,25 @@ fun main() {
     if (report.severity == Report.Severity.ERROR) exitProcess(1)
 }
 
-private fun assignAuthors(pr: GHPullRequest) {
-    pr.listCommits().map { it.commit.author }
-        .let { pr.addAssignees() }
+private fun assignAuthor(pr: GHPullRequest) {
+    // It doesn't seem possible yet to get GitHub accounts of all commit authors, hence we only assign the person who
+    // opened this PR for now.
+    pr.addAssignees(pr.user)
 }
 
 private fun inferLabels(context: RunContext, pr: GHPullRequest) {
     val closedIssues = pr.closedIssues
 
-    pr.getType(context)
-        ?.let { pr.setType(context, it) }
+    if (pr.getType(context) == null) {
+        val type = closedIssues
+            .mapNotNull { it.getType(context) }
+            .toSet()
+            .singleOrNull()
+        if (type != null)
+            pr.setType(context, type)
+    }
 
-    pr.getComponents(context)
+    pr.inferComponents(context)
         .let { pr.setComponents(context, it) }
 
     closedIssues.mapNotNull { it.getPriority(context) }.max()
