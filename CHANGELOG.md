@@ -20,11 +20,11 @@ Optional intro comment.
 
  -->
 
-## [Unreleased] - see [milestones] for our roadmap
+## [Unreleased] – see [milestones] for our roadmap
 
 
 <a name="0.1.0"></a>
-## [0.1.0](https://github.com/JonasWanke/Unicorn/compare/v0.0.2...v0.1.0) - 2020-01-01
+## [0.1.0](https://github.com/JonasWanke/Unicorn/compare/v0.0.2...v0.1.0) – 2020-01-01
 
 This release extends Unicorn's functionality to support custom scripting, templating and running as a GitHub Action.
 
@@ -66,7 +66,7 @@ This release extends Unicorn's functionality to support custom scripting, templa
 
 
 <a name="0.0.2"></a>
-## [0.0.2](https://github.com/JonasWanke/Unicorn/compare/v0.0.1...v0.0.2) - 2019-04-09
+## [0.0.2](https://github.com/JonasWanke/Unicorn/compare/v0.0.1...v0.0.2) – 2019-04-09
 
 ### Features
 
@@ -91,7 +91,7 @@ This release extends Unicorn's functionality to support custom scripting, templa
 
 
 
-## 0.0.1 - 2019-01-30
+## 0.0.1 – 2019-01-30
 
 Initial release supporting repository initialization.
 
