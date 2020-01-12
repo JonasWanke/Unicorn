@@ -25,3 +25,46 @@ jobs:
 
       - name: Build
         run: gradle build
+
+      - name: Persist current state
+        uses: actions/upload-artifact@v1
+        if: matrix.java == 13
+        with:
+          name: source
+          path: .
+
+  lint:
+    name: Lint
+    steps:
+      - name: Install Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: 12
+      - name: Checkout source
+        uses: actions/download-artifact@v1
+        with:
+          name: source
+          path: .
+
+      - name: Run linter
+        run: gradle
+        continue-on-error: true
+
+      - name: Install ruby
+        uses: actions/setup-ruby@v1
+        if: github.event_name == 'pull_request'
+        with:
+          ruby-version: '2.6'
+      - name: Install ruby gems
+        run: |
+          gem install bundler
+          bundle install --without documentation
+        if: github.event_name == 'pull_request'
+      - name: Run danger on generated report
+        uses: MeilCli/danger-action@v1
+        if: github.event_name == 'pull_request'
+        with:
+          danger_file: Dangerfile
+          danger_id: 'danger-pr'
+        env:
+          DANGER_GITHUB_API_TOKEN: ${{ secrets.JWBOT_TOKEN }}
