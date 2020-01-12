@@ -35,6 +35,7 @@ jobs:
 
   lint:
     name: Lint
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Install Java
