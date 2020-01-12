@@ -1,7 +1,6 @@
 package com.jonaswanke.unicorn.api
 
 import com.jonaswanke.unicorn.core.RunContext
-import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.utils.buildMarkup
 import com.jonaswanke.unicorn.utils.h2
 import com.jonaswanke.unicorn.utils.link
@@ -13,11 +12,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 object Files {
-    fun replaceRegex(context: RunContext, file: File, regex: Regex, replacement: String) =
-        context.group("Replacing \"$regex\" in file ${file.path} with $replacement") {
-
-        }
-
     object Changelog {
         const val FILENAME = "CHANGELOG.md"
         val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd")

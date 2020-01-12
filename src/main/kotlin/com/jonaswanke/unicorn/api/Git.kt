@@ -190,7 +190,7 @@ class Git(val directory: File) {
                     gitHubRepo.getIssue(issueIdFromBranchName(name))
                 )
                 name.startsWith(BRANCH_RELEASE_PREFIX) -> ReleaseBranch(git, releaseVersionFromBranchName(name))
-                name.startsWith(BRANCH_ISSUE_PREFIX) -> HotfixBranch(git, hotfixVersionFromBranchName(name))
+                name.startsWith(BRANCH_HOTFIX_PREFIX) -> HotfixBranch(git, hotfixVersionFromBranchName(name))
                 else -> masterBranch
             }
         }
