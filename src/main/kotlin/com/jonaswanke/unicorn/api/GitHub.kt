@@ -279,6 +279,20 @@ fun GHPullRequest.toCommitMessage() = buildString {
     if (issues.isNotEmpty())
         append(closedIssues.joinToString(prefix = ", fixes ") { "[#${it.number}](${it.htmlUrl})" })
 }
+
+fun GHPullRequest.inferComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
+    // If component labels are already set, they override inferred ones.
+    return getComponents(context).takeUnless { it.isEmpty() }
+    // Otherwise we look at changed files
+        ?: context.projectConfig.categorization.component.resolvedValues
+            .associateWith { component -> component.value.paths.map { Glob(it) } }
+            .filter { (_, matchers) ->
+                listFiles().any { file ->
+                    matchers.any { it.matches(file) }
+                }
+            }
+            .map { (component, _) -> component }
+}
 // endregion
 
 // region Label
@@ -370,16 +384,7 @@ fun <V : CategorizationValue> Categorization.ResolvedValue<V>.deprecate(repo: GH
 
 // region Component
 fun GHIssue.getComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
-    return if (this is GHPullRequest) {
-        context.projectConfig.categorization.component.resolvedValues
-            .associateWith { component -> component.value.paths.map { Glob(it) } }
-            .filter { (_, matchers) ->
-                listFiles().any { file ->
-                    matchers.any { it.matches(file) }
-                }
-            }
-            .map { (component, _) -> component }
-    } else getLabels(context, context.projectConfig.categorization.component)
+    return getLabels(context, context.projectConfig.categorization.component)
 }
 
 fun GHIssue.setComponents(
@@ -433,11 +438,6 @@ fun GHRepository.syncPriorityLabels(context: RunContext) = context.group("Syncin
 
 // region Type
 fun GHIssue.getType(context: RunContext): Categorization.ResolvedValue<TypeConfig.Type>? {
-    if (this is GHPullRequest)
-        ConventionalCommit.tryParse(title)
-            ?.takeIf { it.isValid(context) }
-            ?.let { return it.resolveType(context) }
-
     val labels = getLabels(context, context.projectConfig.categorization.type)
     if (labels.size > 1) {
         context.log.w("Multiple type labels found on $issuePrNumber")

@@ -7,52 +7,32 @@ import com.jonaswanke.unicorn.utils.*
 import org.kohsuke.github.GHPullRequest
 
 internal fun runChecks(context: RunContext, reportCollector: ReportLogCollector, pr: GHPullRequest) {
-    runTitleCheck(context, reportCollector, pr)
+    runLabelsCheck(context, reportCollector, pr)
     runClosedIssuesCheck(reportCollector, pr)
     runCommitCheck(reportCollector, pr)
 }
 
-private fun runTitleCheck(context: RunContext, reportCollector: ReportLogCollector, pr: GHPullRequest) =
-    reportCollector.group("PR title:") {
-        val title = try {
-            ConventionalCommit.parse(pr.title)
-        } catch (e: IllegalArgumentException) {
-            e {
-                +"doesn't follow "
-                link("https://www.conventionalcommits.org/en/v1.0.0") {
-                    +"conventional commits"
-                }
+private fun runLabelsCheck(context: RunContext, reportCollector: ReportLogCollector, pr: GHPullRequest) =
+    reportCollector.group("PR labels") {
+        val typeCategory = context.projectConfig.categorization.type
+        val typeLabels = pr.labels
+            .filter { it.name.startsWith(typeCategory.labels.prefix) }
+            .mapNotNull {
+                typeCategory.getOrNull(it.name) ?: {
+                    reportCollector.e {
+                        +"Unknown type label "
+                        kbd(it.name)
+                    }
+                    null
+                }()
             }
-            return@group
-        }
-        title.validate(context).let { result ->
-            if (!result.isTypeValid) {
-                e {
-                    +"type "
-                    kbd(result.invalidType)
-                    +" is invalid"
-                    newLine()
 
-                    italic {
-                        +"allowed values are: "
-                        joined(result.validTypes) { kbd(it) }
-                    }
-                }
-            }
-            if (!result.areScopesValid) {
-                e {
-                    +if (result.invalidScopes.size == 1) "component " else "components "
-                    joined(result.invalidScopes) {
-                        kbd(it.value)
-                        +" (position ${it.index + 1})"
-                    }
-                    +if (result.invalidScopes.size == 1) " is invalid" else "are invalid"
-                    newLine()
-
-                    italic {
-                        +"allowed values are: "
-                        joined(result.validScopes) { kbd(it) }
-                    }
+        if (typeLabels.size != 1) {
+            reportCollector.e {
+                +"PR must have exactly one type label, found "
+                if (typeLabels.isEmpty()) +"none"
+                else joined(typeLabels) {
+                    kbd(it.fullName)
                 }
             }
         }
