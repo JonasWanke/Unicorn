@@ -49,7 +49,7 @@ jobs:
           path: .
 
       - name: Run linter
-        run: gradle
+        run: gradle detekt
         continue-on-error: true
 
       - name: Install ruby
