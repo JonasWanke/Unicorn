@@ -230,8 +230,8 @@ formatting:
     active: true
     autoCorrect: true
   NoConsecutiveBlankLines:
-    active: true
-    autoCorrect: true
+    active: false
+    autoCorrect: false
   NoEmptyClassBody:
     active: true
     autoCorrect: true
@@ -586,6 +586,6 @@ style:
   VarCouldBeVal:
     active: false
   WildcardImport:
-    active: true
+    active: false
     excludes: "**/test/**,**/androidTest/**,**/*.Test.kt,**/*.Spec.kt,**/*.Spek.kt"
     excludeImports: 'java.util.*,kotlinx.android.synthetic.*'
