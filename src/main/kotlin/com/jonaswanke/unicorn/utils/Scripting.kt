@@ -9,6 +9,7 @@ object ScriptingUtils {
         "com.jonaswanke.unicorn.core.*",
         "com.jonaswanke.unicorn.core.ProjectConfig.*",
         "com.jonaswanke.unicorn.template.*",
+        "com.jonaswanke.unicorn.utils.*",
         "net.swiftzer.semver.SemVer"
     )
     const val RECEIVER_BINDING_NAME = "__receiver"
