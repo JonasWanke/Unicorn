@@ -47,7 +47,7 @@ dependencies {
     implementation("net.swiftzer.semver:semver:1.1.1")
     implementation("com.github.ajalt:clikt:2.3.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.6.0.201912101111-r")
-    implementation("org.kohsuke:github-api:1.101")
+    implementation("org.kohsuke:github-api:1.108")
 
     implementation("org.freemarker:freemarker:2.3.29")
 
