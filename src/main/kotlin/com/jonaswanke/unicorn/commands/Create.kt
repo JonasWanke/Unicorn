@@ -230,6 +230,9 @@ private fun RunContext.upload() = group("Commit and upload") {
     log.i("Setting ${git.flow.masterBranch.name} as default branch")
     gitHubRepo.defaultBranch = git.flow.masterBranch.name
 
+    log.i("Configuring GitHub to delete branches on merge")
+    gitHubRepo.deleteBranchOnMerge(true)
+
     log.i("Setting up branch protection")
     gitHubRepo.getBranch(git.flow.masterBranch.name)
         .enableProtection()
