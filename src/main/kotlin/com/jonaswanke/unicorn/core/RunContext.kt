@@ -9,8 +9,8 @@ import java.io.File
 abstract class RunContext {
     companion object {
         const val CONFIG_GLOBAL_FILE = "config.yml"
-        const val CONFIG_PROJECT_FILE = ".unicorn.yml"
-        const val CONFIG_PROJECT_UNICORN_DIR = ".unicorn"
+        val CONFIG_PROJECT_FILES = listOf(".🦄.yml", ".unicorn.yml")
+        val CONFIG_PROJECT_UNICORN_DIRs = listOf(".🦄", ".unicorn")
     }
 
     enum class Environment {
@@ -35,14 +35,14 @@ abstract class RunContext {
 
     // region Project config
     abstract val projectDir: File
-    open val projectUnicornDir: File
-        get() = projectDir.resolve(CONFIG_PROJECT_UNICORN_DIR)
+    open val projectUnicornDirs: List<File>
+        get() = CONFIG_PROJECT_UNICORN_DIRs.map(projectDir::resolve)
     val projectConfigFile: File
         get() {
-            return listOf(
-                projectDir.resolve(CONFIG_PROJECT_FILE),
-                projectUnicornDir.resolve(CONFIG_PROJECT_FILE)
-            ).first { it.exists() }
+            return CONFIG_PROJECT_FILES.flatMap { file ->
+                listOf(projectDir.resolve(file)) + projectUnicornDirs.map { it.resolve(file) }
+            }.firstOrNull { it.exists() }
+                ?: projectDir.resolve(CONFIG_PROJECT_FILES.first())
         }
     open var projectConfig: ProjectConfig by cached(
         initialGetter = { projectConfigFile.readConfig<ProjectConfig>() },
