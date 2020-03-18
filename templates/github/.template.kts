@@ -10,8 +10,7 @@ if (generateFunding) {
     copy(".github/FUNDING.yml.ftl")
     log.i {
         bold("NOTE:")
-        +" In order to display a \"Sponsor\"-button, you need to manually activate \"Sponsorships\" in " +
-                "the repository settings."
+        +" In order to display a \"Sponsor\"-button, you need to manually activate \"Sponsorships\" in the repository settings."
     }
 }
 
