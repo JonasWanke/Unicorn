@@ -22,14 +22,14 @@ abstract class RunContext {
 
     // region Global config
     open val globalDir: File? = ProgramConfig.installationDir
-    val globalConfigFile: File
-        get() = globalDir!!.resolve(CONFIG_GLOBAL_FILE)
+    val globalConfigFile: File?
+        get() = globalDir?.resolve(CONFIG_GLOBAL_FILE)
     open var globalConfig: GlobalConfig by cached(
         initialGetter = {
-            globalConfigFile.takeIf { it.exists() }?.readConfig()
+            globalConfigFile?.takeIf { it.exists() }?.readConfig()
                 ?: GlobalConfig()
         },
-        setter = { globalConfigFile.writeConfig(it) }
+        setter = { globalConfigFile?.writeConfig(it) }
     )
     // endregion
 
