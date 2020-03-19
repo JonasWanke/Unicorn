@@ -9,11 +9,12 @@ homepage: ${homepage}
 
 environment:
   sdk: '>=${minSdkVersion} <3.0.0'
-<#if isGenerator??>
 
 dependencies:
+<#if isGenerator??>
   ${basePackage}: ${project.version}
 </#if>
+  meta: ^1.1.8
 
 dev_dependencies:
 <#if isGenerator??>

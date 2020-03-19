@@ -95,8 +95,31 @@ data class ProjectConfig(
             @Serializable
             data class Type(
                 override val name: String,
-                override val description: String? = null
-            ) : CategorizationValue
+                override val description: String? = null,
+                val versionBump: VersionBump? = null
+            ) : CategorizationValue {
+                @Serializable(with = VersionBump.Serializer::class)
+                enum class VersionBump {
+                    MAJOR, BREAKING, MINOR, FEATURE, PATCH, FIX;
+
+                    @kotlinx.serialization.Serializer(forClass = VersionBump::class)
+                    object Serializer : KSerializer<VersionBump> {
+                        override val descriptor: SerialDescriptor = StringDescriptor
+
+                        override fun serialize(encoder: Encoder, obj: VersionBump) =
+                            encoder.encodeString(obj.name.toLowerCase())
+
+                        override fun deserialize(decoder: Decoder): VersionBump {
+                            val value = decoder.decodeString()
+                            return values().firstOrNull { it.name.equals(value, ignoreCase = true) }
+                                ?: error(
+                                    "VersionBump $value from project config is unknown to Unicorn. " +
+                                            "Known values: ${values().joinToString()}"
+                                )
+                        }
+                    }
+                }
+            }
         }
 
         @Serializable

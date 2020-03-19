@@ -1,0 +1,72 @@
+name: Build & Lint
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 8 * * *"
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        java: [ 8, 11, 12, 13 ]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+
+      - name: Build
+        run: gradle build -x detekt
+
+      - name: Persist current state
+        uses: actions/upload-artifact@v1
+        if: matrix.java == 13
+        with:
+          name: source
+          path: .
+
+  lint:
+    name: Lint
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: 12
+      - name: Checkout source
+        uses: actions/download-artifact@v1
+        with:
+          name: source
+          path: .
+
+      - name: Run linter
+        run: gradle detekt
+        continue-on-error: true
+
+      - name: Install ruby
+        uses: actions/setup-ruby@v1
+        if: github.event_name == 'pull_request'
+        with:
+          ruby-version: '2.6'
+      - name: Install ruby gems
+        run: |
+          gem install bundler
+          bundle install --without documentation
+        if: github.event_name == 'pull_request'
+      - name: Run danger on generated report
+        uses: MeilCli/danger-action@v1
+        if: github.event_name == 'pull_request'
+        with:
+          danger_file: Dangerfile
+          danger_id: 'danger-pr'
+        env:
+          DANGER_GITHUB_API_TOKEN: ${{ secrets.JWBOT_TOKEN }}

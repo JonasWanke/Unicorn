@@ -7,6 +7,7 @@ import com.jonaswanke.unicorn.core.group
 import com.jonaswanke.unicorn.utils.ScriptingUtils
 import com.jonaswanke.unicorn.utils.italic
 import com.jonaswanke.unicorn.utils.list
+import com.jonaswanke.unicorn.utils.newLine
 import freemarker.template.Configuration
 import freemarker.template.TemplateExceptionHandler
 import java.io.File
@@ -21,10 +22,7 @@ class Template private constructor(
         const val SCRIPT_NAME = ".template.kts"
 
         fun getTemplateDirs(context: RunContext): List<File> {
-            return listOfNotNull(
-                ProgramConfig.installationDir,
-                context.projectUnicornDir
-            )
+            return (context.projectUnicornDirs + listOfNotNull(ProgramConfig.installationDir))
                 .map { it.resolve(TEMPLATES_DIR_NAME) }
                 .filter { it.exists() }
         }
@@ -39,9 +37,10 @@ class Template private constructor(
 
         fun exists(context: RunContext, name: String) = name in getTemplateNames(context)
         fun getByName(context: RunContext, name: String): Template = context.group("Parsing template $name") {
-            getByNameOrNull(context, name)
+            getByNameOrNull(this, name)
                 ?: exit {
                     +"Template $name not found. Searched directories:"
+                    newLine()
                     list {
                         getTemplateDirs(this@group).forEach {
                             +it.absolutePath

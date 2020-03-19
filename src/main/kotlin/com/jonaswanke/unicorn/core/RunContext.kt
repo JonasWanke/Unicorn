@@ -9,8 +9,8 @@ import java.io.File
 abstract class RunContext {
     companion object {
         const val CONFIG_GLOBAL_FILE = "config.yml"
-        const val CONFIG_PROJECT_FILE = ".unicorn.yml"
-        const val CONFIG_PROJECT_UNICORN_DIR = ".unicorn"
+        val CONFIG_PROJECT_FILES = listOf(".🦄.yml", ".unicorn.yml")
+        val CONFIG_PROJECT_UNICORN_DIRs = listOf(".🦄", ".unicorn")
     }
 
     enum class Environment {
@@ -22,27 +22,27 @@ abstract class RunContext {
 
     // region Global config
     open val globalDir: File? = ProgramConfig.installationDir
-    val globalConfigFile: File
-        get() = globalDir!!.resolve(CONFIG_GLOBAL_FILE)
+    val globalConfigFile: File?
+        get() = globalDir?.resolve(CONFIG_GLOBAL_FILE)
     open var globalConfig: GlobalConfig by cached(
         initialGetter = {
-            globalConfigFile.takeIf { it.exists() }?.readConfig()
+            globalConfigFile?.takeIf { it.exists() }?.readConfig()
                 ?: GlobalConfig()
         },
-        setter = { globalConfigFile.writeConfig(it) }
+        setter = { globalConfigFile?.writeConfig(it) }
     )
     // endregion
 
     // region Project config
     abstract val projectDir: File
-    open val projectUnicornDir: File
-        get() = projectDir.resolve(CONFIG_PROJECT_UNICORN_DIR)
+    open val projectUnicornDirs: List<File>
+        get() = CONFIG_PROJECT_UNICORN_DIRs.map(projectDir::resolve)
     val projectConfigFile: File
         get() {
-            return listOf(
-                projectDir.resolve(CONFIG_PROJECT_FILE),
-                projectUnicornDir.resolve(CONFIG_PROJECT_FILE)
-            ).first { it.exists() }
+            return CONFIG_PROJECT_FILES.flatMap { file ->
+                listOf(projectDir.resolve(file)) + projectUnicornDirs.map { it.resolve(file) }
+            }.firstOrNull { it.exists() }
+                ?: projectDir.resolve(CONFIG_PROJECT_FILES.first())
         }
     open var projectConfig: ProjectConfig by cached(
         initialGetter = { projectConfigFile.readConfig<ProjectConfig>() },
@@ -76,9 +76,8 @@ abstract class InteractiveRunContext : RunContext() {
         text: String,
         editor: String? = null,
         env: Map<String, String> = emptyMap(),
-        requireSave: Boolean = false,
         extension: String = ".txt"
-    ): String? = TermUi.editText(text, editor, env, requireSave, extension)
+    ): String = TermUi.editText(text, editor, env, true, extension)!!
 
     fun editFile(
         filename: String,

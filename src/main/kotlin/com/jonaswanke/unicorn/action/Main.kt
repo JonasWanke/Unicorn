@@ -11,6 +11,18 @@ import kotlin.system.exitProcess
 fun main() {
     val context = GitHubActionRunContext()
     val repo = context.gitHub.api.getRepository(Action.Env.githubRepository)
+    /*when (context.git.flow.currentBranch(context, repo)) {
+        is Git.Flow.MasterBranch -> throwError("Unicorn action is not supported on the master branch")
+        is Git.Flow.IssueBranch -> Unit
+        is Git.Flow.ReleaseBranch -> {
+            context.log.i("Running on a release branch. Exiting")
+            return
+        }
+        is Git.Flow.HotfixBranch -> {
+            context.log.w("Hotfixes are not yet supported by Unicorn")
+            return
+        }
+    }*/
 
     val payload = Action.getPayload()
     payload.pullRequest ?: throwError("Unicorn currently only supports events of type pull_request")
