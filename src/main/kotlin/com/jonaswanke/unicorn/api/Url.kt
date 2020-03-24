@@ -35,8 +35,9 @@ private fun parseUrlOrThrow(raw: String): URL {
     return try {
         URL(url)
     } catch (e: MalformedURLException) {
-        if (e.message?.contains("no protocol") == true)
+        if (e.message?.contains("no protocol") == true) {
             return parseUrlOrThrow("https://$raw")
+        }
         throw BadParameterValue(url)
     }
 }

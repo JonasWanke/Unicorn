@@ -57,8 +57,7 @@ class ConventionalCommit(
 
     override fun toString() = buildString {
         append(type)
-        if (scopes.isNotEmpty())
-            append("(${scopes.joinToString(",")})")
+        if (scopes.isNotEmpty()) append("(${scopes.joinToString(",")})")
         append(": ")
         append(description)
     }

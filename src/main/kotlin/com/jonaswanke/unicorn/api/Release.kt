@@ -64,10 +64,11 @@ object Release {
                     list {
                         for ((components, pr) in prs)
                             line {
-                                if (components.isNotEmpty())
+                                if (components.isNotEmpty()) {
                                     bold {
                                         +components.joinToString(postfix = ":") { it }
                                     }
+                                }
 
                                 +pr.title
 
@@ -76,18 +77,20 @@ object Release {
                                 +")"
 
                                 val closedIssues = pr.closedIssues
-                                if (closedIssues.isNotEmpty())
+                                if (closedIssues.isNotEmpty()) {
                                     joined(closedIssues, prefix = ", fixes ") {
                                         link(it.htmlUrl.toString(), "#${it.number}")
                                     }
+                                }
                             }
                     }
                     newLine()
                 }
             }.toMarkdownString()
 
-            if (context is InteractiveRunContext)
+            if (context is InteractiveRunContext) {
                 content = context.editText(content, extension = ".md")
+            }
 
             return content
         }

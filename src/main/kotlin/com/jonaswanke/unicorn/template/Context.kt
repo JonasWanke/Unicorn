@@ -44,7 +44,7 @@ class TemplateRunContext(
         val subdir = subdir.normalize()
 
         if (!subdir.isDescendantOf(baseDir)) {
-            log.w("Subdirectory ${subdir.path} is not inside the current base directory ${baseDir}; skipping")
+            log.w("Subdirectory ${subdir.path} is not inside the current base directory $baseDir; skipping")
             return
         }
 
@@ -70,8 +70,7 @@ class TemplateRunContext(
                 toAbs.writeText(text)
             }
             FileWriteMode.OVERWRITE -> {
-                if (exists && !overwriteExisting && !confirm("Overwrite ${to.path}?"))
-                    return
+                if (exists && !overwriteExisting && !confirm("Overwrite ${to.path}?")) return
                 toAbs.writeText(text)
             }
             FileWriteMode.APPEND -> toAbs.appendText(text)
@@ -95,7 +94,7 @@ class TemplateRunContext(
         log.i("Copying file ${from.path} to ${to.path}")
 
         if (!to.isDescendantOf(baseDir)) {
-            log.w("${to.path} is not inside the current base directory ${baseDir}; skipping")
+            log.w("${to.path} is not inside the current base directory $baseDir; skipping")
             return
         }
 
@@ -122,8 +121,9 @@ class TemplateRunContext(
                 toAbs.writer()
             }
             FileWriteMode.OVERWRITE -> {
-                if (exists && !overwriteExisting && !confirm("Overwrite ${to.path} with template file ${from.path}?"))
+                if (exists && !overwriteExisting && !confirm("Overwrite ${to.path} with template file ${from.path}?")) {
                     return
+                }
                 toAbs.writer()
             }
             FileWriteMode.APPEND -> FileOutputStream(toAbs, true).writer()
@@ -160,7 +160,7 @@ class TemplateRunContext(
         group("Copying directory ${from.path} to ${to.path}") {
             val toAbs = baseDir.resolve(to)
             if (!toAbs.isDescendantOf(baseDir)) {
-                log.w("${to.path} is not inside the current base directory ${baseDir}; skipping")
+                log.w("${to.path} is not inside the current base directory $baseDir; skipping")
                 return
             }
 

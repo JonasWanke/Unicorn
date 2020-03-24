@@ -1,4 +1,4 @@
-@file:Suppress("unused")
+@file:Suppress("unused", "TooManyFunctions")
 
 package com.jonaswanke.unicorn.script.parameters
 
@@ -63,6 +63,7 @@ fun option(
     override val hidden = hidden
     override val envvar = envvar
 
+    @Suppress("SpreadOperator")
     override fun build(command: BaseCommand) = command.option(*names, help = help)
 }
 
@@ -360,6 +361,7 @@ fun <T : Any> UnicornNullableOption<T, T>.prompt(
  *   practice to provide secondary names so that users can disable an option that was previously enabled.
  * @param default the value for this property if the option is not given on the command line.
  */
+@Suppress("SpreadOperator")
 fun UnicornRawOption.flag(vararg secondaryNames: String, default: Boolean = false): UnicornFlagOption<Boolean> =
     buildDelegate { flag(*secondaryNames, default = default) }
 
@@ -373,6 +375,7 @@ fun <T : Any> UnicornRawOption.switch(choices: Map<String, T>): UnicornFlagOptio
     buildDelegate { switch(choices) }
 
 /** Turn an option into a set of flags that each map to a value. */
+@Suppress("SpreadOperator")
 fun <T : Any> UnicornRawOption.switch(vararg choices: Pair<String, T>): UnicornFlagOption<T?> =
     buildDelegate { switch(*choices) }
 
@@ -468,6 +471,7 @@ fun <T : Any> UnicornRawOption.choice(
  *
  * @see com.github.ajalt.clikt.parameters.groups.groupChoice
  */
+@Suppress("SpreadOperator")
 fun <T : Any> UnicornRawOption.choice(
     vararg choices: Pair<String, T>,
     metavar: String = mvar(choices.map { it.first })
@@ -482,6 +486,7 @@ fun <T : Any> UnicornRawOption.choice(
  * option().choice("foo", "bar")
  * ```
  */
+@Suppress("SpreadOperator")
 fun UnicornRawOption.choice(
     vararg choices: String,
     metavar: String = mvar(choices.asIterable())

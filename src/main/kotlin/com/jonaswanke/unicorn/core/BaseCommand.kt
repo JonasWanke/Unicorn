@@ -42,8 +42,9 @@ abstract class BaseCommand(
         val runContext = ConsoleRunContext(prefix, context.console)
         execute(runContext)
 
-        if (context.invokedSubcommand == null)
+        if (context.invokedSubcommand == null) {
             runContext.log.i("Done!")
+        }
     }
 
     open fun execute(context: ConsoleRunContext) = Unit

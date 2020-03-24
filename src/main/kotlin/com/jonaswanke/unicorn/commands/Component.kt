@@ -22,8 +22,9 @@ fun Unicorn.registerComponentCommands() {
                         projectConfig.categorization.component.values.forEach { component ->
                             line {
                                 bold(component.name)
-                                if (component.description != null)
+                                if (component.description != null) {
                                     +" ${component.description}"
+                                }
                             }
                         }
                     }
@@ -41,8 +42,9 @@ fun Unicorn.registerComponentCommands() {
                 option("-p", "--path", help = "Paths to e.g. detect components in PR changes (supports glob)")
                     .multiple()
             ) { name, description, paths ->
-                if (name in projectConfig.categorization.component)
+                if (name in projectConfig.categorization.component) {
                     exit("A component called \"$name\" already exists")
+                }
 
                 val newComponent = ComponentConfig.Component(name, description, paths)
                 projectConfig = projectConfig.copyWithCategorizationValues(
@@ -81,8 +83,9 @@ fun Unicorn.registerComponentCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (name !in projectConfig.categorization.component)
+                if (name !in projectConfig.categorization.component) {
                     exit("Component \"$name\" was not found")
+                }
 
                 val oldConfig = projectConfig
 

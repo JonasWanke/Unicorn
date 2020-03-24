@@ -17,6 +17,7 @@ object Dart {
                 "get",
                 if (offline) "--offline" else null
             ).toTypedArray()
+            @Suppress("SpreadOperator")
             run(context, *arguments, directory = directory)
         }
 
@@ -24,6 +25,7 @@ object Dart {
             context.log.i {
                 code("pub ${arguments.joinToString(" ")}")
             }
+            @Suppress("SpreadOperator")
             context.execute("pub", *arguments, directory = directory)
         }
     }

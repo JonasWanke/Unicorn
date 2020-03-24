@@ -23,8 +23,9 @@ fun Unicorn.registerPriorityCommands() {
                         projectConfig.categorization.priority.values.forEach { priority ->
                             line {
                                 bold(priority.name)
-                                if (priority.description != null)
+                                if (priority.description != null) {
                                     +" ${priority.description}"
+                                }
                             }
                         }
                     }
@@ -44,8 +45,9 @@ fun Unicorn.registerPriorityCommands() {
                     .default(0)
                     .validate { require(it >= 0) { "Index must be non-negative" } }
             ) { name, description, index ->
-                if (name in projectConfig.categorization.priority)
+                if (name in projectConfig.categorization.priority) {
                     exit("A priority called \"$name\" already exists")
+                }
 
                 val newPriority = PriorityConfig.Priority(name, description)
                 projectConfig = projectConfig.copyWithCategorizationValues(
@@ -86,8 +88,9 @@ fun Unicorn.registerPriorityCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (name !in projectConfig.categorization.priority)
+                if (name !in projectConfig.categorization.priority) {
                     exit("Priority \"$name\" was not found")
+                }
 
                 val oldConfig = projectConfig
 
