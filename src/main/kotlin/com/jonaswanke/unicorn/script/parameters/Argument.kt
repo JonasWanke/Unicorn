@@ -1,4 +1,4 @@
-@file:Suppress("unused")
+@file:Suppress("unused", "TooManyFunctions")
 
 package com.jonaswanke.unicorn.script.parameters
 
@@ -276,6 +276,7 @@ fun <T : Any> UnicornRawArgument.choice(choices: Map<String, T>): UnicornProcess
  * argument().choice("foo" to 1, "bar" to 2)
  * ```
  */
+@Suppress("SpreadOperator")
 fun <T : Any> UnicornRawArgument.choice(vararg choices: Pair<String, T>): UnicornProcessedArgument<T, T> =
     buildDelegate { choice(*choices) }
 
@@ -288,6 +289,7 @@ fun <T : Any> UnicornRawArgument.choice(vararg choices: Pair<String, T>): Unicor
  * argument().choice("foo", "bar")
  * ```
  */
+@Suppress("SpreadOperator")
 fun UnicornRawArgument.choice(vararg choices: String): UnicornProcessedArgument<String, String> =
     buildDelegate { choice(*choices) }
 

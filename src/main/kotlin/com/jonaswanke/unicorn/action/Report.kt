@@ -49,8 +49,7 @@ sealed class ReportItem {
                 when (child) {
                     is Group -> {
                         val filtered = child.filter(predicate)
-                        if (filtered.children.isNotEmpty())
-                            result.children += child
+                        if (filtered.children.isNotEmpty()) result.children += child
                     }
                     is Line -> if (predicate(child)) result.children += child
                 }

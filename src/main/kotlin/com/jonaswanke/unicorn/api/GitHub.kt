@@ -24,13 +24,13 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
             val config = context.globalConfig.gitHub ?: return null
 
             val api = GitHubBuilder().apply {
-                if (config.anonymousToken != null)
+                if (config.anonymousToken != null) {
                     withOAuthToken(config.anonymousToken, "anonymous")
-                else if (config.username != null && config.oauthToken != null)
+                } else if (config.username != null && config.oauthToken != null) {
                     withOAuthToken(config.oauthToken, config.username)
+                }
 
-                if (config.endpoint != null)
-                    withEndpoint(config.endpoint)
+                if (config.endpoint != null) withEndpoint(config.endpoint)
             }.build()
 
             // isCredentialValid tries to retrieve the current user which doesn't work with an anonymous token
@@ -49,13 +49,14 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
             token: String? = null,
             endpoint: String? = null
         ): GitHub = context.group("GitHub login") {
-            if (!forceNew)
+            if (!forceNew) {
                 authenticateOrNull(this)?.also { return@group it }
+            }
             if (this !is InteractiveRunContext) {
                 val gitHub = globalConfig.gitHub
-                if (gitHub == null)
+                if (gitHub == null) {
                     exit("Login failed: No login data available")
-                else
+                } else {
                     exit {
                         +"Login failed. credentials used:"
                         list {
@@ -63,6 +64,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
                             gitHub.endpoint?.let { +"Custom endpoint: $it" }
                         }
                     }
+                }
             }
 
             log.i("Please enter your GitHub credentials (They will be stored unencrypted in the installation directory):")
@@ -199,8 +201,9 @@ fun GHIssue.assignTo(context: RunContext, users: List<GHUser>, throwIfAlreadyAss
         val oldAssignees = assignees
         log.d("Current assignees: ${oldAssignees.joinToString { it.login }}")
 
-        if (throwIfAlreadyAssigned && oldAssignees.isNotEmpty() && oldAssignees.toSet() != users.toSet())
+        if (throwIfAlreadyAssigned && oldAssignees.isNotEmpty() && oldAssignees.toSet() != users.toSet()) {
             exit("Issue is already assigned")
+        }
 
         setAssignees(users)
         log.i("Successfully assigned")
@@ -232,15 +235,13 @@ fun GHIssue.openPullRequest(
 
     val link = buildString {
         append("${repository.htmlUrl}/compare/")
-        if (base != null)
-            append("${base.encode()}..")
+        if (base != null) append("${base.encode()}..")
         append(git.currentBranchName.encode())
         append("?expand=1")
         append("&title=${title.encode()}")
         append("&assignees=${assignees.encode()}")
         append("&labels=${labels.encode()}")
-        if (milestone != null)
-            append("&milestone=${milestone.encode()}")
+        if (milestone != null) append("&milestone=${milestone.encode()}")
     }
     Desktop.getDesktop().browse(URI(link))
 }
@@ -270,15 +271,6 @@ val GHPullRequest.isBreaking: Boolean
     get() = labels.any { it.name.contains("breaking", ignoreCase = true) }
 
 fun Glob.matches(file: GHPullRequestFileDetail): Boolean = matches(file.filename)
-
-fun GHPullRequest.toCommitMessage() = buildString {
-    val commit = ConventionalCommit.parse(title)
-    append(commit.description)
-
-    val issues = closedIssues
-    if (issues.isNotEmpty())
-        append(closedIssues.joinToString(prefix = ", fixes ") { "[#${it.number}](${it.htmlUrl})" })
-}
 
 fun GHPullRequest.inferComponents(context: RunContext): List<Categorization.ResolvedValue<ComponentConfig.Component>> {
     // If component labels are already set, they override inferred ones.
@@ -320,6 +312,7 @@ fun <V : CategorizationValue> GHIssue.setLabels(
     }
 
     val labels = (labelsToKeep + additionalLabels).toTypedArray()
+    @Suppress("SpreadOperator")
     setLabels(*labels)
 
     if (this is GHPullRequest) refresh()
@@ -360,10 +353,8 @@ fun <V : CategorizationValue> Categorization.ResolvedValue<V>.getGhLabel(repo: G
 fun <V : CategorizationValue> Categorization.ResolvedValue<V>.getGhLabelOrNull(repo: GHRepository): GHLabel? {
     return try {
         repo.getLabel(fullName).also {
-            if (it.color != color)
-                it.color = color
-            if (it.description != fullDescription)
-                it.description = fullDescription
+            if (it.color != color) it.color = color
+            if (it.description != fullDescription) it.description = fullDescription
         }
     } catch (e: GHFileNotFoundException) {
         null
@@ -409,7 +400,7 @@ fun GHRepository.syncComponentLabels(context: RunContext) = context.group("Synci
 fun GHIssue.getPriority(context: RunContext): Int? {
     val labels = getLabels(context, context.projectConfig.categorization.priority)
     if (labels.size > 1) {
-        context.log.w("Multiple priority labels found on $issuePrNumber #${number}")
+        context.log.w("Multiple priority labels found on $issuePrNumber #$number")
         return null
     }
     return labels.firstOrNull()

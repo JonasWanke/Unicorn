@@ -50,8 +50,7 @@ fun Unicorn.registerCreateCommand() {
             }
 
             val name = rawName ?: projectDir.name
-            if (!initInExisting)
-                projectDir = File(projectDir, name!!)
+            if (!initInExisting) projectDir = File(projectDir, name!!)
             checkProjectDir(initInExisting, name)
 
             val repo = gitHub.currentRepoOrNull(this)
@@ -108,10 +107,12 @@ fun Unicorn.registerCreateCommand() {
 
 private fun RunContext.checkProjectDir(initInExisting: Boolean, name: String) {
     if (initInExisting) {
-        if (!projectDir.exists())
+        if (!projectDir.exists()) {
             exit("The specified directory does not exist. If you want to create a new repository, please specify a name")
-        if (!projectDir.isDirectory)
+        }
+        if (!projectDir.isDirectory) {
             exit("The specified path is not a directory. If you want to create a new repository, please specify a name")
+        }
 
         try {
             projectConfig
@@ -119,13 +120,12 @@ private fun RunContext.checkProjectDir(initInExisting: Boolean, name: String) {
         } catch (e: IOException) {
             // Means no project config file was found — expected
         }
-    } else {
-        if (projectDir.exists())
-            exit {
-                +"A subdirectory with the specified project name "
-                italic(name)
-                +" already exists!"
-            }
+    } else if (projectDir.exists()) {
+        exit {
+            +"A subdirectory with the specified project name "
+            italic(name)
+            +" already exists!"
+        }
     }
 }
 
@@ -145,12 +145,12 @@ private fun InteractiveRunContext.initGit() = group("Initializing git") {
                 throw NoSuchOption(e.templateName)
             }
         }
-        if (gitignore != null)
+        if (gitignore != null) {
             File(projectDir, GIT_GITIGNORE_FILE).appendText(gitignore)
+        }
     }
 
-    if (!Git.isInitializedIn(projectDir))
-        Git.init(projectDir)
+    if (!Git.isInitializedIn(projectDir)) Git.init(projectDir)
 }
 
 private fun InteractiveRunContext.initGitHub() = group("Configuring GitHub") {
@@ -195,8 +195,9 @@ private fun InteractiveRunContext.initGitHub() = group("Configuring GitHub") {
         else try {
             create(true)
         } catch (e: GHRepoCantBePrivateException) {
-            if (!confirm("Your plan does not allow private repositories. Make it public instead?"))
+            if (!confirm("Your plan does not allow private repositories. Make it public instead?")) {
                 exit("Aborting")
+            }
             create(false)
         }
 

@@ -25,7 +25,7 @@ object Files {
                 h2 {
                     val compareUrl = "${context.gitHubRepo.htmlUrl}/compare/v$oldVersion...v$version"
                     link(compareUrl, title)
-                    +" – "
+                    +" · "
                     +DATE_FORMAT.format(Date())
                 }
                 newLine()

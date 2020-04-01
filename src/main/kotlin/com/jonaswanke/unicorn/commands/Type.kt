@@ -22,8 +22,9 @@ fun Unicorn.registerTypeCommands() {
                         projectConfig.categorization.type.values.forEach { type ->
                             line {
                                 bold(type.name)
-                                if (type.description != null)
+                                if (type.description != null) {
                                     +" ${type.description}"
+                                }
                             }
                         }
                     }
@@ -39,8 +40,9 @@ fun Unicorn.registerTypeCommands() {
                     .validate { require(it.isNotEmpty()) { "Name must not be empty" } },
                 option("-d", "--desc", "--description", help = "An optional description")
             ) { name, description ->
-                if (name in projectConfig.categorization.type)
+                if (name in projectConfig.categorization.type) {
                     exit("A type called \"$name\" already exists")
+                }
 
                 val newType = TypeConfig.Type(name, description)
                 projectConfig = projectConfig.copyWithCategorizationValues(
@@ -79,8 +81,9 @@ fun Unicorn.registerTypeCommands() {
                 )
                     .flag(default = false)
             ) { name, deleteLabel ->
-                if (name !in projectConfig.categorization.type)
+                if (name !in projectConfig.categorization.type) {
                     exit("Type \"$name\" was not found")
+                }
 
                 val oldConfig = projectConfig
 
