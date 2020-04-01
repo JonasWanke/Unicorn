@@ -340,7 +340,7 @@ naming:
   MatchingDeclarationName:
     active: true
   MemberNameEqualsClassName:
-    active: true
+    active: false
     ignoreOverriddenFunction: true
   ObjectPropertyNaming:
     active: true
