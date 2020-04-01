@@ -33,10 +33,12 @@ object Release {
         val inferredVersion = inferNextVersionNumber(context, mergedPrs)
         while (true) {
             val version = context.promptSemVer("Version number", default = inferredVersion.toString())
-            if (version < current && !context.confirm("Your entered version ($version) is lower than the current project version ($current). Proceed?"))
+            if (version < current && !context.confirm("Your entered version ($version) is lower than the current project version ($current). Proceed?")) {
                 continue
-            if (version == current && !context.confirm("Your entered version ($version) is the same as the current project version ($current). Proceed?"))
+            }
+            if (version == current && !context.confirm("Your entered version ($version) is the same as the current project version ($current). Proceed?")) {
                 continue
+            }
 
             return version
         }

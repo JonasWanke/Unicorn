@@ -31,7 +31,9 @@ interface UnicornOption<T, A : OptionDelegate<T>> : UnicornParameter<T> {
     fun build(command: BaseCommand): A
 }
 
-internal typealias UnicornOptionWithValues<AllT, EachT, ValueT> = UnicornOption<AllT, OptionWithValues<AllT, EachT, ValueT>>
+internal typealias UnicornOptionWithValues<AllT, EachT, ValueT>
+        = UnicornOption<AllT, OptionWithValues<AllT, EachT, ValueT>>
+
 internal typealias UnicornNullableOption<EachT, ValueT> = UnicornOption<EachT?, OptionWithValues<EachT?, EachT, ValueT>>
 internal typealias UnicornRawOption = UnicornNullableOption<String, String>
 internal typealias UnicornFlagOption<T> = UnicornOption<T, FlagOption<T>>
@@ -256,8 +258,9 @@ fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.split(delimiter: 
  * val opt by argument().int().validate { require(it % 2 == 0) { "value must be even" } }
  * ```
  */
-fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT, EachT, ValueT>.validate(validator: OptionValidator<AllT>) =
-    buildDelegate { validate(validator) }
+fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT, EachT, ValueT>.validate(
+    validator: OptionValidator<AllT>
+) = buildDelegate { validate(validator) }
 
 /**
  * Check the final argument value and raise an error if it's not valid.
@@ -274,8 +277,9 @@ fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT, EachT, ValueT>.val
  * ```
  */
 @JvmName("nullableValidate")
-fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT?, EachT, ValueT>.validate(validator: OptionValidator<AllT>) =
-    buildDelegate { validate(validator) }
+fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT?, EachT, ValueT>.validate(
+    validator: OptionValidator<AllT>
+) = buildDelegate { validate(validator) }
 
 
 /**
@@ -505,7 +509,9 @@ fun UnicornRawOption.choice(
  * @param key A block that returns the command line value to use for an enum value. The default is
  *   the enum name.
  */
-inline fun <reified T : Enum<T>> UnicornRawOption.enum(crossinline key: (T) -> String = { it.name }): UnicornNullableOption<T, T> =
+inline fun <reified T : Enum<T>> UnicornRawOption.enum(
+    crossinline key: (T) -> String = { it.name }
+): UnicornNullableOption<T, T> =
     buildDelegate { enum(key) }
 
 
