@@ -1,10 +1,12 @@
 package com.jonaswanke.unicorn.action
 
+import com.jonaswanke.unicorn.api.gitHub
 import com.jonaswanke.unicorn.core.GlobalConfig
 import com.jonaswanke.unicorn.core.LogCollector
 import com.jonaswanke.unicorn.core.LogCollector.Priority
 import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.Markup
+import org.kohsuke.github.GHRepository
 import java.io.File
 
 class GitHubActionRunContext private constructor(
@@ -30,6 +32,11 @@ class GitHubActionRunContext private constructor(
     override val projectDir = Action.Env.githubWorkspace
 
     override fun copyWithGroup(group: LogCollector.Group) = GitHubActionRunContext(group)
+
+    val event: Action.Event = Action.Event.detect(this)
+
+    val gitHubRepo: GHRepository
+        get() = gitHub.api.getRepository(Action.Env.githubRepository)
 }
 
 class GitHubActionLogCollector : LogCollector {
