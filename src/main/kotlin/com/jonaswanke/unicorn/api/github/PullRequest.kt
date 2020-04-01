@@ -18,8 +18,7 @@ fun GHPullRequest.inferLabels(context: RunContext) {
             .mapNotNull { it.getType(context) }
             .toSet()
             .singleOrNull()
-        if (type != null)
-            setType(context, type)
+        if (type != null) setType(context, type)
     }
 
     inferComponents(context)

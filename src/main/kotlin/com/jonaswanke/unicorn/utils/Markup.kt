@@ -91,7 +91,7 @@ abstract class MarkupTag(val parent: MarkupTag?) {
     fun markdownAppendSimpleHtml(builder: StringBuilder, tag: String): Unit = with(builder) {
         append("<$tag>")
         appendChildrenToMarkdown(this)
-        append("</$tag>")
+        appendln("</$tag>")
     }
     // endregion
     // endregion

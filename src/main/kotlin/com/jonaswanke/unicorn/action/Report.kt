@@ -109,6 +109,7 @@ data class Report(
 
                 fun groupToMarkup(group: ReportItem.Group): Markup = buildMarkup {
                     +group.group.name
+                    println("Converting group ${group.group.name}")
                     list {
                         for (child in group.children)
                             when (child) {
