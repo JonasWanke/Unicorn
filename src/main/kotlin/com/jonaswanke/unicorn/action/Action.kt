@@ -51,7 +51,7 @@ object Action {
 
     // region Action -> GitHub
     fun printWarning(message: String, file: File? = null, line: Int? = null, col: Int? = null) {
-        //: :warning file={name},line={line},col={col}::{message}
+        // ::warning file={name},line={line},col={col}::{message}
         println(buildString {
             append("::warning ")
             append(listOfNotNull(

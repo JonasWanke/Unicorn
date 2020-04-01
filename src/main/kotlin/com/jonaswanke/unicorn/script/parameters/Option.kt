@@ -1,4 +1,4 @@
-@file:Suppress("unused")
+@file:Suppress("unused", "TooManyFunctions")
 
 package com.jonaswanke.unicorn.script.parameters
 
@@ -31,7 +31,9 @@ interface UnicornOption<T, A : OptionDelegate<T>> : UnicornParameter<T> {
     fun build(command: BaseCommand): A
 }
 
-internal typealias UnicornOptionWithValues<AllT, EachT, ValueT> = UnicornOption<AllT, OptionWithValues<AllT, EachT, ValueT>>
+internal typealias UnicornOptionWithValues<AllT, EachT, ValueT>
+        = UnicornOption<AllT, OptionWithValues<AllT, EachT, ValueT>>
+
 internal typealias UnicornNullableOption<EachT, ValueT> = UnicornOption<EachT?, OptionWithValues<EachT?, EachT, ValueT>>
 internal typealias UnicornRawOption = UnicornNullableOption<String, String>
 internal typealias UnicornFlagOption<T> = UnicornOption<T, FlagOption<T>>
@@ -63,6 +65,7 @@ fun option(
     override val hidden = hidden
     override val envvar = envvar
 
+    @Suppress("SpreadOperator")
     override fun build(command: BaseCommand) = command.option(*names, help = help)
 }
 
@@ -255,8 +258,9 @@ fun <EachT : Any, ValueT> UnicornNullableOption<EachT, ValueT>.split(delimiter: 
  * val opt by argument().int().validate { require(it % 2 == 0) { "value must be even" } }
  * ```
  */
-fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT, EachT, ValueT>.validate(validator: OptionValidator<AllT>) =
-    buildDelegate { validate(validator) }
+fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT, EachT, ValueT>.validate(
+    validator: OptionValidator<AllT>
+) = buildDelegate { validate(validator) }
 
 /**
  * Check the final argument value and raise an error if it's not valid.
@@ -273,8 +277,9 @@ fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT, EachT, ValueT>.val
  * ```
  */
 @JvmName("nullableValidate")
-fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT?, EachT, ValueT>.validate(validator: OptionValidator<AllT>) =
-    buildDelegate { validate(validator) }
+fun <AllT : Any, EachT, ValueT> UnicornOptionWithValues<AllT?, EachT, ValueT>.validate(
+    validator: OptionValidator<AllT>
+) = buildDelegate { validate(validator) }
 
 
 /**
@@ -360,6 +365,7 @@ fun <T : Any> UnicornNullableOption<T, T>.prompt(
  *   practice to provide secondary names so that users can disable an option that was previously enabled.
  * @param default the value for this property if the option is not given on the command line.
  */
+@Suppress("SpreadOperator")
 fun UnicornRawOption.flag(vararg secondaryNames: String, default: Boolean = false): UnicornFlagOption<Boolean> =
     buildDelegate { flag(*secondaryNames, default = default) }
 
@@ -373,6 +379,7 @@ fun <T : Any> UnicornRawOption.switch(choices: Map<String, T>): UnicornFlagOptio
     buildDelegate { switch(choices) }
 
 /** Turn an option into a set of flags that each map to a value. */
+@Suppress("SpreadOperator")
 fun <T : Any> UnicornRawOption.switch(vararg choices: Pair<String, T>): UnicornFlagOption<T?> =
     buildDelegate { switch(*choices) }
 
@@ -468,6 +475,7 @@ fun <T : Any> UnicornRawOption.choice(
  *
  * @see com.github.ajalt.clikt.parameters.groups.groupChoice
  */
+@Suppress("SpreadOperator")
 fun <T : Any> UnicornRawOption.choice(
     vararg choices: Pair<String, T>,
     metavar: String = mvar(choices.map { it.first })
@@ -482,6 +490,7 @@ fun <T : Any> UnicornRawOption.choice(
  * option().choice("foo", "bar")
  * ```
  */
+@Suppress("SpreadOperator")
 fun UnicornRawOption.choice(
     vararg choices: String,
     metavar: String = mvar(choices.asIterable())
@@ -500,7 +509,9 @@ fun UnicornRawOption.choice(
  * @param key A block that returns the command line value to use for an enum value. The default is
  *   the enum name.
  */
-inline fun <reified T : Enum<T>> UnicornRawOption.enum(crossinline key: (T) -> String = { it.name }): UnicornNullableOption<T, T> =
+inline fun <reified T : Enum<T>> UnicornRawOption.enum(
+    crossinline key: (T) -> String = { it.name }
+): UnicornNullableOption<T, T> =
     buildDelegate { enum(key) }
 
 

@@ -55,8 +55,7 @@ private fun inferLabels(context: RunContext, pr: GHPullRequest) {
             .mapNotNull { it.getType(context) }
             .toSet()
             .singleOrNull()
-        if (type != null)
-            pr.setType(context, type)
+        if (type != null) pr.setType(context, type)
     }
 
     pr.inferComponents(context)

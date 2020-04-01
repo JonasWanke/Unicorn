@@ -33,10 +33,12 @@ object Release {
         val inferredVersion = inferNextVersionNumber(context, mergedPrs)
         while (true) {
             val version = context.promptSemVer("Version number", default = inferredVersion.toString())
-            if (version < current && !context.confirm("Your entered version ($version) is lower than the current project version ($current). Proceed?"))
+            if (version < current && !context.confirm("Your entered version ($version) is lower than the current project version ($current). Proceed?")) {
                 continue
-            if (version == current && !context.confirm("Your entered version ($version) is the same as the current project version ($current). Proceed?"))
+            }
+            if (version == current && !context.confirm("Your entered version ($version) is the same as the current project version ($current). Proceed?")) {
                 continue
+            }
 
             return version
         }
@@ -64,10 +66,11 @@ object Release {
                     list {
                         for ((components, pr) in prs)
                             line {
-                                if (components.isNotEmpty())
+                                if (components.isNotEmpty()) {
                                     bold {
                                         +components.joinToString(postfix = ":") { it }
                                     }
+                                }
 
                                 +pr.title
 
@@ -76,18 +79,20 @@ object Release {
                                 +")"
 
                                 val closedIssues = pr.closedIssues
-                                if (closedIssues.isNotEmpty())
+                                if (closedIssues.isNotEmpty()) {
                                     joined(closedIssues, prefix = ", fixes ") {
                                         link(it.htmlUrl.toString(), "#${it.number}")
                                     }
+                                }
                             }
                     }
                     newLine()
                 }
             }.toMarkdownString()
 
-            if (context is InteractiveRunContext)
+            if (context is InteractiveRunContext) {
                 content = context.editText(content, extension = ".md")
+            }
 
             return content
         }

@@ -9,7 +9,7 @@ import java.io.File
 
 class GitHubActionRunContext private constructor(
     override val log: LogCollector
-): RunContext() {
+) : RunContext() {
     constructor() : this(GitHubActionLogCollector())
 
     override val environment = Environment.GITHUB_ACTION

@@ -130,8 +130,9 @@ abstract class InteractiveRunContext : RunContext() {
                     value = currentValue
                     break
                     // Skip confirmation prompt if default is used
-                } else if (default != null)
+                } else if (default != null) {
                     convert.invoke(default)?.let { return it }
+                }
             }
             val result = try {
                 convert.invoke(value)
@@ -212,8 +213,9 @@ abstract class InteractiveRunContext : RunContext() {
 
     private fun buildPrompt(text: String, suffix: String, showDefault: Boolean, default: String?) = buildString {
         append(text)
-        if (showDefault && !default.isNullOrBlank())
+        if (showDefault && !default.isNullOrBlank()) {
             append(" [").append(default).append("]")
+        }
         append(suffix)
     }
 

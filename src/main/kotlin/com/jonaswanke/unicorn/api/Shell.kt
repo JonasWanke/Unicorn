@@ -24,7 +24,7 @@ fun RunContext.execute(
     val file = findProgram(program, directory) ?: exit("Cannot find the program $program")
     log.d("Found executable: ${file.absolutePath}")
 
-    val process = ProcessBuilder(file.absolutePath, *arguments)
+    val process = ProcessBuilder(listOf(file.absolutePath) + arguments)
         .directory(directory)
         .start()
         .apply {

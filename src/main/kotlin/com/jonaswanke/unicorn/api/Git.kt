@@ -158,8 +158,9 @@ class Git(val directory: File) {
     // region Helpers
     private fun <C : GitCommand<T>, T> call(context: RunContext, command: C, configure: C.() -> Unit = {}): T {
         return command.also {
-            if (it is TransportCommand<*, *>)
+            if (it is TransportCommand<*, *>) {
                 it.setCredentialsProvider(GitHub.authenticateOrNull(context)?.credentialsProvider)
+            }
             it.configure()
         }.call()
     }
@@ -214,9 +215,9 @@ class Git(val directory: File) {
                 current is MasterBranch -> current
                 current is IssueBranch && allowIssueBase == true -> current
                 current is IssueBranch && allowIssueBase == null && this is InteractiveRunContext -> {
-                    if (confirm("Base new branch on branch for issue #${current.issue.number}: ${current.issue.title}? (No for master branch)"))
+                    if (confirm("Base new branch on branch for issue #${current.issue.number}: ${current.issue.title}? (No for master branch)")) {
                         current
-                    else masterBranch
+                    } else masterBranch
                 }
                 current is IssueBranch -> exit {
                     +"You're already on an issue branch ("
@@ -242,8 +243,9 @@ class Git(val directory: File) {
         }
 
         fun issueIdFromBranchName(name: String): Int {
-            if (!name.startsWith(BRANCH_ISSUE_PREFIX))
+            if (!name.startsWith(BRANCH_ISSUE_PREFIX)) {
                 throw IllegalArgumentException("$name is not an issue branch")
+            }
 
             return name.removePrefix(BRANCH_ISSUE_PREFIX)
                 .substringBefore(BRANCH_NAME_SEPARATOR)
@@ -257,8 +259,9 @@ class Git(val directory: File) {
         fun createReleaseBranch(context: RunContext, version: SemVer): ReleaseBranch =
             context.group("Git Flow: create release branch for v$version") {
                 val currentBranch = currentBranch(context)
-                if (currentBranch !is MasterBranch)
+                if (currentBranch !is MasterBranch) {
                     exit("Cannot create release branch from non-master branch \"$currentBranch\"")
+                }
 
                 git.createBranch(context, branchNameFromRelease(version))
                 ReleaseBranch(git, version)
@@ -269,8 +272,9 @@ class Git(val directory: File) {
         }
 
         fun releaseVersionFromBranchName(name: String): SemVer {
-            if (!name.startsWith(BRANCH_RELEASE_PREFIX))
+            if (!name.startsWith(BRANCH_RELEASE_PREFIX)) {
                 throw IllegalArgumentException("$name is not a release branch")
+            }
 
             return name.removePrefix(BRANCH_RELEASE_PREFIX)
                 .let { SemVer.parse(it) }
@@ -281,8 +285,9 @@ class Git(val directory: File) {
         class HotfixBranch(git: Git, val version: SemVer) : Branch(git, "$BRANCH_HOTFIX_PREFIX$version")
 
         fun hotfixVersionFromBranchName(name: String): SemVer {
-            if (!name.startsWith(BRANCH_HOTFIX_PREFIX))
+            if (!name.startsWith(BRANCH_HOTFIX_PREFIX)) {
                 throw IllegalArgumentException("$name is not a hotfix branch")
+            }
 
             return name.removePrefix(BRANCH_HOTFIX_PREFIX)
                 .let { SemVer.parse(it) }

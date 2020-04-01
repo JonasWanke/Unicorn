@@ -28,24 +28,24 @@ operator fun <R> KMutableProperty0<R>.setValue(thisRef: Any, property: KProperty
 
 fun <R, T> lazy(initializer: R.() -> T): ReadOnlyProperty<R, T> = SynchronizedLazyImpl(initializer)
 
-private object UNINITIALIZED_VALUE
+private object UninitializedValue
 // Mostly copied from Kotlin's JVM lazy
 private class SynchronizedLazyImpl<in R, out T>(initializer: R.() -> T) : ReadOnlyProperty<R, T> {
     private var initializer: (R.() -> T)? = initializer
     @Volatile
-    private var _value: Any? = UNINITIALIZED_VALUE
+    private var _value: Any? = UninitializedValue
 
     override fun getValue(thisRef: R, property: KProperty<*>): T {
-        val _v1 = _value
-        if (_v1 !== UNINITIALIZED_VALUE) {
+        val v1 = _value
+        if (v1 !== UninitializedValue) {
             @Suppress("UNCHECKED_CAST")
-            return _v1 as T
+            return v1 as T
         }
 
         return synchronized(this) {
-            val _v2 = _value
-            if (_v2 !== UNINITIALIZED_VALUE) {
-                @Suppress("UNCHECKED_CAST") (_v2 as T)
+            val v2 = _value
+            if (v2 !== UninitializedValue) {
+                @Suppress("UNCHECKED_CAST") (v2 as T)
             } else {
                 val typedValue = initializer!!(thisRef)
                 _value = typedValue
@@ -56,7 +56,7 @@ private class SynchronizedLazyImpl<in R, out T>(initializer: R.() -> T) : ReadOn
     }
 
     val isInitialized: Boolean
-        get() = _value !== UNINITIALIZED_VALUE
+        get() = _value !== UninitializedValue
 
     override fun toString(): String = if (isInitialized) _value.toString() else "Lazy value not initialized yet."
 }

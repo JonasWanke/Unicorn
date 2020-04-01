@@ -9,27 +9,29 @@ object GitignoreIo {
     private const val API_URL = "https://www.gitignore.io/api/"
     private const val ERROR_PREFIX = "#!! ERROR: "
 
-    fun getTemplates(context: RunContext, templateNames: List<String>): String = context.group("Fetching templates from gitignore.io") {
-        log.i("Templates: ${templateNames.joinToString()}")
+    fun getTemplates(context: RunContext, templateNames: List<String>): String =
+        context.group("Fetching templates from gitignore.io") {
+            log.i("Templates: ${templateNames.joinToString()}")
 
-        val request = Request.Builder()
-            .get()
-            .url(API_URL + templateNames.joinToString(","))
-            .build()
-        log.d("URL: ${request.url()}")
+            val request = Request.Builder()
+                .get()
+                .url(API_URL + templateNames.joinToString(","))
+                .build()
+            log.d("URL: ${request.url()}")
 
-        val result = OkHttpClient().newCall(request).execute().use {
-            it.body()?.string()
-        } ?: context.exit("Network error: No response")
+            val result = OkHttpClient().newCall(request).execute().use {
+                it.body()?.string()
+            } ?: context.exit("Network error: No response")
 
-        val errorLine = result.indexOf(ERROR_PREFIX)
-        if (errorLine >= 0)
-            result.substring(errorLine + ERROR_PREFIX.length)
-                .substringBefore(' ')
-                .let { invalidOption -> throw UnknownTemplateException(invalidOption) }
+            val errorLine = result.indexOf(ERROR_PREFIX)
+            if (errorLine >= 0) {
+                result.substring(errorLine + ERROR_PREFIX.length)
+                    .substringBefore(' ')
+                    .let { invalidOption -> throw UnknownTemplateException(invalidOption) }
+            }
 
-        result
-    }
+            result
+        }
 
     class UnknownTemplateException(val templateName: String) : Exception("Unknown gitignore.io template: $templateName")
 }
