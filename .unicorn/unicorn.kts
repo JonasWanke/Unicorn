@@ -8,7 +8,7 @@ import com.jonaswanke.unicorn.template.*
 import net.swiftzer.semver.SemVer
 
 unicorn {
-    gitHubAction { event ->
+    gitHubAction {
         if (event !is Action.Event.PullRequest) return@gitHubAction
 
         event.pullRequest.addAuthorAsAssignee()

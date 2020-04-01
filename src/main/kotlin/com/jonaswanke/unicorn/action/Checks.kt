@@ -55,13 +55,13 @@ fun CheckContext.checkClosedIssues() {
     reportCollector.i("This PR will close the following issues: $closedIssuesString")
 }
 
-fun CheckContext.checkCommitsFollowConventional(reportCollector: ReportLogCollector, pr: GHPullRequest) =
+fun CheckContext.checkCommitsFollowConventional() =
     reportCollector.group(buildMarkup {
         +"The following commit messages don't follow "
         link("https://www.conventionalcommits.org/en/v1.0.0", "conventional commits")
         +":"
     }) {
-        pr.listCommits()
+        pullRequest.listCommits()
             .filterNot { it.commit.message.startsWith("Merge ") }
             .filter { ConventionalCommit.tryParse(it.commit.message) == null }
             .forEach {
