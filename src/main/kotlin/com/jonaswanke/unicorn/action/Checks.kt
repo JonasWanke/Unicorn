@@ -2,20 +2,18 @@ package com.jonaswanke.unicorn.action
 
 import com.jonaswanke.unicorn.api.ConventionalCommit
 import com.jonaswanke.unicorn.api.closedIssues
-import com.jonaswanke.unicorn.core.RunContext
 import com.jonaswanke.unicorn.utils.*
 import org.kohsuke.github.GHPullRequest
 
-internal fun runChecks(context: RunContext, reportCollector: ReportLogCollector, pr: GHPullRequest) {
-    runLabelsCheck(context, reportCollector, pr)
-    runClosedIssuesCheck(reportCollector, pr)
-    runCommitCheck(reportCollector, pr)
-}
+class CheckContext(
+    val context: GitHubActionRunContext,
+    val reportCollector: ReportLogCollector,
+    val pullRequest: GHPullRequest
+)
 
-private fun runLabelsCheck(context: RunContext, reportCollector: ReportLogCollector, pr: GHPullRequest) =
-    reportCollector.group("PR labels") {
+fun CheckContext.checkLabels() = reportCollector.group("PR labels") {
         val typeCategory = context.projectConfig.categorization.type
-        val typeLabels = pr.labels
+        val typeLabels = pullRequest.labels
             .filter { it.name.startsWith(typeCategory.labels.prefix) }
             .mapNotNull {
                 typeCategory.getOrNull(it.name) ?: {
@@ -38,8 +36,8 @@ private fun runLabelsCheck(context: RunContext, reportCollector: ReportLogCollec
         }
     }
 
-private fun runClosedIssuesCheck(reportCollector: ReportLogCollector, pr: GHPullRequest) {
-    val closedIssues = pr.closedIssues
+fun CheckContext.checkClosedIssues() {
+    val closedIssues = pullRequest.closedIssues
     if (closedIssues.isEmpty()) {
         reportCollector.i {
             +"This PR won't close any issues"
@@ -57,13 +55,14 @@ private fun runClosedIssuesCheck(reportCollector: ReportLogCollector, pr: GHPull
     reportCollector.i("This PR will close the following issues: $closedIssuesString")
 }
 
-private fun runCommitCheck(reportCollector: ReportLogCollector, pr: GHPullRequest) =
+fun CheckContext.checkCommitsFollowConventional(reportCollector: ReportLogCollector, pr: GHPullRequest) =
     reportCollector.group(buildMarkup {
         +"The following commit messages don't follow "
         link("https://www.conventionalcommits.org/en/v1.0.0", "conventional commits")
         +":"
     }) {
         pr.listCommits()
+            .filterNot { it.commit.message.startsWith("Merge ") }
             .filter { ConventionalCommit.tryParse(it.commit.message) == null }
             .forEach {
                 w {
