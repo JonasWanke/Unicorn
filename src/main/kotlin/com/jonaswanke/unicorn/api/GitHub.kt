@@ -106,6 +106,7 @@ class GitHub(val api: ApiGitHub, val credentialsProvider: CredentialsProvider) {
     }
 
     fun currentRepoOrNull(context: RunContext): GHRepository? {
+        context.log.i(context.globalConfig.toString())
         return currentRepoNameOrNull(context)?.let { api.getRepository(it) }
     }
 
