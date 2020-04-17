@@ -2,10 +2,12 @@ package com.jonaswanke.unicorn.api
 
 import com.jonaswanke.unicorn.core.RunContext
 import net.swiftzer.semver.SemVer
-import org.apache.commons.lang3.SystemUtils
 import java.io.File
 
 object Flutter {
+    val flutterHome: String
+        get() = System.getenv("FLUTTER_HOME")
+
     enum class BuildType(val cliFlag: String) {
         DEBUG("--debug"),
         PROFILE("--profile"),
@@ -33,10 +35,6 @@ object Flutter {
             if (buildName != null) "--build-name=$buildName" else null
         ).toTypedArray()
 
-        context.execute(
-            if (SystemUtils.IS_OS_WINDOWS) "flutter.bat" else "flutter",
-            *arguments,
-            directory = directory
-        )
+        context.execute("$flutterHome/flutter", *arguments, directory = directory)
     }
 }
