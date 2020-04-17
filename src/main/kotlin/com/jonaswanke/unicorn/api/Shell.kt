@@ -47,12 +47,14 @@ fun RunContext.execute(
 }
 
 private fun findProgram(program: String, currentDir: File?): File? {
+    println("PATH: ${System.getenv("PATH")}")
+    println("FLUTTER_HOME: ${System.getenv("FLUTTER_HOME")}")
     val initial = listOfNotNull(currentDir)
     return (initial + System.getenv("PATH").split(';').map { File(it) })
         .flatMap {
             listOfNotNull(
-                it.resolve(program),
-                if (SystemUtils.IS_OS_WINDOWS) it.resolve("$program.bat") else null
+                if (SystemUtils.IS_OS_WINDOWS) it.resolve("$program.bat") else null,
+                it.resolve(program)
             )
         }
         .firstOrNull { it.exists() && it.canExecute() }

@@ -77,6 +77,9 @@ object Action {
     // endregion
 
     // region Action -> GitHub
+    fun setOutput(name: String, value: String) {
+        println("::set-output name=$name::$value")
+    }
     fun printWarning(message: String, file: File? = null, line: Int? = null, col: Int? = null) {
         // ::warning file={name},line={line},col={col}::{message}
         println(buildString {

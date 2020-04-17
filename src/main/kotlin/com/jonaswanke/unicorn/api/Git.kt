@@ -79,6 +79,12 @@ class Git(val directory: File) {
         }
     }
 
+    fun getHeadCommit(context: RunContext): RevCommit {
+        return call(context, api.log()) {
+            add(api.repository.resolve(Constants.HEAD))
+            setMaxCount(1)
+        }.first()
+    }
     fun allCommits(context: RunContext): Iterable<RevCommit> {
         return call(context, api.log()) {
             all()
@@ -88,7 +94,7 @@ class Git(val directory: File) {
     fun commitsSinceTag(context: RunContext, startTag: String): Iterable<RevCommit> {
         return call(context, api.log()) {
             addRange(
-                api.repository.resolve("refs/tags/$startTag"),
+                api.repository.resolve("${Constants.R_TAGS}$startTag"),
                 api.repository.resolve(Constants.HEAD)
             )
         }
