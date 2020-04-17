@@ -14,6 +14,7 @@ object Flutter {
         RELEASE("--release")
     }
 
+    @Suppress("LongParameterList")
     fun buildAppBundle(
         context: RunContext,
         directory: File? = context.projectDir,
@@ -35,6 +36,7 @@ object Flutter {
             if (buildName != null) "--build-name=$buildName" else null
         ).toTypedArray()
 
+        @Suppress("SpreadOperator")
         context.execute("$flutterHome/bin/flutter", *arguments, directory = directory)
     }
 }
