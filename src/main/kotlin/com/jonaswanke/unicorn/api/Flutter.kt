@@ -35,6 +35,6 @@ object Flutter {
             if (buildName != null) "--build-name=$buildName" else null
         ).toTypedArray()
 
-        context.execute("$flutterHome/flutter", *arguments, directory = directory)
+        context.execute("$flutterHome/bin/flutter", *arguments, directory = directory)
     }
 }
